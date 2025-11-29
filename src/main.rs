@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use bevy::prelude::*;
 use rand::Rng;
 
@@ -76,9 +78,124 @@ enum EnemyAction {
     ChargeHit,
 }
 
+#[derive(Clone)]
+struct ActionProcess {
+    action: Arc<Action>,
+    next_step_index: usize,
+}
+impl ActionProcess {
+    fn from(action: &Arc<Action>) -> Self {
+        ActionProcess {
+            action: Arc::clone(action),
+            next_step_index: 0,
+        }
+    }
+
+    fn is_finished(&self) -> bool {
+        self.next_step_index >= self.action.steps.len()
+    }
+
+    fn current_step(&self) -> Option<&ActionStep> {
+        if self.is_finished() {
+            None
+        } else {
+            Some(&self.action.steps[self.next_step_index])
+        }
+    }
+
+    fn next(&mut self) -> Option<&ActionStep> {
+        self.next_step_index += 1;
+        if self.is_finished() {
+            None
+        } else {
+            let step = &self.action.steps[self.next_step_index];
+            Some(step)
+        }
+    }
+}
+
+#[derive(Clone)]
+struct Action {
+    steps: Vec<ActionStep>,
+}
+
+#[derive(Clone, Copy)]
+struct ActionStep {
+    name: &'static str,
+    specification: ActionStepSpecificationEnum,
+}
+
+#[derive(Clone, Copy)]
+enum ActionStepSpecificationEnum {
+    Attack(ActionStepSpecificationAttack),
+    Wait(ActionStepSpecificationWait),
+    Heal(ActionStepSpecificationHeal),
+}
+#[derive(Clone, Copy)]
+struct ActionStepSpecificationAttack {
+    power: f32,
+}
+#[derive(Clone, Copy)]
+struct ActionStepSpecificationWait {
+    invincible: bool,
+}
+#[derive(Clone, Copy)]
+struct ActionStepSpecificationHeal {
+    amount: i32,
+}
+
+fn create_enemy_attack() -> Action {
+    Action {
+        steps: vec![ActionStep {
+            name: "攻撃",
+            specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
+                power: 1.0,
+            }),
+        }],
+    }
+}
+fn create_enemy_wait() -> Action {
+    Action {
+        steps: vec![ActionStep {
+            name: "待機",
+            specification: ActionStepSpecificationEnum::Wait(ActionStepSpecificationWait {
+                invincible: false,
+            }),
+        }],
+    }
+}
+fn create_enemy_heal() -> Action {
+    Action {
+        steps: vec![ActionStep {
+            name: "回復",
+            specification: ActionStepSpecificationEnum::Heal(ActionStepSpecificationHeal {
+                amount: 50,
+            }),
+        }],
+    }
+}
+fn create_enemy_charge() -> Action {
+    Action {
+        steps: vec![
+            ActionStep {
+                name: "ため(準備)",
+                specification: ActionStepSpecificationEnum::Wait(ActionStepSpecificationWait {
+                    invincible: false,
+                }),
+            },
+            ActionStep {
+                name: "ため攻撃(発動)",
+                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
+                    power: 2.5,
+                }),
+            },
+        ],
+    }
+}
+
 // 次ターンに表示される事前決定済み敵行動
 #[derive(Resource)]
-struct EnemyPlannedAction(EnemyAction);
+struct EnemyPlannedAction(ActionProcess);
 
 // コマンド種別
 #[derive(Clone, Copy)]
@@ -136,23 +253,16 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(BattlePhase::AwaitCommand);
     commands.insert_resource(Turn(1));
     // 初期ログと敵行動決定
-    let mut rng = rand::thread_rng();
-    let first_action = if rng.gen_bool(0.5) {
-        EnemyAction::Attack
+    let mut rng = rand::rng();
+    let attack = Arc::new(create_enemy_attack());
+    let wait = Arc::new(create_enemy_wait());
+    let first_action = if rng.random_bool(0.5) {
+        ActionProcess::from(&attack)
     } else {
-        EnemyAction::Wait
+        ActionProcess::from(&wait)
     };
     commands.insert_resource(CombatLog(vec![
-        format!(
-            "初期敵行動: {}",
-            match first_action {
-                EnemyAction::Attack => "攻撃",
-                EnemyAction::Wait => "待機",
-                EnemyAction::Heal => "回復",
-                EnemyAction::ChargeStart => "ため(準備)",
-                EnemyAction::ChargeHit => "ため攻撃(発動)",
-            }
-        ),
+        format!("初期敵行動: {}", first_action.current_step().unwrap().name),
         "コマンドを選択してください (A=攻撃 S=スキル H=回復 D=防御 W=待機, Enter=決定)".to_string(),
     ]));
     commands.insert_resource(DefendNextAttack::default());
@@ -162,6 +272,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(EnemyPlannedAction(first_action));
 
     const MARGIN: Val = Val::Px(12.);
+    let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
     // UI Text
     commands
         .spawn((
@@ -182,7 +293,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             builder.spawn((
                 Text::new("プレイヤーHP: ???\n敵HP: ???\n\n"),
                 TextFont {
-                    font: asset_server.load("fonts/x12y16pxMaruMonica.ttf"),
+                    font: font.clone(),
                     font_size: 24.0,
                     ..default()
                 },
@@ -191,18 +302,18 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             builder.spawn((
                 Text::new("フェーズ: 初期化中\n\n"),
                 TextFont {
-                    font: asset_server.load("fonts/x12y16pxMaruMonica.ttf"),
+                    font: font.clone(),
                     font_size: 20.0,
-                    ..Default::default()
+                    ..default()
                 },
                 TextColor(Color::WHITE),
             ));
             builder.spawn((
                 Text::new("ログ:\n"),
                 TextFont {
-                    font: asset_server.load("fonts/x12y16pxMaruMonica.ttf"),
+                    font: font.clone(),
                     font_size: 18.0,
-                    ..Default::default()
+                    ..default()
                 },
                 TextColor(Color::WHITE),
             ));
@@ -478,25 +589,27 @@ fn player_input_system(
                 // このターンの行動はキャンセル
                 log.0.push("敵の行動はブレイクによりキャンセル".to_string());
             } else {
-                match planned.0 {
-                    EnemyAction::Attack => {
-                        let mut incoming = e_attack.0;
+                let action = &mut planned.0;
+                let step = action.current_step().unwrap();
+                match step.specification {
+                    ActionStepSpecificationEnum::Attack(spec) => {
+                        let mut incoming = (e_attack.0 as f32 * spec.power) as i32;
                         if defend_flag.0 {
                             incoming = 0;
                             defend_flag.0 = false; // 一度きり
                         }
                         p_hp.current = (p_hp.current - incoming).max(0);
                         log.0.push(format!(
-                            "敵の行動: 攻撃 → {}ダメージ (プレイヤーHP {} / {})",
-                            incoming, p_hp.current, p_hp.max
+                            "敵の行動: {} → {}ダメージ (プレイヤーHP {} / {})",
+                            step.name, incoming, p_hp.current, p_hp.max
                         ));
                     }
-                    EnemyAction::Wait => {
-                        log.0.push("敵の行動: 待機 (何もしない)".to_string());
+                    ActionStepSpecificationEnum::Wait(_) => {
+                        log.0.push(format!("敵の行動: {} (何もしない)", step.name));
                     }
-                    EnemyAction::Heal => {
+                    ActionStepSpecificationEnum::Heal(spec) => {
                         // プレイヤーがこのターンに攻撃していた場合、敵の回復量は半減
-                        let base_heal = 50;
+                        let base_heal = spec.amount;
                         let heal_amount = if matches!(cmd, CommandKind::Attack | CommandKind::Skill)
                         {
                             base_heal / 2
@@ -507,71 +620,44 @@ fn player_input_system(
                         e_hp.current = (e_hp.current + heal_amount).min(e_hp.max);
                         let healed = e_hp.current - before;
                         log.0.push(format!(
-                            "敵の行動: 回復 → HPを{}回復 (敵HP {} / {})",
-                            healed, e_hp.current, e_hp.max
+                            "敵の行動: {} → HPを{}回復 (敵HP {} / {})",
+                            step.name, healed, e_hp.current, e_hp.max
                         ));
                     }
-                    EnemyAction::ChargeStart => {
-                        // ための準備（何もしない）。次ターンは確定でため攻撃。
-                        log.0.push("敵の行動: ため (次ターンに強攻撃)".to_string());
-                        planned.0 = EnemyAction::ChargeHit;
-                    }
-                    EnemyAction::ChargeHit => {
-                        // ため攻撃：HP70ダメージ + スタミナ25ダメージ。防御なら無効。
-                        let mut hp_damage = 70;
-                        let mut sta_damage = 25;
-                        if defend_flag.0 {
-                            hp_damage = 0;
-                            sta_damage = 0;
-                            defend_flag.0 = false;
-                            log.0.push("プレイヤーの防御でため攻撃は無効化".to_string());
-                        }
-                        // HPダメージ
-                        p_hp.current = (p_hp.current - hp_damage).max(0);
-                        // スタミナダメージ
-                        p_sta.current = (p_sta.current - sta_damage).max(0);
-                        log.0.push(format!(
-                        "敵の行動: ため攻撃 → HP{}ダメージ / スタミナ{}ダメージ (HP {} / {}, Stamina {} / {})",
-                        hp_damage, sta_damage, p_hp.current, p_hp.max, p_sta.current, p_sta.max
-                    ));
-                        // 次ターンは通常行動に戻る
-                        planned.0 = EnemyAction::Attack;
-                    }
                 }
+                action.next();
             }
         }
         // 次ターンの敵行動を事前決定（敵が生きている場合）
         if e_hp.current > 0 && p_hp.current > 0 {
-            // 直前がChargeStartの場合は次はChargeHit（すでに設定済み）。それ以外で決定。
-            if !matches!(planned.0, EnemyAction::ChargeHit) {
-                // 敵HPが半分以下なら、回復とため開始を選択肢に含める
+            if planned.0.is_finished() {
+                // 現在の行動が完了している場合、新たに行動を決定
+
                 let roll: f32 = rand::random::<f32>();
-                if e_hp.current * 2 <= e_hp.max {
+                // 敵HPが半分以下なら、回復とため開始を選択肢に含める
+                let next = if e_hp.current * 2 <= e_hp.max {
                     // 攻撃 / 待機 / 回復 / ため(準備)
-                    planned.0 = match () {
-                        _ if roll < 0.25 => EnemyAction::Attack,
-                        _ if roll < 0.50 => EnemyAction::Wait,
-                        _ if roll < 0.75 => EnemyAction::Heal,
-                        _ => EnemyAction::ChargeStart,
-                    };
+                    match () {
+                        _ if roll < 0.25 => create_enemy_attack(),
+                        _ if roll < 0.50 => create_enemy_wait(),
+                        _ if roll < 0.75 => create_enemy_heal(),
+                        _ => create_enemy_charge(),
+                    }
                 } else {
                     // 攻撃 / 待機 / ため(準備)
-                    planned.0 = match () {
-                        _ if roll < 0.4 => EnemyAction::Attack,
-                        _ if roll < 0.8 => EnemyAction::Wait,
-                        _ => EnemyAction::ChargeStart,
-                    };
-                }
+                    match () {
+                        _ if roll < 0.4 => create_enemy_attack(),
+                        _ if roll < 0.8 => create_enemy_wait(),
+                        _ => create_enemy_charge(),
+                    }
+                };
+
+                // TODO: 毎回生成してるのやめる
+                planned.0 = ActionProcess::from(&Arc::new(next));
             }
             log.0.push(format!(
                 "次ターン敵行動予定: {}",
-                match planned.0 {
-                    EnemyAction::Attack => "攻撃",
-                    EnemyAction::Wait => "待機",
-                    EnemyAction::Heal => "回復",
-                    EnemyAction::ChargeStart => "ため(準備)",
-                    EnemyAction::ChargeHit => "ため攻撃(発動)",
-                }
+                planned.0.current_step().unwrap().name
             ));
         }
         // ターン終了時、ブレイク残りターンのデクリメント（ブレイク中のみ）。解除時にブレイク値リセット。
@@ -680,12 +766,10 @@ fn ui_update_system(
                         }
                     }
                     1 => {
-                        let enemy_action_str = match planned.0 {
-                            EnemyAction::Attack => "攻撃",
-                            EnemyAction::Wait => "待機",
-                            EnemyAction::Heal => "回復",
-                            EnemyAction::ChargeStart => "ため(準備)",
-                            EnemyAction::ChargeHit => "ため攻撃(発動)",
+                        let enemy_action_str = if let Some(step) = planned.0.current_step() {
+                            step.name
+                        } else {
+                            "不明"
                         };
                         let help = "\n[コマンド説明]\n \
  A=攻撃: 消費20 / ダメージ=攻撃力(20)\n \
