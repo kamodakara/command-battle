@@ -147,11 +147,144 @@ struct ActionStepSpecificationHeal {
 fn create_enemy_attack() -> Action {
     Action {
         steps: vec![ActionStep {
-            name: "攻撃",
+            name: "爪攻撃",
             specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
                 power: 1.0,
             }),
         }],
+    }
+}
+fn create_enemy_claw_strong() -> Action {
+    Action {
+        steps: vec![
+            ActionStep {
+                name: "強力な爪攻撃",
+                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
+                    power: 2.0,
+                }),
+            },
+            ActionStep {
+                name: "体勢を立て直す",
+                specification: ActionStepSpecificationEnum::Wait(ActionStepSpecificationWait {
+                    invincible: false,
+                }),
+            },
+        ],
+    }
+}
+fn create_enemy_claw_combo() -> Action {
+    Action {
+        steps: vec![
+            ActionStep {
+                name: "爪連撃(1)",
+                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
+                    power: 0.7,
+                }),
+            },
+            ActionStep {
+                name: "爪連撃(2)",
+                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
+                    power: 0.7,
+                }),
+            },
+            ActionStep {
+                name: "待機",
+                specification: ActionStepSpecificationEnum::Wait(ActionStepSpecificationWait {
+                    invincible: false,
+                }),
+            },
+        ],
+    }
+}
+fn create_enemy_claw_combo_strong() -> Action {
+    Action {
+        steps: vec![
+            ActionStep {
+                name: "爪連撃(1)",
+                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
+                    power: 0.8,
+                }),
+            },
+            ActionStep {
+                name: "爪連撃(2)",
+                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
+                    power: 0.8,
+                }),
+            },
+            ActionStep {
+                name: "噛みつき",
+                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
+                    power: 2.0,
+                }),
+            },
+            ActionStep {
+                name: "待機",
+                specification: ActionStepSpecificationEnum::Wait(ActionStepSpecificationWait {
+                    invincible: false,
+                }),
+            },
+        ],
+    }
+}
+fn create_enemy_stomp() -> Action {
+    Action {
+        steps: vec![
+            ActionStep {
+                name: "飛び上がり",
+                specification: ActionStepSpecificationEnum::Wait(ActionStepSpecificationWait {
+                    invincible: false,
+                }),
+            },
+            ActionStep {
+                name: "踏みつけ",
+                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
+                    power: 2.5,
+                }),
+            },
+        ],
+    }
+}
+// ファイアブレス
+fn create_enemy_fire_breath() -> Action {
+    Action {
+        steps: vec![
+            ActionStep {
+                name: "息を吸い込む",
+                specification: ActionStepSpecificationEnum::Wait(ActionStepSpecificationWait {
+                    invincible: false,
+                }),
+            },
+            ActionStep {
+                name: "炎を吐き始めた",
+                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
+                    power: 1.0,
+                }),
+            },
+            ActionStep {
+                name: "炎を吐き続ける",
+                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
+                    power: 2.5,
+                }),
+            },
+            ActionStep {
+                name: "炎を吐き続ける",
+                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
+                    power: 3.0,
+                }),
+            },
+            ActionStep {
+                name: "炎を吐き続ける",
+                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
+                    power: 0.5,
+                }),
+            },
+            ActionStep {
+                name: "息切れ",
+                specification: ActionStepSpecificationEnum::Wait(ActionStepSpecificationWait {
+                    invincible: false,
+                }),
+            },
+        ],
     }
 }
 fn create_enemy_wait() -> Action {
@@ -169,27 +302,9 @@ fn create_enemy_heal() -> Action {
         steps: vec![ActionStep {
             name: "回復",
             specification: ActionStepSpecificationEnum::Heal(ActionStepSpecificationHeal {
-                amount: 50,
+                amount: 100,
             }),
         }],
-    }
-}
-fn create_enemy_charge() -> Action {
-    Action {
-        steps: vec![
-            ActionStep {
-                name: "ため(準備)",
-                specification: ActionStepSpecificationEnum::Wait(ActionStepSpecificationWait {
-                    invincible: false,
-                }),
-            },
-            ActionStep {
-                name: "ため攻撃(発動)",
-                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
-                    power: 2.5,
-                }),
-            },
-        ],
     }
 }
 
@@ -242,10 +357,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Enemy,
         Hp {
-            current: 300,
-            max: 300,
+            current: 1500,
+            max: 1500,
         },
-        Attack(30),
+        Attack(40),
         BreakValue { current: 0 },
         BreakState { remaining_turns: 0 },
         BreakRegen { amount: 1 },
@@ -494,7 +609,7 @@ fn player_input_system(
                 }
             }
             CommandKind::Skill => 30,
-            CommandKind::Heal => 25,
+            CommandKind::Heal => 15,
             CommandKind::Defend => 10,
             CommandKind::Wait => 0,
         };
@@ -558,7 +673,7 @@ fn player_input_system(
                 }
                 CommandKind::Wait => {
                     let before = p_sta.current;
-                    p_sta.current = (p_sta.current + 50).min(p_sta.max);
+                    p_sta.current = (p_sta.current + 40).min(p_sta.max);
                     let recovered = p_sta.current - before;
                     log.0.push(format!(
                         "プレイヤーは待機してスタミナを{}回復 (Stamina {} / {})",
@@ -638,17 +753,21 @@ fn player_input_system(
                 let next = if e_hp.current * 2 <= e_hp.max {
                     // 攻撃 / 待機 / 回復 / ため(準備)
                     match () {
-                        _ if roll < 0.25 => create_enemy_attack(),
-                        _ if roll < 0.50 => create_enemy_wait(),
-                        _ if roll < 0.75 => create_enemy_heal(),
-                        _ => create_enemy_charge(),
+                        _ if roll < 0.1 => create_enemy_wait(),
+                        _ if roll < 0.2 => create_enemy_heal(),
+                        _ if roll < 0.3 => create_enemy_attack(),
+                        _ if roll < 0.5 => create_enemy_claw_combo_strong(),
+                        _ if roll < 0.7 => create_enemy_claw_strong(),
+                        _ if roll < 0.8 => create_enemy_stomp(),
+                        _ => create_enemy_fire_breath(),
                     }
                 } else {
-                    // 攻撃 / 待機 / ため(準備)
                     match () {
-                        _ if roll < 0.4 => create_enemy_attack(),
-                        _ if roll < 0.8 => create_enemy_wait(),
-                        _ => create_enemy_charge(),
+                        _ if roll < 0.3 => create_enemy_wait(),
+                        _ if roll < 0.6 => create_enemy_attack(),
+                        _ if roll < 0.8 => create_enemy_claw_combo(),
+                        _ if roll < 0.9 => create_enemy_claw_strong(),
+                        _ => create_enemy_stomp(),
                     }
                 };
 
@@ -774,7 +893,7 @@ fn ui_update_system(
                         let help = "\n[コマンド説明]\n \
  A=攻撃: 消費20 / ダメージ=攻撃力(20)\n \
  S=スキル: 消費30 / ダメージ=攻撃力×1.5\n \
- H=回復: 消費25 / HP+50\n \
+ H=回復: 消費15 / HP+40\n \
  D=防御: 消費10 / 次の敵攻撃を無効化\n \
  W=待機: 消費0 / スタミナ+50";
                         let phase_str = match *phase {
