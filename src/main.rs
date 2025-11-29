@@ -13,6 +13,7 @@ fn main() {
                 player_input_system,
                 battle_end_check_system,
                 ui_update_system,
+                boss_slain_banner_system,
             ),
         )
         .run();
@@ -347,6 +348,22 @@ struct UiPhase;
 
 #[derive(Component)]
 struct UiLog;
+
+// ================== Boss Slain Banner ==================
+#[derive(Component)]
+struct BossSlainText; // ボス撃破表示用
+
+#[derive(Component)]
+struct BossSlainBanner {
+    elapsed: f32,
+    phase: BannerPhase,
+}
+
+enum BannerPhase {
+    FadeIn,
+    Hold,
+    FadeOut,
+}
 
 // ================== Setup ==================
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -848,6 +865,8 @@ fn battle_end_check_system(
     player_q: Query<&Hp, With<Player>>,
     enemy_q: Query<&Hp, With<Enemy>>,
     mut log: ResMut<CombatLog>,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
 ) {
     if *phase == BattlePhase::Finished {
         return;
@@ -861,6 +880,40 @@ fn battle_end_check_system(
     if e_hp.current <= 0 {
         *phase = BattlePhase::Finished;
         log.0.push("勝利! 敵を倒しました".to_string());
+
+        let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
+        commands
+            .spawn((
+                BossSlainBanner {
+                    elapsed: 0.0,
+                    phase: BannerPhase::FadeIn,
+                },
+                Node {
+                    width: percent(100),
+                    height: percent(100),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    position_type: PositionType::Absolute,
+                    ..default()
+                },
+            ))
+            .with_children(|builder| {
+                builder.spawn((
+                    BossSlainText,
+                    Text::new("DORAGON SLAIN"),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 96.0,
+                        ..default()
+                    },
+                    TextColor(Color::from(LinearRgba {
+                        red: 0.83,
+                        green: 0.72,
+                        blue: 0.20,
+                        alpha: 0.0,
+                    })),
+                ));
+            });
     } else if p_hp.current <= 0 {
         *phase = BattlePhase::Finished;
         log.0.push("敗北... プレイヤーのHPが0です".to_string());
@@ -947,4 +1000,79 @@ fn ui_update_system(
         log_text.push('\n');
     }
     ui_log_text.0 = log_text;
+}
+
+// （演出簡易版につきフェード等の更新システムは未実装）
+fn boss_slain_banner_system(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut banner_q: Query<(Entity, &mut BossSlainBanner, &Children)>,
+    mut text_colors: Query<&mut TextColor, With<BossSlainText>>,
+) {
+    const FADE_IN: f32 = 1.0;
+    const HOLD: f32 = 1.5;
+    const FADE_OUT: f32 = 1.0;
+
+    for (entity, mut banner, children) in banner_q.iter_mut() {
+        banner.elapsed += time.delta().as_secs_f32();
+        match banner.phase {
+            BannerPhase::FadeIn => {
+                let alpha = (banner.elapsed / FADE_IN).clamp(0.0, 1.0);
+                for i in 0..children.len() {
+                    let child = children[i];
+                    if let Ok(mut c) = text_colors.get_mut(child) {
+                        c.0 = Color::from(LinearRgba {
+                            red: 0.83,
+                            green: 0.72,
+                            blue: 0.20,
+                            alpha,
+                        });
+                    }
+                }
+                if banner.elapsed >= FADE_IN {
+                    banner.phase = BannerPhase::Hold;
+                    banner.elapsed = 0.0;
+                }
+            }
+            BannerPhase::Hold => {
+                for i in 0..children.len() {
+                    let child = children[i];
+                    if let Ok(mut c) = text_colors.get_mut(child) {
+                        c.0 = Color::from(LinearRgba {
+                            red: 0.83,
+                            green: 0.72,
+                            blue: 0.20,
+                            alpha: 1.0,
+                        });
+                    }
+                }
+                if banner.elapsed >= HOLD {
+                    banner.phase = BannerPhase::FadeOut;
+                    banner.elapsed = 0.0;
+                }
+            }
+            BannerPhase::FadeOut => {
+                let alpha = 1.0 - (banner.elapsed / FADE_OUT).clamp(0.0, 1.0);
+                for i in 0..children.len() {
+                    let child = children[i];
+                    if let Ok(mut c) = text_colors.get_mut(child) {
+                        c.0 = Color::from(LinearRgba {
+                            red: 0.83,
+                            green: 0.72,
+                            blue: 0.20,
+                            alpha,
+                        });
+                    }
+                }
+                if banner.elapsed >= FADE_OUT {
+                    // 完了後削除
+                    for i in 0..children.len() {
+                        let child = children[i];
+                        commands.entity(child).despawn();
+                    }
+                    commands.entity(entity).despawn();
+                }
+            }
+        }
+    }
 }
