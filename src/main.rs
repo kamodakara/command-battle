@@ -339,6 +339,15 @@ struct PendingSelections(Vec<CommandKind>);
 #[derive(Component)]
 struct UiRoot;
 
+#[derive(Component)]
+struct UiStatus;
+
+#[derive(Component)]
+struct UiPhase;
+
+#[derive(Component)]
+struct UiLog;
+
 // ================== Setup ==================
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2d);
@@ -396,34 +405,53 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 // fill the entire window
                 width: percent(100),
                 height: percent(100),
-                flex_direction: FlexDirection::Column,
+                flex_direction: FlexDirection::Row,
                 align_items: AlignItems::FlexStart,
                 padding: UiRect::all(MARGIN),
                 row_gap: MARGIN,
-                ..Default::default()
+                ..default()
             },
             BackgroundColor(Color::BLACK),
         ))
         .with_children(|builder| {
+            builder
+                .spawn((
+                    Node {
+                        // fill the entire window
+                        width: Val::Px(500.0),
+                        height: percent(100),
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::FlexStart,
+                        padding: UiRect::all(MARGIN),
+                        row_gap: MARGIN,
+                        ..default()
+                    },
+                    BackgroundColor(Color::BLACK),
+                ))
+                .with_children(|builder| {
+                    builder.spawn((
+                        UiStatus,
+                        Text::new("プレイヤーHP: ???\n敵HP: ???\n\n"),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 24.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                    ));
+                    builder.spawn((
+                        UiPhase,
+                        Text::new("フェーズ: 初期化中\n\n"),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 20.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                    ));
+                });
             builder.spawn((
-                Text::new("プレイヤーHP: ???\n敵HP: ???\n\n"),
-                TextFont {
-                    font: font.clone(),
-                    font_size: 24.0,
-                    ..default()
-                },
-                TextColor(Color::WHITE),
-            ));
-            builder.spawn((
-                Text::new("フェーズ: 初期化中\n\n"),
-                TextFont {
-                    font: font.clone(),
-                    font_size: 20.0,
-                    ..default()
-                },
-                TextColor(Color::WHITE),
-            ));
-            builder.spawn((
+                UiLog,
                 Text::new("ログ:\n"),
                 TextFont {
                     font: font.clone(),
@@ -845,9 +873,12 @@ fn ui_update_system(
     enemy_q: Query<(&Hp, &BreakValue, &BreakState), With<Enemy>>,
     phase: Res<BattlePhase>,
     log: Res<CombatLog>,
-    mut ui_q: Query<&mut Children, With<UiRoot>>,
-    mut text_q: Query<&mut Text, With<Text>>,
+    // mut ui_q: Query<&mut Children, With<UiRoot>>,
+    // mut text_q: Query<&mut Text, With<Text>>,
     planned: Res<EnemyPlannedAction>,
+    mut ui_staus_q: Query<&mut Text, (With<UiStatus>, Without<UiPhase>, Without<UiLog>)>,
+    mut ui_phase_q: Query<&mut Text, (With<UiPhase>, Without<UiStatus>, Without<UiLog>)>,
+    mut ui_log_q: Query<&mut Text, (With<UiLog>, Without<UiStatus>, Without<UiPhase>)>,
 ) {
     let Ok(p_hp) = player_q.single() else {
         return;
@@ -858,76 +889,62 @@ fn ui_update_system(
     let Ok((e_hp, e_break, e_bstate)) = enemy_q.single() else {
         return;
     };
+    let Ok(mut ui_status_text) = ui_staus_q.single_mut() else {
+        return;
+    };
+    let Ok(mut ui_phase_text) = ui_phase_q.single_mut() else {
+        return;
+    };
+    let Ok(mut ui_log_text) = ui_log_q.single_mut() else {
+        return;
+    };
 
-    for children in ui_q.iter_mut() {
-        let mut index = 0;
-        for child in children.iter() {
-            if text_q.get_mut(child).is_ok() {
-                match index {
-                    0 => {
-                        let child = text_q.get_mut(child);
-                        if let Ok(mut text) = child {
-                            text.0 = format!(
-                                "プレイヤーHP: {} / {}\nスタミナ: {} / {}\n敵HP: {} / {}\n敵ブレイク値: {} / 100\n敵状態: {}\n\n",
-                                p_hp.current,
-                                p_hp.max,
-                                p_sta.current,
-                                p_sta.max,
-                                e_hp.current,
-                                e_hp.max,
-                                e_break.current,
-                                if e_bstate.remaining_turns > 0 {
-                                    "ブレイク中"
-                                } else {
-                                    "通常"
-                                }
-                            );
-                        }
-                    }
-                    1 => {
-                        let enemy_action_str = if let Some(step) = planned.0.current_step() {
-                            step.name
-                        } else {
-                            "不明"
-                        };
-                        let help = "\n[コマンド説明]\n \
+    ui_status_text.0 = format!(
+        "プレイヤーHP: {} / {}\nスタミナ: {} / {}\n敵HP: {} / {}\n敵ブレイク値: {} / 100\n敵状態: {}\n\n",
+        p_hp.current,
+        p_hp.max,
+        p_sta.current,
+        p_sta.max,
+        e_hp.current,
+        e_hp.max,
+        e_break.current,
+        if e_bstate.remaining_turns > 0 {
+            "ブレイク中"
+        } else {
+            "通常"
+        }
+    );
+
+    let enemy_action_str = if let Some(step) = planned.0.current_step() {
+        step.name
+    } else {
+        "不明"
+    };
+    let help = "\n[コマンド説明]\n \
  A=攻撃: 消費20 / ダメージ=攻撃力(20)\n \
  S=スキル: 消費30 / ダメージ=攻撃力×1.5\n \
  H=回復: 消費15 / HP+40\n \
  D=防御: 消費10 / 次の敵攻撃を無効化\n \
  W=待機: 消費0 / スタミナ+50";
-                        let phase_str = match *phase {
-                            BattlePhase::AwaitCommand => format!(
-                                "コマンド入力待ち\n 敵予定行動: {enemy_action_str}\n コマンドを選択してください (A=攻撃 S=スキル H=回復 D=防御 W=待機, Enter=決定){help}"
-                            ),
-                            BattlePhase::InBattle => "処理中".to_string(),
-                            BattlePhase::Finished => "終了".to_string(),
-                        };
-                        let child = text_q.get_mut(child);
-                        if let Ok(mut text) = child {
-                            text.0 = format!("フェーズ: {phase_str}\n\n");
-                        }
-                    }
-                    2 => {
-                        let mut log_text = String::from("ログ:\n");
-                        let start = if log.0.len() > 10 {
-                            log.0.len() - 10
-                        } else {
-                            0
-                        };
-                        for line in &log.0[start..] {
-                            log_text.push_str(line);
-                            log_text.push('\n');
-                        }
-                        let child = text_q.get_mut(child);
-                        if let Ok(mut text) = child {
-                            text.0 = log_text;
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            index += 1;
-        }
+    let phase_str = match *phase {
+        BattlePhase::AwaitCommand => format!(
+            "コマンド入力待ち\n 敵予定行動: {enemy_action_str}\n コマンドを選択してください (A=攻撃 S=スキル H=回復 D=防御 W=待機, Enter=決定){help}"
+        ),
+        BattlePhase::InBattle => "処理中".to_string(),
+        BattlePhase::Finished => "終了".to_string(),
+    };
+    ui_phase_text.0 = format!("フェーズ: {phase_str}\n\n");
+
+    let mut log_text = String::from("ログ:\n");
+    let log_max_lines = 30;
+    let start = if log.0.len() > log_max_lines {
+        log.0.len() - log_max_lines
+    } else {
+        0
+    };
+    for line in &log.0[start..] {
+        log_text.push_str(line);
+        log_text.push('\n');
     }
+    ui_log_text.0 = log_text;
 }
