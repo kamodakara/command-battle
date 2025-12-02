@@ -471,7 +471,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         flex_direction: FlexDirection::Column,
                         align_items: AlignItems::FlexStart,
                         padding: UiRect::all(MARGIN),
-                        row_gap: MARGIN,
+                        row_gap: Val::Px(0.0),
                         ..default()
                     },
                     BackgroundColor(Color::BLACK),
@@ -487,43 +487,68 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         },
                         TextColor(Color::WHITE),
                     ));
-                    // 有効値の各行（個別に色を切り替える）
                     builder.spawn((
-                        UiEffAttack,
-                        Text::new("[有効値] 攻撃 力: ?? 消費: ?? (連撃時半減)\n"),
+                        Text::new(
+                            "[コマンド説明]\n \
+ A=攻撃:   基本 消費20 / ダメージ=攻撃力(20) / 強化中: 力25 消費15\n \
+ S=スキル: 基本 消費30 / ダメージ=攻撃力(30) / 強化中: 威力45 ブレイク+40\n \
+ H=回復:   基本 消費15 / HP+50 / 強化中: 消費20 / HP+60\n \
+ D=防御:   基本 消費10 / 次の敵攻撃を無効化 / 強化中: 消費5\n \
+ W=待機:   消費0 / スタミナ+50 (強化不可)\n\n",
+                        ),
                         TextFont {
                             font: font.clone(),
                             font_size: 20.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                    ));
+                    builder.spawn((
+                        Text::new("[有効値]\n"),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 18.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                    ));
+                    // 有効値の各行（個別に色を切り替える）
+                    builder.spawn((
+                        UiEffAttack,
+                        Text::new("攻撃 力: ?? 消費: ?? (連撃時半減)\n"),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 18.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
                     ));
                     builder.spawn((
                         UiEffSkill,
-                        Text::new("          スキル 威力: ?? 消費: ?? / ブレイク+??\n"),
+                        Text::new("スキル 威力: ?? 消費: ?? / ブレイク+??\n"),
                         TextFont {
                             font: font.clone(),
-                            font_size: 20.0,
+                            font_size: 18.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
                     ));
                     builder.spawn((
                         UiEffHeal,
-                        Text::new("          回復 量: ?? 消費: ??\n"),
+                        Text::new("回復 量: ?? 消費: ??\n"),
                         TextFont {
                             font: font.clone(),
-                            font_size: 20.0,
+                            font_size: 18.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
                     ));
                     builder.spawn((
                         UiEffDefend,
-                        Text::new("          防御 消費: ??\n\n"),
+                        Text::new("防御 消費: ??\n\n"),
                         TextFont {
                             font: font.clone(),
-                            font_size: 20.0,
+                            font_size: 18.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -533,7 +558,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         Text::new("フェーズ: 初期化中\n\n"),
                         TextFont {
                             font: font.clone(),
-                            font_size: 20.0,
+                            font_size: 18.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -550,9 +575,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 TextColor(Color::WHITE),
             ));
         });
-    println!(
-        "ゲーム開始: A=攻撃 S=スキル(1.5倍) H=回復(+50) D=防御 W=待機(+スタミナ50回復) / Enter=決定"
-    );
+    println!("ゲーム開始: A=攻撃 S=スキル H=回復(+50) D=防御 W=待機(+スタミナ50回復) / Enter=決定");
 }
 
 // ================== Input & Battle Resolution ==================
@@ -909,11 +932,7 @@ fn player_input_system(
                     e_bregen.amount = 1;
                 }
                 CommandKind::Skill => {
-                    let mut dmg = if buffs.skill > 0 {
-                        45
-                    } else {
-                        (p_attack.0 as f32 * 1.5).round() as i32
-                    };
+                    let mut dmg = if buffs.skill > 0 { 45 } else { 30 };
                     if e_bstate.remaining_turns > 0 {
                         dmg *= 2;
                     }
@@ -1243,11 +1262,7 @@ fn ui_update_system(
 
     // 強化反映後の有効値
     let atk_power = if buffs.attack > 0 { 25 } else { 20 };
-    let skl_power = if buffs.skill > 0 {
-        45
-    } else {
-        ((20f32 * 1.5).round() as i32)
-    };
+    let skl_power = if buffs.skill > 0 { 45 } else { 30 };
     let heal_amount = if buffs.heal > 0 { 60 } else { 50 };
     let atk_cost = if buffs.attack > 0 { 15 } else { 20 };
     let skl_cost = 30; // 強化時も消費は変えない指定
@@ -1279,10 +1294,7 @@ fn ui_update_system(
     let Ok((mut eff_atk_text, mut eff_atk_color)) = ui_eff_atk_q.single_mut() else {
         return;
     };
-    eff_atk_text.0 = format!(
-        "[有効値] 攻撃 力:{} 消費:{} (連撃時半減)\n",
-        atk_power, atk_cost
-    );
+    eff_atk_text.0 = format!("攻撃 力:{} 消費:{} (連撃時半減)\n", atk_power, atk_cost);
     eff_atk_color.0 = if buffs.attack > 0 {
         Color::from(LinearRgba {
             red: 0.95,
@@ -1298,7 +1310,7 @@ fn ui_update_system(
         return;
     };
     eff_skl_text.0 = format!(
-        "          スキル 威力:{} 消費:{} / ブレイク+{}\n",
+        "スキル 威力:{} 消費:{} / ブレイク+{}\n",
         skl_power,
         skl_cost,
         if buffs.skill > 0 { 40 } else { skl_power }
@@ -1317,7 +1329,7 @@ fn ui_update_system(
     let Ok((mut eff_heal_text, mut eff_heal_color)) = ui_eff_heal_q.single_mut() else {
         return;
     };
-    eff_heal_text.0 = format!("          回復 量:{} 消費:{}\n", heal_amount, heal_cost);
+    eff_heal_text.0 = format!("回復 量:{} 消費:{}\n", heal_amount, heal_cost);
     eff_heal_color.0 = if buffs.heal > 0 {
         Color::from(LinearRgba {
             red: 0.95,
@@ -1332,7 +1344,7 @@ fn ui_update_system(
     let Ok((mut eff_def_text, mut eff_def_color)) = ui_eff_def_q.single_mut() else {
         return;
     };
-    eff_def_text.0 = format!("          防御 消費:{}\n\n", def_cost);
+    eff_def_text.0 = format!("防御 消費:{}\n\n", def_cost);
     eff_def_color.0 = if buffs.defend > 0 {
         Color::from(LinearRgba {
             red: 0.95,
@@ -1349,16 +1361,9 @@ fn ui_update_system(
     } else {
         "不明"
     };
-    let help = "\n[コマンド説明]\n \
- A=攻撃: 基本 消費20 / ダメージ=攻撃力(20) / 強化中: 力25 消費15\n \
- S=スキル: 基本 消費30 / ダメージ=攻撃力×1.5 / 強化中: 威力45 ブレイク+40\n \
- H=回復: 基本 消費15 / HP+50 / 強化中: 消費20 / HP+60\n \
- D=防御: 基本 消費10 / 次の敵攻撃を無効化 / 強化中: 消費5\n \
- W=待機: 消費0 / スタミナ+50 (強化不可)\n \
- Z=攻撃強化 / X=スキル強化 / C=回復強化 / V=防御強化 (各モメンタム50消費・強化に1ターン使用・3ターン持続)";
     let phase_str = match *phase {
         BattlePhase::AwaitCommand => format!(
-            "コマンド入力待ち\n 敵予定行動: {enemy_action_str}\n コマンドを選択してください (A=攻撃 S=スキル H=回復 D=防御 W=待機, Z/X/C/V=各強化, Enter=決定){help}"
+            "コマンド入力待ち\n 敵予定行動: {enemy_action_str}\n コマンドを選択してください\nA=攻撃 S=スキル H=回復 D=防御 W=待機\nZ=攻撃強化 / X=スキル強化 / C=回復強化 / V=防御強化 (各モメンタム50消費・強化に1ターン使用・3ターン持続), Enter=決定"
         ),
         BattlePhase::InBattle => "処理中".to_string(),
         BattlePhase::Finished => "終了".to_string(),
