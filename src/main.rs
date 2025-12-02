@@ -455,7 +455,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 height: percent(100),
                 flex_direction: FlexDirection::Row,
                 align_items: AlignItems::FlexStart,
-                padding: UiRect::all(MARGIN),
                 row_gap: MARGIN,
                 ..default()
             },
@@ -470,8 +469,11 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         height: percent(100),
                         flex_direction: FlexDirection::Column,
                         align_items: AlignItems::FlexStart,
-                        padding: UiRect::all(MARGIN),
                         row_gap: Val::Px(0.0),
+                        margin: UiRect {
+                            left: MARGIN,
+                            ..default()
+                        },
                         ..default()
                     },
                     BackgroundColor(Color::BLACK),
@@ -490,11 +492,11 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     builder.spawn((
                         Text::new(
                             "[コマンド説明]\n \
- A=攻撃:   基本 消費20 / ダメージ=攻撃力(20) / 強化中: 力25 消費15\n \
- S=スキル: 基本 消費30 / ダメージ=攻撃力(30) / 強化中: 威力45 ブレイク+40\n \
- H=回復:   基本 消費15 / HP+50 / 強化中: 消費20 / HP+60\n \
- D=防御:   基本 消費10 / 次の敵攻撃を無効化 / 強化中: 消費5\n \
- W=待機:   消費0 / スタミナ+50 (強化不可)\n\n",
+ 攻撃:   基本 消費20 威力 20 / 強化中: 威力25 消費15\n \
+ スキル: 基本 消費30 威力 30 / 強化中: 威力45 ブレイク+40\n \
+ 回復:   基本 消費15 回復 50 / 強化中: 消費20 / 回復 60\n \
+ 防御:   基本 消費10 次の敵攻撃を無効化 / 強化中: 消費5\n \
+ 待機:   消費0 / スタミナ+50 (強化不可)\n\n",
                         ),
                         TextFont {
                             font: font.clone(),
@@ -1363,7 +1365,7 @@ fn ui_update_system(
     };
     let phase_str = match *phase {
         BattlePhase::AwaitCommand => format!(
-            "コマンド入力待ち\n 敵予定行動: {enemy_action_str}\n コマンドを選択してください\nA=攻撃 S=スキル H=回復 D=防御 W=待機\nZ=攻撃強化 / X=スキル強化 / C=回復強化 / V=防御強化 (各モメンタム50消費・強化に1ターン使用・3ターン持続), Enter=決定"
+            "コマンド入力待ち 敵予定行動: {enemy_action_str}\nコマンドを選択してください(最大3つ)\n A=攻撃 S=スキル H=回復 D=防御 W=待機\n Z=攻撃強化 / X=スキル強化 / C=回復強化 / V=防御強化\n (各強化はモメンタム50消費・3ターン持続)\n Enter=決定"
         ),
         BattlePhase::InBattle => "処理中".to_string(),
         BattlePhase::Finished => "終了".to_string(),
