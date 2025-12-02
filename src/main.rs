@@ -65,6 +65,21 @@ struct Turn(u32);
 #[derive(Resource)]
 struct CombatLog(Vec<String>);
 
+// モメンタム（最大100）
+#[derive(Resource, Default)]
+struct Momentum {
+    current: i32,
+}
+
+// コマンド強化の残りターン
+#[derive(Resource, Default)]
+struct CommandBuffs {
+    attack: u32,
+    skill: u32,
+    heal: u32,
+    defend: u32,
+}
+
 // 次の敵攻撃を無効化する防御フラグ
 #[derive(Resource, Default)]
 struct DefendNextAttack(bool);
@@ -321,6 +336,10 @@ enum CommandKind {
     Heal,
     Defend,
     Wait,
+    EnhanceAttack,
+    EnhanceSkill,
+    EnhanceHeal,
+    EnhanceDefend,
 }
 
 // 予約コマンドのキュー
@@ -348,6 +367,16 @@ struct UiPhase;
 
 #[derive(Component)]
 struct UiLog;
+
+// 有効値（コマンド別表示用）
+#[derive(Component)]
+struct UiEffAttack;
+#[derive(Component)]
+struct UiEffSkill;
+#[derive(Component)]
+struct UiEffHeal;
+#[derive(Component)]
+struct UiEffDefend;
 
 // ================== Boss Slain Banner ==================
 #[derive(Component)]
@@ -411,6 +440,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(PlayerChainState::default());
     commands.insert_resource(PendingSelections::default());
     commands.insert_resource(EnemyPlannedAction(first_action));
+    commands.insert_resource(Momentum::default());
+    commands.insert_resource(CommandBuffs::default());
 
     const MARGIN: Val = Val::Px(12.);
     let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
@@ -451,7 +482,48 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         Text::new("プレイヤーHP: ???\n敵HP: ???\n\n"),
                         TextFont {
                             font: font.clone(),
-                            font_size: 24.0,
+                            font_size: 18.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                    ));
+                    // 有効値の各行（個別に色を切り替える）
+                    builder.spawn((
+                        UiEffAttack,
+                        Text::new("[有効値] 攻撃 力: ?? 消費: ?? (連撃時半減)\n"),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 20.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                    ));
+                    builder.spawn((
+                        UiEffSkill,
+                        Text::new("          スキル 威力: ?? 消費: ?? / ブレイク+??\n"),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 20.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                    ));
+                    builder.spawn((
+                        UiEffHeal,
+                        Text::new("          回復 量: ?? 消費: ??\n"),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 20.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                    ));
+                    builder.spawn((
+                        UiEffDefend,
+                        Text::new("          防御 消費: ??\n\n"),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 20.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -506,6 +578,8 @@ fn player_input_system(
     mut chain_state: ResMut<PlayerChainState>,
     mut pending: ResMut<PendingSelections>,
     mut planned: ResMut<EnemyPlannedAction>,
+    mut momentum: ResMut<Momentum>,
+    mut buffs: ResMut<CommandBuffs>,
 ) {
     if *phase == BattlePhase::Finished {
         return;
@@ -581,6 +655,43 @@ fn player_input_system(
                     .push("これ以上選択を追加できません (最大3件)".to_string());
             }
         }
+        // 強化: Z=攻撃強化 X=スキル強化 C=回復強化 V=防御強化
+        if keyboard.just_pressed(KeyCode::KeyZ) {
+            if !at_limit {
+                pending.0.push(CommandKind::EnhanceAttack);
+                added.push("攻撃強化");
+            } else {
+                log.0
+                    .push("これ以上選択を追加できません (最大3件)".to_string());
+            }
+        }
+        if keyboard.just_pressed(KeyCode::KeyX) {
+            if !at_limit {
+                pending.0.push(CommandKind::EnhanceSkill);
+                added.push("スキル強化");
+            } else {
+                log.0
+                    .push("これ以上選択を追加できません (最大3件)".to_string());
+            }
+        }
+        if keyboard.just_pressed(KeyCode::KeyC) {
+            if !at_limit {
+                pending.0.push(CommandKind::EnhanceHeal);
+                added.push("回復強化");
+            } else {
+                log.0
+                    .push("これ以上選択を追加できません (最大3件)".to_string());
+            }
+        }
+        if keyboard.just_pressed(KeyCode::KeyV) {
+            if !at_limit {
+                pending.0.push(CommandKind::EnhanceDefend);
+                added.push("防御強化");
+            } else {
+                log.0
+                    .push("これ以上選択を追加できません (最大3件)".to_string());
+            }
+        }
         if !added.is_empty() {
             log.0.push(format!(
                 "選択を追加: {} (現在{}件)",
@@ -597,6 +708,20 @@ fn player_input_system(
             for &cmd in pending.0.iter().skip(1) {
                 queue.0.push_back(cmd);
             }
+            // 連続入力によるモメンタム増加（2件で+5、3件以上で+10、最大100）
+            let count = pending.0.len();
+            if count >= 2 {
+                let inc = if count >= 3 { 10 } else { 5 };
+                let before = momentum.current;
+                momentum.current = (momentum.current + inc).min(100);
+                let gained = momentum.current - before;
+                if gained > 0 {
+                    log.0.push(format!(
+                        "モメンタムが{}増加 ({} → {} / 100)",
+                        gained, before, momentum.current
+                    ));
+                }
+            }
             // ログ出力
             if pending.0.len() > 1 {
                 let names = pending
@@ -609,6 +734,10 @@ fn player_input_system(
                         CommandKind::Heal => "回復",
                         CommandKind::Defend => "防御",
                         CommandKind::Wait => "待機",
+                        CommandKind::EnhanceAttack => "攻撃強化",
+                        CommandKind::EnhanceSkill => "スキル強化",
+                        CommandKind::EnhanceHeal => "回復強化",
+                        CommandKind::EnhanceDefend => "防御強化",
                     })
                     .collect::<Vec<_>>()
                     .join(", ");
@@ -618,7 +747,6 @@ fn player_input_system(
                     names
                 ));
             }
-            log.0.push("選択を確定しました".to_string());
             // バッファをクリア
             pending.0.clear();
         }
@@ -637,6 +765,10 @@ fn player_input_system(
             CommandKind::Heal => "回復",
             CommandKind::Defend => "防御",
             CommandKind::Wait => "待機",
+            CommandKind::EnhanceAttack => "攻撃強化",
+            CommandKind::EnhanceSkill => "スキル強化",
+            CommandKind::EnhanceHeal => "回復強化",
+            CommandKind::EnhanceDefend => "防御強化",
         };
         log.0
             .push(format!("ターン {} プレイヤーは{}を選択", turn.0, name));
@@ -644,7 +776,7 @@ fn player_input_system(
         let is_chain = chain_state.last_was_attack && matches!(cmd, CommandKind::Attack);
 
         // コストチェック（実行時にも確認）。不足なら行動失敗。
-        let base_attack_cost = 20;
+        let base_attack_cost = if buffs.attack > 0 { 15 } else { 20 };
         let cost = match cmd {
             CommandKind::Attack => {
                 if is_chain {
@@ -654,9 +786,25 @@ fn player_input_system(
                 }
             }
             CommandKind::Skill => 30,
-            CommandKind::Heal => 15,
-            CommandKind::Defend => 10,
+            CommandKind::Heal => {
+                if buffs.heal > 0 {
+                    20
+                } else {
+                    15
+                }
+            }
+            CommandKind::Defend => {
+                if buffs.defend > 0 {
+                    5
+                } else {
+                    10
+                }
+            }
             CommandKind::Wait => 0,
+            CommandKind::EnhanceAttack
+            | CommandKind::EnhanceSkill
+            | CommandKind::EnhanceHeal
+            | CommandKind::EnhanceDefend => 0,
         };
         if p_sta.current < cost {
             log.0.push("スタミナ不足で行動できませんでした".to_string());
@@ -666,9 +814,66 @@ fn player_input_system(
             p_sta.current -= cost;
 
             match cmd {
+                CommandKind::EnhanceAttack => {
+                    if buffs.attack > 0 {
+                        log.0
+                            .push("攻撃は既に強化中のため強化できません".to_string());
+                    } else if momentum.current < 50 {
+                        log.0
+                            .push("モメンタム不足で強化できませんでした (必要50)".to_string());
+                    } else {
+                        momentum.current -= 50;
+                        buffs.attack = 3;
+                        log.0
+                            .push("攻撃を強化した (3ターン持続, モメンタム-50)".to_string());
+                    }
+                }
+                CommandKind::EnhanceSkill => {
+                    if buffs.skill > 0 {
+                        log.0
+                            .push("スキルは既に強化中のため強化できません".to_string());
+                    } else if momentum.current < 50 {
+                        log.0
+                            .push("モメンタム不足で強化できませんでした (必要50)".to_string());
+                    } else {
+                        momentum.current -= 50;
+                        buffs.skill = 3;
+                        log.0
+                            .push("スキルを強化した (3ターン持続, モメンタム-50)".to_string());
+                    }
+                }
+                CommandKind::EnhanceHeal => {
+                    if buffs.heal > 0 {
+                        log.0
+                            .push("回復は既に強化中のため強化できません".to_string());
+                    } else if momentum.current < 50 {
+                        log.0
+                            .push("モメンタム不足で強化できませんでした (必要50)".to_string());
+                    } else {
+                        momentum.current -= 50;
+                        buffs.heal = 3;
+                        log.0
+                            .push("回復を強化した (3ターン持続, モメンタム-50)".to_string());
+                    }
+                }
+                CommandKind::EnhanceDefend => {
+                    if buffs.defend > 0 {
+                        log.0
+                            .push("防御は既に強化中のため強化できません".to_string());
+                    } else if momentum.current < 50 {
+                        log.0
+                            .push("モメンタム不足で強化できませんでした (必要50)".to_string());
+                    } else {
+                        momentum.current -= 50;
+                        buffs.defend = 3;
+                        log.0
+                            .push("防御を強化した (3ターン持続, モメンタム-50)".to_string());
+                    }
+                }
                 CommandKind::Heal => {
+                    let amount = if buffs.heal > 0 { 60 } else { 50 };
                     let before = p_hp.current;
-                    p_hp.current = (p_hp.current + 50).min(p_hp.max);
+                    p_hp.current = (p_hp.current + amount).min(p_hp.max);
                     let healed = p_hp.current - before;
                     log.0.push(format!(
                         "プレイヤーは{}回復 (HP {} / {})",
@@ -681,7 +886,7 @@ fn player_input_system(
                         .push("プレイヤーは防御態勢に入った (次の敵攻撃は無効)".to_string());
                 }
                 CommandKind::Attack => {
-                    let mut dmg = p_attack.0;
+                    let mut dmg = if buffs.attack > 0 { 25 } else { p_attack.0 };
                     // ブレイク中は受けるダメージ2倍
                     if e_bstate.remaining_turns > 0 {
                         dmg *= 2;
@@ -704,7 +909,11 @@ fn player_input_system(
                     e_bregen.amount = 1;
                 }
                 CommandKind::Skill => {
-                    let mut dmg = (p_attack.0 as f32 * 1.5).round() as i32;
+                    let mut dmg = if buffs.skill > 0 {
+                        45
+                    } else {
+                        (p_attack.0 as f32 * 1.5).round() as i32
+                    };
                     if e_bstate.remaining_turns > 0 {
                         dmg *= 2;
                     }
@@ -713,7 +922,11 @@ fn player_input_system(
                         "敵に{}ダメージ (敵HP {} / {})",
                         dmg, e_hp.current, e_hp.max
                     ));
-                    e_break.current += dmg;
+                    if buffs.skill > 0 {
+                        e_break.current += 40;
+                    } else {
+                        e_break.current += dmg;
+                    }
                     e_bregen.amount = 1;
                 }
                 CommandKind::Wait => {
@@ -851,6 +1064,32 @@ fn player_input_system(
                 e_bregen.amount = (e_bregen.amount * 2).max(1);
             }
         }
+        // ターン終了時、強化の残りターンをデクリメント
+        let prev = (buffs.attack, buffs.skill, buffs.heal, buffs.defend);
+        if buffs.attack > 0 {
+            buffs.attack -= 1;
+            if buffs.attack == 0 && prev.0 > 0 {
+                log.0.push("攻撃の強化が解除された".to_string());
+            }
+        }
+        if buffs.skill > 0 {
+            buffs.skill -= 1;
+            if buffs.skill == 0 && prev.1 > 0 {
+                log.0.push("スキルの強化が解除された".to_string());
+            }
+        }
+        if buffs.heal > 0 {
+            buffs.heal -= 1;
+            if buffs.heal == 0 && prev.2 > 0 {
+                log.0.push("回復の強化が解除された".to_string());
+            }
+        }
+        if buffs.defend > 0 {
+            buffs.defend -= 1;
+            if buffs.defend == 0 && prev.3 > 0 {
+                log.0.push("防御の強化が解除された".to_string());
+            }
+        }
         turn.0 += 1;
         *phase = BattlePhase::AwaitCommand;
     };
@@ -926,10 +1165,60 @@ fn ui_update_system(
     enemy_q: Query<(&Hp, &BreakValue, &BreakState), With<Enemy>>,
     phase: Res<BattlePhase>,
     log: Res<CombatLog>,
+    momentum: Res<Momentum>,
+    buffs: Res<CommandBuffs>,
     // mut ui_q: Query<&mut Children, With<UiRoot>>,
     // mut text_q: Query<&mut Text, With<Text>>,
     planned: Res<EnemyPlannedAction>,
     mut ui_staus_q: Query<&mut Text, (With<UiStatus>, Without<UiPhase>, Without<UiLog>)>,
+    mut ui_eff_atk_q: Query<
+        (&mut Text, &mut TextColor),
+        (
+            With<UiEffAttack>,
+            Without<UiEffSkill>,
+            Without<UiEffHeal>,
+            Without<UiEffDefend>,
+            Without<UiStatus>,
+            Without<UiPhase>,
+            Without<UiLog>,
+        ),
+    >,
+    mut ui_eff_skl_q: Query<
+        (&mut Text, &mut TextColor),
+        (
+            With<UiEffSkill>,
+            Without<UiEffAttack>,
+            Without<UiEffHeal>,
+            Without<UiEffDefend>,
+            Without<UiStatus>,
+            Without<UiPhase>,
+            Without<UiLog>,
+        ),
+    >,
+    mut ui_eff_heal_q: Query<
+        (&mut Text, &mut TextColor),
+        (
+            With<UiEffHeal>,
+            Without<UiEffAttack>,
+            Without<UiEffSkill>,
+            Without<UiEffDefend>,
+            Without<UiStatus>,
+            Without<UiPhase>,
+            Without<UiLog>,
+        ),
+    >,
+    mut ui_eff_def_q: Query<
+        (&mut Text, &mut TextColor),
+        (
+            With<UiEffDefend>,
+            Without<UiEffAttack>,
+            Without<UiEffSkill>,
+            Without<UiEffHeal>,
+            Without<UiStatus>,
+            Without<UiPhase>,
+            Without<UiLog>,
+        ),
+    >,
     mut ui_phase_q: Query<&mut Text, (With<UiPhase>, Without<UiStatus>, Without<UiLog>)>,
     mut ui_log_q: Query<&mut Text, (With<UiLog>, Without<UiStatus>, Without<UiPhase>)>,
 ) {
@@ -952,12 +1241,30 @@ fn ui_update_system(
         return;
     };
 
+    // 強化反映後の有効値
+    let atk_power = if buffs.attack > 0 { 25 } else { 20 };
+    let skl_power = if buffs.skill > 0 {
+        45
+    } else {
+        ((20f32 * 1.5).round() as i32)
+    };
+    let heal_amount = if buffs.heal > 0 { 60 } else { 50 };
+    let atk_cost = if buffs.attack > 0 { 15 } else { 20 };
+    let skl_cost = 30; // 強化時も消費は変えない指定
+    let heal_cost = if buffs.heal > 0 { 20 } else { 15 };
+    let def_cost = if buffs.defend > 0 { 5 } else { 10 };
+
     ui_status_text.0 = format!(
-        "プレイヤーHP: {} / {}\nスタミナ: {} / {}\n敵HP: {} / {}\n敵ブレイク値: {} / 100\n敵状態: {}\n\n",
+        "プレイヤーHP: {} / {}\nスタミナ: {} / {}\nモメンタム: {} / 100\n強化 残り(攻:{} ス:{} 回:{} 防:{})\n\n敵HP: {} / {}\n敵ブレイク値: {} / 100\n敵状態: {}\n\n",
         p_hp.current,
         p_hp.max,
         p_sta.current,
         p_sta.max,
+        momentum.current,
+        buffs.attack,
+        buffs.skill,
+        buffs.heal,
+        buffs.defend,
         e_hp.current,
         e_hp.max,
         e_break.current,
@@ -965,8 +1272,77 @@ fn ui_update_system(
             "ブレイク中"
         } else {
             "通常"
-        }
+        },
     );
+
+    // 有効値（コマンド別）テキスト更新＆色切り替え
+    let Ok((mut eff_atk_text, mut eff_atk_color)) = ui_eff_atk_q.single_mut() else {
+        return;
+    };
+    eff_atk_text.0 = format!(
+        "[有効値] 攻撃 力:{} 消費:{} (連撃時半減)\n",
+        atk_power, atk_cost
+    );
+    eff_atk_color.0 = if buffs.attack > 0 {
+        Color::from(LinearRgba {
+            red: 0.95,
+            green: 0.85,
+            blue: 0.35,
+            alpha: 1.0,
+        })
+    } else {
+        Color::WHITE
+    };
+
+    let Ok((mut eff_skl_text, mut eff_skl_color)) = ui_eff_skl_q.single_mut() else {
+        return;
+    };
+    eff_skl_text.0 = format!(
+        "          スキル 威力:{} 消費:{} / ブレイク+{}\n",
+        skl_power,
+        skl_cost,
+        if buffs.skill > 0 { 40 } else { skl_power }
+    );
+    eff_skl_color.0 = if buffs.skill > 0 {
+        Color::from(LinearRgba {
+            red: 0.95,
+            green: 0.85,
+            blue: 0.35,
+            alpha: 1.0,
+        })
+    } else {
+        Color::WHITE
+    };
+
+    let Ok((mut eff_heal_text, mut eff_heal_color)) = ui_eff_heal_q.single_mut() else {
+        return;
+    };
+    eff_heal_text.0 = format!("          回復 量:{} 消費:{}\n", heal_amount, heal_cost);
+    eff_heal_color.0 = if buffs.heal > 0 {
+        Color::from(LinearRgba {
+            red: 0.95,
+            green: 0.85,
+            blue: 0.35,
+            alpha: 1.0,
+        })
+    } else {
+        Color::WHITE
+    };
+
+    let Ok((mut eff_def_text, mut eff_def_color)) = ui_eff_def_q.single_mut() else {
+        return;
+    };
+    eff_def_text.0 = format!("          防御 消費:{}\n\n", def_cost);
+    eff_def_color.0 = if buffs.defend > 0 {
+        Color::from(LinearRgba {
+            red: 0.95,
+            green: 0.85,
+            blue: 0.35,
+            alpha: 1.0,
+        })
+    } else {
+        Color::WHITE
+    };
 
     let enemy_action_str = if let Some(step) = planned.0.current_step() {
         step.name
@@ -974,14 +1350,15 @@ fn ui_update_system(
         "不明"
     };
     let help = "\n[コマンド説明]\n \
- A=攻撃: 消費20 / ダメージ=攻撃力(20)\n \
- S=スキル: 消費30 / ダメージ=攻撃力×1.5\n \
- H=回復: 消費15 / HP+40\n \
- D=防御: 消費10 / 次の敵攻撃を無効化\n \
- W=待機: 消費0 / スタミナ+50";
+ A=攻撃: 基本 消費20 / ダメージ=攻撃力(20) / 強化中: 力25 消費15\n \
+ S=スキル: 基本 消費30 / ダメージ=攻撃力×1.5 / 強化中: 威力45 ブレイク+40\n \
+ H=回復: 基本 消費15 / HP+50 / 強化中: 消費20 / HP+60\n \
+ D=防御: 基本 消費10 / 次の敵攻撃を無効化 / 強化中: 消費5\n \
+ W=待機: 消費0 / スタミナ+50 (強化不可)\n \
+ Z=攻撃強化 / X=スキル強化 / C=回復強化 / V=防御強化 (各モメンタム50消費・強化に1ターン使用・3ターン持続)";
     let phase_str = match *phase {
         BattlePhase::AwaitCommand => format!(
-            "コマンド入力待ち\n 敵予定行動: {enemy_action_str}\n コマンドを選択してください (A=攻撃 S=スキル H=回復 D=防御 W=待機, Enter=決定){help}"
+            "コマンド入力待ち\n 敵予定行動: {enemy_action_str}\n コマンドを選択してください (A=攻撃 S=スキル H=回復 D=防御 W=待機, Z/X/C/V=各強化, Enter=決定){help}"
         ),
         BattlePhase::InBattle => "処理中".to_string(),
         BattlePhase::Finished => "終了".to_string(),
