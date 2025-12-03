@@ -433,7 +433,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     };
     commands.insert_resource(CombatLog(vec![
         format!("初期敵行動: {}", first_action.current_step().unwrap().name),
-        "コマンドを選択してください (A=攻撃 S=スキル H=回復 D=防御 W=待機 / Backspace=直前取り消し / Esc=全クリア / Enter=決定)".to_string(),
+        "コマンドを選択してください (A=攻撃 S=強攻撃 H=回復 D=防御 W=待機 / Backspace=直前取り消し / Esc=全クリア / Enter=決定)".to_string(),
     ]));
     commands.insert_resource(DefendNextAttack::default());
     commands.insert_resource(CommandQueue::default());
@@ -493,7 +493,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         Text::new(
                             "[コマンド説明]\n \
  攻撃:   基本 消費20 威力 20 / 強化中: 威力25 消費15\n \
- スキル: 基本 消費30 威力 30 / 強化中: 威力45 ブレイク+40\n \
+ 強攻撃: 基本 消費30 威力 30 / 強化中: 威力45 ブレイク+40\n \
  回復:   基本 消費15 回復 50 / 強化中: 消費20 / 回復 60\n \
  防御:   基本 消費10 次の敵攻撃を無効化 / 強化中: 消費5\n \
  待機:   消費0 / スタミナ+50 (強化不可)\n \
@@ -528,7 +528,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ));
                     builder.spawn((
                         UiEffSkill,
-                        Text::new("スキル 威力: ?? 消費: ?? / ブレイク+??\n"),
+                        Text::new("強攻撃 威力: ?? 消費: ?? / ブレイク+??\n"),
                         TextFont {
                             font: font.clone(),
                             font_size: 18.0,
@@ -579,7 +579,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ));
         });
     println!(
-        "ゲーム開始: A=攻撃 S=スキル H=回復(+50) D=防御 W=待機(+スタミナ50回復) / Backspace=直前取り消し / Esc=全クリア / Enter=決定"
+        "ゲーム開始: A=攻撃 S=強攻撃 H=回復(+50) D=防御 W=待機(+スタミナ50回復) / Backspace=直前取り消し / Esc=全クリア / Enter=決定"
     );
 }
 
@@ -662,7 +662,7 @@ fn player_input_system(
         if keyboard.just_pressed(KeyCode::KeyS) {
             if !at_limit {
                 pending.0.push(CommandKind::Skill);
-                added.push("スキル");
+                added.push("強攻撃");
             } else {
                 log.0
                     .push("これ以上選択を追加できません (最大3件)".to_string());
@@ -695,7 +695,7 @@ fn player_input_system(
                     .push("これ以上選択を追加できません (最大3件)".to_string());
             }
         }
-        // 強化: Z=攻撃強化 X=スキル強化 C=回復強化 V=防御強化
+        // 強化: Z=攻撃強化 X=強攻撃強化 C=回復強化 V=防御強化
         if keyboard.just_pressed(KeyCode::KeyZ) {
             if !at_limit {
                 pending.0.push(CommandKind::EnhanceAttack);
@@ -708,7 +708,7 @@ fn player_input_system(
         if keyboard.just_pressed(KeyCode::KeyX) {
             if !at_limit {
                 pending.0.push(CommandKind::EnhanceSkill);
-                added.push("スキル強化");
+                added.push("強攻撃強化");
             } else {
                 log.0
                     .push("これ以上選択を追加できません (最大3件)".to_string());
@@ -742,12 +742,12 @@ fn player_input_system(
                 .iter()
                 .map(|c| match c {
                     CommandKind::Attack => "攻撃",
-                    CommandKind::Skill => "スキル",
+                    CommandKind::Skill => "強攻撃",
                     CommandKind::Heal => "回復",
                     CommandKind::Defend => "防御",
                     CommandKind::Wait => "待機",
                     CommandKind::EnhanceAttack => "攻撃強化",
-                    CommandKind::EnhanceSkill => "スキル強化",
+                    CommandKind::EnhanceSkill => "強攻撃強化",
                     CommandKind::EnhanceHeal => "回復強化",
                     CommandKind::EnhanceDefend => "防御強化",
                 })
@@ -782,12 +782,12 @@ fn player_input_system(
                     .skip(1)
                     .map(|c| match c {
                         CommandKind::Attack => "攻撃",
-                        CommandKind::Skill => "スキル",
+                        CommandKind::Skill => "強攻撃",
                         CommandKind::Heal => "回復",
                         CommandKind::Defend => "防御",
                         CommandKind::Wait => "待機",
                         CommandKind::EnhanceAttack => "攻撃強化",
-                        CommandKind::EnhanceSkill => "スキル強化",
+                        CommandKind::EnhanceSkill => "強攻撃強化",
                         CommandKind::EnhanceHeal => "回復強化",
                         CommandKind::EnhanceDefend => "防御強化",
                     })
@@ -813,12 +813,12 @@ fn player_input_system(
         *phase = BattlePhase::InBattle;
         let name = match cmd {
             CommandKind::Attack => "攻撃",
-            CommandKind::Skill => "スキル",
+            CommandKind::Skill => "強攻撃",
             CommandKind::Heal => "回復",
             CommandKind::Defend => "防御",
             CommandKind::Wait => "待機",
             CommandKind::EnhanceAttack => "攻撃強化",
-            CommandKind::EnhanceSkill => "スキル強化",
+            CommandKind::EnhanceSkill => "強攻撃強化",
             CommandKind::EnhanceHeal => "回復強化",
             CommandKind::EnhanceDefend => "防御強化",
         };
@@ -883,7 +883,7 @@ fn player_input_system(
                 CommandKind::EnhanceSkill => {
                     if buffs.skill > 0 {
                         log.0
-                            .push("スキルは既に強化中のため強化できません".to_string());
+                            .push("強攻撃は既に強化中のため強化できません".to_string());
                     } else if momentum.current < 50 {
                         log.0
                             .push("モメンタム不足で強化できませんでした (必要50)".to_string());
@@ -891,7 +891,7 @@ fn player_input_system(
                         momentum.current -= 50;
                         buffs.skill = 3;
                         log.0
-                            .push("スキルを強化した (3ターン持続, モメンタム-50)".to_string());
+                            .push("強攻撃を強化した (3ターン持続, モメンタム-50)".to_string());
                     }
                 }
                 CommandKind::EnhanceHeal => {
@@ -991,7 +991,7 @@ fn player_input_system(
             chain_state.last_was_attack = matches!(cmd, CommandKind::Attack);
         }
 
-        // プレイヤーの攻撃/スキル後にブレイク判定。閾値到達でこのターンの敵行動をキャンセルし、次ターンから3ターンブレイク。
+        // プレイヤーの攻撃/強攻撃後にブレイク判定。閾値到達でこのターンの敵行動をキャンセルし、次ターンから3ターンブレイク。
         let mut enemy_action_canceled_this_turn = false;
         if e_break.current >= 100 && e_bstate.remaining_turns == 0 {
             enemy_action_canceled_this_turn = true;
@@ -1096,7 +1096,7 @@ fn player_input_system(
                 e_bregen.amount = 1;
             }
         }
-        // ターン終了時、攻撃/スキルが無ければ自然回復: 1,2,4,...と倍増。0到達またはダメージ受けで1へリセット。
+        // ターン終了時、攻撃/強攻撃が無ければ自然回復: 1,2,4,...と倍増。0到達またはダメージ受けで1へリセット。
         if !matches!(cmd, CommandKind::Attack | CommandKind::Skill) {
             let before = e_break.current;
             e_break.current = (e_break.current - e_bregen.amount).max(0);
@@ -1123,7 +1123,7 @@ fn player_input_system(
         if buffs.skill > 0 {
             buffs.skill -= 1;
             if buffs.skill == 0 && prev.1 > 0 {
-                log.0.push("スキルの強化が解除された".to_string());
+                log.0.push("強攻撃の強化が解除された".to_string());
             }
         }
         if buffs.heal > 0 {
@@ -1300,7 +1300,7 @@ fn ui_update_system(
     let def_cost = if buffs.defend > 0 { 5 } else { 10 };
 
     ui_status_text.0 = format!(
-        "プレイヤーHP: {} / {}\nスタミナ: {} / {}\nモメンタム: {} / 100\n強化 残り(攻:{} ス:{} 回:{} 防:{})\n\n敵HP: {} / {}\n敵ブレイク値: {} / 100\n敵状態: {}\n\n",
+        "プレイヤーHP: {} / {}\nスタミナ: {} / {}\nモメンタム: {} / 100\n強化 残り(攻:{} 強:{} 回:{} 防:{})\n\n敵HP: {} / {}\n敵ブレイク値: {} / 100\n敵状態: {}\n\n",
         p_hp.current,
         p_hp.max,
         p_sta.current,
@@ -1340,7 +1340,7 @@ fn ui_update_system(
         return;
     };
     eff_skl_text.0 = format!(
-        "スキル 威力:{} 消費:{} / ブレイク+{}\n",
+        "強攻撃 威力:{} 消費:{} / ブレイク+{}\n",
         skl_power,
         skl_cost,
         if buffs.skill > 0 { 40 } else { skl_power }
@@ -1414,7 +1414,7 @@ fn ui_update_system(
     };
     let phase_str = match *phase {
         BattlePhase::AwaitCommand => format!(
-            "コマンド入力待ち    敵の次の行動: {enemy_action_str}\nコマンドを選択してください(最大3つ)\n A=攻撃 S=スキル H=回復 D=防御 W=待機\n Z=攻撃強化 / X=スキル強化 / C=回復強化 / V=防御強化\n Backspace=直前取り消し / Esc=全クリア\n Enter=決定\n [選択中] {selected_str}"
+            "コマンド入力待ち    敵の次の行動: {enemy_action_str}\nコマンドを選択してください(最大3つ)\n A=攻撃 S=強攻撃 H=回復 D=防御 W=待機\n Z=攻撃強化 / X=強攻撃強化 / C=回復強化 / V=防御強化\n Backspace=直前取り消し / Esc=全クリア\n Enter=決定\n [選択中] {selected_str}"
         ),
         BattlePhase::InBattle => "処理中".to_string(),
         BattlePhase::Finished => "終了".to_string(),
