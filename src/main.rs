@@ -403,7 +403,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             current: 100,
             max: 100,
         },
-        Attack(20),
+        Attack(10),
         Stamina {
             current: 100,
             max: 100,
@@ -492,7 +492,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     builder.spawn((
                         Text::new(
                             "[コマンド説明]\n \
- 攻撃:   基本 消費20 威力 20 / 強化中: 威力25 消費15\n \
+ 攻撃:   基本 消費15 威力10 / 連撃時: 消費5 / ブレイク中ダメージ: 通常15・強化時25\n \
  強攻撃: 基本 消費30 威力 30 / 強化中: 威力45 ブレイク+40\n \
  回復:   基本 消費15 回復 50 / 強化中: 消費20 / 回復 60\n \
  防御:   基本 消費10 次の敵攻撃を無効化 / 強化中: 消費5\n \
@@ -828,11 +828,11 @@ fn player_input_system(
         let is_chain = chain_state.last_was_attack && matches!(cmd, CommandKind::Attack);
 
         // コストチェック（実行時にも確認）。不足なら行動失敗。
-        let base_attack_cost = if buffs.attack > 0 { 15 } else { 20 };
+        let base_attack_cost = 15;
         let cost = match cmd {
             CommandKind::Attack => {
                 if is_chain {
-                    base_attack_cost / 2
+                    5
                 } else {
                     base_attack_cost
                 }
@@ -938,16 +938,63 @@ fn player_input_system(
                         .push("プレイヤーは防御態勢に入った (次の敵攻撃は無効)".to_string());
                 }
                 CommandKind::Attack => {
-                    let mut dmg = if buffs.attack > 0 { 25 } else { p_attack.0 };
-                    // ブレイク中は受けるダメージ2倍
+                    let base = if buffs.attack > 0 { 25 } else { p_attack.0 };
+                    let mut dmg = base;
+                    let mut break_bonus = 0;
                     if e_bstate.remaining_turns > 0 {
                         dmg *= 2;
+                        break_bonus = dmg - base;
                     }
                     e_hp.current = (e_hp.current - dmg).max(0);
                     if is_chain {
+                        if break_bonus > 0 {
+                            log.0.push(format!(
+                                "連撃! 敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 消費スタミナ半減, 敵HP {} / {})",
+                                dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
+                            ));
+                        } else {
+                            log.0.push(format!(
+                                "連撃! 敵に{}ダメージ (消費スタミナ半減, 敵HP {} / {})",
+                                dmg, e_hp.current, e_hp.max
+                            ));
+                        }
+                    } else {
+                        if break_bonus > 0 {
+                            log.0.push(format!(
+                                "敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
+                                dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
+                            ));
+                        } else {
+                            log.0.push(format!(
+                                "敵に{}ダメージ (敵HP {} / {})",
+                                dmg, e_hp.current, e_hp.max
+                            ));
+                        }
+                    }
+                    // ブレイク値加算（攻撃時の固定増加量: 通常15・強化時25）
+                    let before_break = e_break.current;
+                    let add_break = if buffs.attack > 0 { 25 } else { 15 };
+                    e_break.current += add_break;
+                    log.0.push(format!(
+                        "ブレイク値 +{} ({} → {} / 100)",
+                        add_break, before_break, e_break.current
+                    ));
+                    // ダメージを受けたので自然回復量をリセット
+                    e_bregen.amount = 1;
+                }
+                CommandKind::Skill => {
+                    let base = if buffs.skill > 0 { 45 } else { 30 };
+                    let mut dmg = base;
+                    let mut break_bonus = 0;
+                    if e_bstate.remaining_turns > 0 {
+                        dmg *= 2;
+                        break_bonus = dmg - base;
+                    }
+                    e_hp.current = (e_hp.current - dmg).max(0);
+                    if break_bonus > 0 {
                         log.0.push(format!(
-                            "連撃! 敵に{}ダメージ (消費スタミナ半減, 敵HP {} / {})",
-                            dmg, e_hp.current, e_hp.max
+                            "敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
+                            dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
                         ));
                     } else {
                         log.0.push(format!(
@@ -955,26 +1002,13 @@ fn player_input_system(
                             dmg, e_hp.current, e_hp.max
                         ));
                     }
-                    // ブレイク値加算（与えたダメージ分）
-                    e_break.current += dmg;
-                    // ダメージを受けたので自然回復量をリセット
-                    e_bregen.amount = 1;
-                }
-                CommandKind::Skill => {
-                    let mut dmg = if buffs.skill > 0 { 45 } else { 30 };
-                    if e_bstate.remaining_turns > 0 {
-                        dmg *= 2;
-                    }
-                    e_hp.current = (e_hp.current - dmg).max(0);
+                    let before_break = e_break.current;
+                    let add_break = if buffs.skill > 0 { 40 } else { dmg };
+                    e_break.current += add_break;
                     log.0.push(format!(
-                        "敵に{}ダメージ (敵HP {} / {})",
-                        dmg, e_hp.current, e_hp.max
+                        "ブレイク値 +{} ({} → {} / 100)",
+                        add_break, before_break, e_break.current
                     ));
-                    if buffs.skill > 0 {
-                        e_break.current += 40;
-                    } else {
-                        e_break.current += dmg;
-                    }
                     e_bregen.amount = 1;
                 }
                 CommandKind::Wait => {
@@ -1291,10 +1325,10 @@ fn ui_update_system(
     };
 
     // 強化反映後の有効値
-    let atk_power = if buffs.attack > 0 { 25 } else { 20 };
+    let atk_power = if buffs.attack > 0 { 25 } else { 10 };
     let skl_power = if buffs.skill > 0 { 45 } else { 30 };
     let heal_amount = if buffs.heal > 0 { 60 } else { 50 };
-    let atk_cost = if buffs.attack > 0 { 15 } else { 20 };
+    let atk_cost = 15;
     let skl_cost = 30; // 強化時も消費は変えない指定
     let heal_cost = if buffs.heal > 0 { 20 } else { 15 };
     let def_cost = if buffs.defend > 0 { 5 } else { 10 };
@@ -1324,7 +1358,7 @@ fn ui_update_system(
     let Ok((mut eff_atk_text, mut eff_atk_color)) = ui_eff_atk_q.single_mut() else {
         return;
     };
-    eff_atk_text.0 = format!("攻撃 力:{} 消費:{} (連撃時半減)\n", atk_power, atk_cost);
+    eff_atk_text.0 = format!("攻撃 力:{} 消費:{} (連撃時消費5)\n", atk_power, atk_cost);
     eff_atk_color.0 = if buffs.attack > 0 {
         Color::from(LinearRgba {
             red: 0.95,
