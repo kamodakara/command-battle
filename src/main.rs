@@ -493,7 +493,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         Text::new(
                             "[コマンド説明]\n \
  攻撃:   基本 消費15 威力10 / 連撃時: 消費5 / ブレイク中ダメージ: 通常15・強化時25\n \
- 強攻撃: 基本 消費30 威力 30 / 強化中: 威力45 ブレイク+40\n \
+ 強攻撃: 基本 消費25 威力 25 / 強化中: 威力45 ブレイク+40\n \
  回復:   基本 消費15 回復 50 / 強化中: 消費20 / 回復 60\n \
  防御:   基本 消費10 次の敵攻撃を無効化 / 強化中: 消費5\n \
  待機:   消費0 / スタミナ+50 (強化不可)\n \
@@ -837,7 +837,7 @@ fn player_input_system(
                     base_attack_cost
                 }
             }
-            CommandKind::Skill => 30,
+            CommandKind::Skill => 25,
             CommandKind::Heal => {
                 if buffs.heal > 0 {
                     20
@@ -983,7 +983,7 @@ fn player_input_system(
                     e_bregen.amount = 1;
                 }
                 CommandKind::Skill => {
-                    let base = if buffs.skill > 0 { 45 } else { 30 };
+                    let base = if buffs.skill > 0 { 45 } else { 25 };
                     let mut dmg = base;
                     let mut break_bonus = 0;
                     if e_bstate.remaining_turns > 0 {
@@ -1326,10 +1326,10 @@ fn ui_update_system(
 
     // 強化反映後の有効値
     let atk_power = if buffs.attack > 0 { 25 } else { 10 };
-    let skl_power = if buffs.skill > 0 { 45 } else { 30 };
+    let skl_power = if buffs.skill > 0 { 45 } else { 25 };
     let heal_amount = if buffs.heal > 0 { 60 } else { 50 };
     let atk_cost = 15;
-    let skl_cost = 30; // 強化時も消費は変えない指定
+    let skl_cost = 25; // 強化時も消費は変えない指定
     let heal_cost = if buffs.heal > 0 { 20 } else { 15 };
     let def_cost = if buffs.defend > 0 { 5 } else { 10 };
 
