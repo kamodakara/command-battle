@@ -433,7 +433,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     };
     commands.insert_resource(CombatLog(vec![
         format!("初期敵行動: {}", first_action.current_step().unwrap().name),
-        "コマンドを選択してください (A=攻撃 S=スキル H=回復 D=防御 W=待機, Enter=決定)".to_string(),
+        "コマンドを選択してください (A=攻撃 S=スキル H=回復 D=防御 W=待機 / Backspace=直前取り消し / Esc=全クリア / Enter=決定)".to_string(),
     ]));
     commands.insert_resource(DefendNextAttack::default());
     commands.insert_resource(CommandQueue::default());
@@ -496,7 +496,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
  スキル: 基本 消費30 威力 30 / 強化中: 威力45 ブレイク+40\n \
  回復:   基本 消費15 回復 50 / 強化中: 消費20 / 回復 60\n \
  防御:   基本 消費10 次の敵攻撃を無効化 / 強化中: 消費5\n \
- 待機:   消費0 / スタミナ+50 (強化不可)\n\n",
+ 待機:   消費0 / スタミナ+50 (強化不可)\n \
+ 各強化: モメンタム50消費 2ターン持続\n\n",
                         ),
                         TextFont {
                             font: font.clone(),
@@ -577,7 +578,9 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 TextColor(Color::WHITE),
             ));
         });
-    println!("ゲーム開始: A=攻撃 S=スキル H=回復(+50) D=防御 W=待機(+スタミナ50回復) / Enter=決定");
+    println!(
+        "ゲーム開始: A=攻撃 S=スキル H=回復(+50) D=防御 W=待機(+スタミナ50回復) / Backspace=直前取り消し / Esc=全クリア / Enter=決定"
+    );
 }
 
 // ================== Input & Battle Resolution ==================
@@ -635,6 +638,18 @@ fn player_input_system(
         // 最大選択数制限（3件）
         const MAX_SELECT: usize = 3;
         let at_limit = pending.0.len() >= MAX_SELECT;
+
+        // 取り消し操作: Backspace=直前取り消し / Escape=全クリア（ログには出さない）
+        if keyboard.just_pressed(KeyCode::Escape) {
+            if !pending.0.is_empty() {
+                pending.0.clear();
+            }
+        }
+        if keyboard.just_pressed(KeyCode::Backspace) {
+            if let Some(removed) = pending.0.pop() {
+                let _ = removed; // ログは出さない
+            }
+        }
         if keyboard.just_pressed(KeyCode::KeyA) {
             if !at_limit {
                 pending.0.push(CommandKind::Attack);
@@ -717,16 +732,28 @@ fn player_input_system(
                     .push("これ以上選択を追加できません (最大3件)".to_string());
             }
         }
-        if !added.is_empty() {
-            log.0.push(format!(
-                "選択を追加: {} (現在{}件)",
-                added.join(", "),
-                pending.0.len()
-            ));
-        }
+        // 選択追加のログは出さず、UI側表示に任せる
 
         // Enterで確定: 先頭を実行、2つ目以降を予約キューへ
         if keyboard.just_pressed(KeyCode::Enter) && !pending.0.is_empty() {
+            // 確定時、選択した全コマンドをログ出力
+            let all_names = pending
+                .0
+                .iter()
+                .map(|c| match c {
+                    CommandKind::Attack => "攻撃",
+                    CommandKind::Skill => "スキル",
+                    CommandKind::Heal => "回復",
+                    CommandKind::Defend => "防御",
+                    CommandKind::Wait => "待機",
+                    CommandKind::EnhanceAttack => "攻撃強化",
+                    CommandKind::EnhanceSkill => "スキル強化",
+                    CommandKind::EnhanceHeal => "回復強化",
+                    CommandKind::EnhanceDefend => "防御強化",
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            log.0.push(format!("選択確定: {}", all_names));
             // 先頭を今回実行（連撃判定は実行時に行う）
             commands_to_process.push(pending.0[0]);
             // 残りをキューへ（連撃判定は実行時に行う）
@@ -1188,6 +1215,7 @@ fn ui_update_system(
     log: Res<CombatLog>,
     momentum: Res<Momentum>,
     buffs: Res<CommandBuffs>,
+    pending: Res<PendingSelections>,
     // mut ui_q: Query<&mut Children, With<UiRoot>>,
     // mut text_q: Query<&mut Text, With<Text>>,
     planned: Res<EnemyPlannedAction>,
@@ -1363,9 +1391,30 @@ fn ui_update_system(
     } else {
         "不明"
     };
+    // 選択中コマンド表示用の文字列
+    let selected_str = if pending.0.is_empty() {
+        "(なし)".to_string()
+    } else {
+        pending
+            .0
+            .iter()
+            .map(|c| match c {
+                CommandKind::Attack => "攻撃",
+                CommandKind::Skill => "スキル",
+                CommandKind::Heal => "回復",
+                CommandKind::Defend => "防御",
+                CommandKind::Wait => "待機",
+                CommandKind::EnhanceAttack => "攻撃強化",
+                CommandKind::EnhanceSkill => "スキル強化",
+                CommandKind::EnhanceHeal => "回復強化",
+                CommandKind::EnhanceDefend => "防御強化",
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
     let phase_str = match *phase {
         BattlePhase::AwaitCommand => format!(
-            "コマンド入力待ち 敵予定行動: {enemy_action_str}\nコマンドを選択してください(最大3つ)\n A=攻撃 S=スキル H=回復 D=防御 W=待機\n Z=攻撃強化 / X=スキル強化 / C=回復強化 / V=防御強化\n (各強化はモメンタム50消費・3ターン持続)\n Enter=決定"
+            "コマンド入力待ち    敵の次の行動: {enemy_action_str}\nコマンドを選択してください(最大3つ)\n A=攻撃 S=スキル H=回復 D=防御 W=待機\n Z=攻撃強化 / X=スキル強化 / C=回復強化 / V=防御強化\n Backspace=直前取り消し / Esc=全クリア\n Enter=決定\n [選択中] {selected_str}"
         ),
         BattlePhase::InBattle => "処理中".to_string(),
         BattlePhase::Finished => "終了".to_string(),
