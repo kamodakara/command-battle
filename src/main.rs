@@ -7,15 +7,11 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
-        .add_systems(
-            Update,
-            (
-                player_input_system,
-                battle_end_check_system,
-                ui_update_system,
-                boss_slain_banner_system,
-            ),
-        )
+        .add_systems(Update, player_input_system)
+        .add_systems(Update, battle_end_check_system)
+        .add_systems(Update, ui_update_system)
+        .add_systems(Update, ui_update_skill_effect_system)
+        .add_systems(Update, boss_slain_banner_system)
         .run();
 }
 
@@ -83,6 +79,10 @@ struct CommandBuffs {
 // 次の敵攻撃を無効化する防御フラグ
 #[derive(Resource, Default)]
 struct DefendNextAttack(bool);
+
+// 防御後の次プレイヤー行動に対するガードカウンター猶予
+#[derive(Resource, Default)]
+struct GuardCounterReady(bool);
 
 // 敵の行動種別（事前決定）
 #[derive(Clone, Copy)]
@@ -436,6 +436,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         "コマンドを選択してください (A=攻撃 S=強攻撃 H=回復 D=防御 W=待機 / Backspace=直前取り消し / Esc=全クリア / Enter=決定)".to_string(),
     ]));
     commands.insert_resource(DefendNextAttack::default());
+    commands.insert_resource(GuardCounterReady::default());
     commands.insert_resource(CommandQueue::default());
     commands.insert_resource(PlayerChainState::default());
     commands.insert_resource(PendingSelections::default());
@@ -484,7 +485,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         Text::new("プレイヤーHP: ???\n敵HP: ???\n\n"),
                         TextFont {
                             font: font.clone(),
-                            font_size: 18.0,
+                            font_size: 16.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -493,7 +494,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         Text::new(
                             "[コマンド説明]\n \
  攻撃:   基本 消費15 威力10 / 連撃時: 消費5 / ブレイク中ダメージ: 通常15・強化時25\n \
- 強攻撃: 基本 消費25 威力 25 / 強化中: 威力45 ブレイク+40\n \
+ 強攻撃: 基本 消費25 威力 25 / 強化中: 威力45 ブレイク40
+         防御直後時ガードカウンターに変化 (威力+5, ブレイク+20)\n \
  回復:   基本 消費15 回復 50 / 強化中: 消費20 / 回復 60\n \
  防御:   基本 消費10 次の敵攻撃を無効化 / 強化中: 消費5\n \
  待機:   消費0 / スタミナ+50 (強化不可)\n \
@@ -501,7 +503,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         ),
                         TextFont {
                             font: font.clone(),
-                            font_size: 20.0,
+                            font_size: 16.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -510,7 +512,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         Text::new("[有効値]\n"),
                         TextFont {
                             font: font.clone(),
-                            font_size: 18.0,
+                            font_size: 16.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -521,7 +523,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         Text::new("攻撃 力: ?? 消費: ?? (連撃時半減)\n"),
                         TextFont {
                             font: font.clone(),
-                            font_size: 18.0,
+                            font_size: 16.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -531,7 +533,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         Text::new("強攻撃 威力: ?? 消費: ?? / ブレイク+??\n"),
                         TextFont {
                             font: font.clone(),
-                            font_size: 18.0,
+                            font_size: 16.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -541,7 +543,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         Text::new("回復 量: ?? 消費: ??\n"),
                         TextFont {
                             font: font.clone(),
-                            font_size: 18.0,
+                            font_size: 16.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -551,7 +553,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         Text::new("防御 消費: ??\n\n"),
                         TextFont {
                             font: font.clone(),
-                            font_size: 18.0,
+                            font_size: 16.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -561,7 +563,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         Text::new("フェーズ: 初期化中\n\n"),
                         TextFont {
                             font: font.clone(),
-                            font_size: 18.0,
+                            font_size: 16.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -572,7 +574,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 Text::new("ログ:\n"),
                 TextFont {
                     font: font.clone(),
-                    font_size: 18.0,
+                    font_size: 16.0,
                     ..default()
                 },
                 TextColor(Color::WHITE),
@@ -602,6 +604,7 @@ fn player_input_system(
     >,
     mut log: ResMut<CombatLog>,
     mut defend_flag: ResMut<DefendNextAttack>,
+    mut guard_counter: ResMut<GuardCounterReady>,
     mut queue: ResMut<CommandQueue>,
     mut chain_state: ResMut<PlayerChainState>,
     mut pending: ResMut<PendingSelections>,
@@ -811,6 +814,7 @@ fn player_input_system(
     // 共通のコマンド解決処理
     let mut resolve_command = |cmd: CommandKind| {
         *phase = BattlePhase::InBattle;
+        let guard_ready_at_start = guard_counter.0;
         let name = match cmd {
             CommandKind::Attack => "攻撃",
             CommandKind::Skill => "強攻撃",
@@ -934,8 +938,11 @@ fn player_input_system(
                 }
                 CommandKind::Defend => {
                     defend_flag.0 = true;
+                    guard_counter.0 = true; // 次プレイヤー行動のガードカウンター猶予
                     log.0
                         .push("プレイヤーは防御態勢に入った (次の敵攻撃は無効)".to_string());
+                    log.0
+                        .push("ガードカウンターの構え! 次の行動で強攻撃が強化".to_string());
                 }
                 CommandKind::Attack => {
                     let base = if buffs.attack > 0 { 25 } else { p_attack.0 };
@@ -983,7 +990,11 @@ fn player_input_system(
                     e_bregen.amount = 1;
                 }
                 CommandKind::Skill => {
-                    let base = if buffs.skill > 0 { 45 } else { 25 };
+                    let mut base = if buffs.skill > 0 { 45 } else { 25 };
+                    let is_guard_counter = guard_ready_at_start;
+                    if is_guard_counter {
+                        base += 5; // ガードカウンター: 威力+5
+                    }
                     let mut dmg = base;
                     let mut break_bonus = 0;
                     if e_bstate.remaining_turns > 0 {
@@ -991,19 +1002,36 @@ fn player_input_system(
                         break_bonus = dmg - base;
                     }
                     e_hp.current = (e_hp.current - dmg).max(0);
-                    if break_bonus > 0 {
-                        log.0.push(format!(
-                            "敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
-                            dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
-                        ));
+                    if is_guard_counter {
+                        if break_bonus > 0 {
+                            log.0.push(format!(
+                                "ガードカウンター! 敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
+                                dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
+                            ));
+                        } else {
+                            log.0.push(format!(
+                                "ガードカウンター! 敵に{}ダメージ (敵HP {} / {})",
+                                dmg, e_hp.current, e_hp.max
+                            ));
+                        }
                     } else {
-                        log.0.push(format!(
-                            "敵に{}ダメージ (敵HP {} / {})",
-                            dmg, e_hp.current, e_hp.max
-                        ));
+                        if break_bonus > 0 {
+                            log.0.push(format!(
+                                "敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
+                                dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
+                            ));
+                        } else {
+                            log.0.push(format!(
+                                "敵に{}ダメージ (敵HP {} / {})",
+                                dmg, e_hp.current, e_hp.max
+                            ));
+                        }
                     }
                     let before_break = e_break.current;
-                    let add_break = if buffs.skill > 0 { 40 } else { dmg };
+                    let mut add_break = if buffs.skill > 0 { 40 } else { dmg };
+                    if is_guard_counter {
+                        add_break += 20; // ガードカウンター: ブレイク+20
+                    }
                     e_break.current += add_break;
                     log.0.push(format!(
                         "ブレイク値 +{} ({} → {} / 100)",
@@ -1023,6 +1051,10 @@ fn player_input_system(
             }
             // 実行成功: 直前が攻撃だったかを更新
             chain_state.last_was_attack = matches!(cmd, CommandKind::Attack);
+            // ガードカウンター猶予の消費: 防御以外の行動で消費
+            if !matches!(cmd, CommandKind::Defend) {
+                guard_counter.0 = false;
+            }
         }
 
         // プレイヤーの攻撃/強攻撃後にブレイク判定。閾値到達でこのターンの敵行動をキャンセルし、次ターンから3ターンブレイク。
@@ -1266,18 +1298,6 @@ fn ui_update_system(
             Without<UiLog>,
         ),
     >,
-    mut ui_eff_skl_q: Query<
-        (&mut Text, &mut TextColor),
-        (
-            With<UiEffSkill>,
-            Without<UiEffAttack>,
-            Without<UiEffHeal>,
-            Without<UiEffDefend>,
-            Without<UiStatus>,
-            Without<UiPhase>,
-            Without<UiLog>,
-        ),
-    >,
     mut ui_eff_heal_q: Query<
         (&mut Text, &mut TextColor),
         (
@@ -1326,10 +1346,8 @@ fn ui_update_system(
 
     // 強化反映後の有効値
     let atk_power = if buffs.attack > 0 { 25 } else { 10 };
-    let skl_power = if buffs.skill > 0 { 45 } else { 25 };
     let heal_amount = if buffs.heal > 0 { 60 } else { 50 };
     let atk_cost = 15;
-    let skl_cost = 25; // 強化時も消費は変えない指定
     let heal_cost = if buffs.heal > 0 { 20 } else { 15 };
     let def_cost = if buffs.defend > 0 { 5 } else { 10 };
 
@@ -1370,25 +1388,7 @@ fn ui_update_system(
         Color::WHITE
     };
 
-    let Ok((mut eff_skl_text, mut eff_skl_color)) = ui_eff_skl_q.single_mut() else {
-        return;
-    };
-    eff_skl_text.0 = format!(
-        "強攻撃 威力:{} 消費:{} / ブレイク+{}\n",
-        skl_power,
-        skl_cost,
-        if buffs.skill > 0 { 40 } else { skl_power }
-    );
-    eff_skl_color.0 = if buffs.skill > 0 {
-        Color::from(LinearRgba {
-            red: 0.95,
-            green: 0.85,
-            blue: 0.35,
-            alpha: 1.0,
-        })
-    } else {
-        Color::WHITE
-    };
+    // 強攻撃の有効値表示は別システムで更新
 
     let Ok((mut eff_heal_text, mut eff_heal_color)) = ui_eff_heal_q.single_mut() else {
         return;
@@ -1542,4 +1542,64 @@ fn boss_slain_banner_system(
             }
         }
     }
+}
+
+// 強攻撃の有効値表示（ガードカウンターの反映もここで実施）
+fn ui_update_skill_effect_system(
+    buffs: Res<CommandBuffs>,
+    guard_counter: Res<GuardCounterReady>,
+    mut ui_eff_skl_q: Query<
+        (&mut Text, &mut TextColor),
+        (
+            With<UiEffSkill>,
+            Without<UiEffAttack>,
+            Without<UiEffHeal>,
+            Without<UiEffDefend>,
+            Without<UiStatus>,
+            Without<UiPhase>,
+            Without<UiLog>,
+        ),
+    >,
+) {
+    let skl_power = if buffs.skill > 0 { 45 } else { 25 };
+    let skl_cost = 25; // 消費は強化やカウンターでも変わらない
+
+    let Ok((mut eff_skl_text, mut eff_skl_color)) = ui_eff_skl_q.single_mut() else {
+        return;
+    };
+    let guard_ready = guard_counter.0;
+    let display_skl_power = if guard_ready {
+        skl_power + 5
+    } else {
+        skl_power
+    };
+    let mut display_break = if buffs.skill > 0 {
+        40
+    } else {
+        display_skl_power
+    };
+    if guard_ready {
+        display_break += 20;
+    }
+    eff_skl_text.0 = if guard_ready {
+        format!(
+            "強攻撃(ガードカウンター) 威力:{} 消費:{} / ブレイク+{}\n",
+            display_skl_power, skl_cost, display_break
+        )
+    } else {
+        format!(
+            "強攻撃 威力:{} 消費:{} / ブレイク+{}\n",
+            display_skl_power, skl_cost, display_break
+        )
+    };
+    eff_skl_color.0 = if buffs.skill > 0 {
+        Color::from(LinearRgba {
+            red: 0.95,
+            green: 0.85,
+            blue: 0.35,
+            alpha: 1.0,
+        })
+    } else {
+        Color::WHITE
+    };
 }
