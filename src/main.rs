@@ -493,13 +493,14 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     builder.spawn((
                         Text::new(
                             "[コマンド説明]\n \
- 攻撃:   基本 消費15 威力10 / 連撃時: 消費5 / ブレイク中ダメージ: 通常15・強化時25\n \
- 強攻撃: 基本 消費25 威力 25 / 強化中: 威力45 ブレイク40
-         防御直後時ガードカウンターに変化 (威力+5, ブレイク+20)\n \
- 回復:   基本 消費15 回復 50 / 強化中: 消費20 / 回復 60\n \
- 防御:   基本 消費10 次の敵攻撃を無効化 / 強化中: 消費5\n \
- 待機:   消費0 / スタミナ+50 (強化不可)\n \
- 各強化: モメンタム50消費 2ターン持続\n\n",
+                攻撃:   基本 消費15 威力10 / 連撃時: 消費5 \n \
+                      ※強攻撃後の攻撃も連撃として扱われ、消費5になります\n \
+                強攻撃: 基本 消費25 威力 25 / 強化中: 威力45 ブレイク40
+                    防御直後時ガードカウンターに変化 (威力+5, ブレイク+20)\n \
+                回復:   基本 消費15 回復 50 / 強化中: 消費20 / 回復 60\n \
+                防御:   基本 消費10 次の敵攻撃を無効化 / 強化中: 消費5\n \
+                待機:   消費0 / スタミナ+50 (強化不可)\n \
+                各強化: モメンタム50消費 11ターン持続\n\n",
                         ),
                         TextFont {
                             font: font.clone(),
@@ -763,10 +764,10 @@ fn player_input_system(
             for &cmd in pending.0.iter().skip(1) {
                 queue.0.push_back(cmd);
             }
-            // 連続入力によるモメンタム増加（2件で+5、3件以上で+10、最大100）
+            // 連続入力によるモメンタム増加（2件で+15、3件以上で+25、最大100）
             let count = pending.0.len();
             if count >= 2 {
-                let inc = if count >= 3 { 10 } else { 5 };
+                let inc = if count >= 3 { 25 } else { 15 };
                 let before = momentum.current;
                 momentum.current = (momentum.current + inc).min(100);
                 let gained = momentum.current - before;
@@ -828,7 +829,7 @@ fn player_input_system(
         };
         log.0
             .push(format!("ターン {} プレイヤーは{}を選択", turn.0, name));
-        // 連撃判定（直前が攻撃 かつ 今回が攻撃）
+        // 連撃判定（直前が攻撃または強攻撃 かつ 今回が攻撃）
         let is_chain = chain_state.last_was_attack && matches!(cmd, CommandKind::Attack);
 
         // コストチェック（実行時にも確認）。不足なら行動失敗。
@@ -879,9 +880,9 @@ fn player_input_system(
                             .push("モメンタム不足で強化できませんでした (必要50)".to_string());
                     } else {
                         momentum.current -= 50;
-                        buffs.attack = 3;
+                        buffs.attack = 11;
                         log.0
-                            .push("攻撃を強化した (3ターン持続, モメンタム-50)".to_string());
+                            .push("攻撃を強化した (11ターン持続, モメンタム-50)".to_string());
                     }
                 }
                 CommandKind::EnhanceSkill => {
@@ -893,9 +894,9 @@ fn player_input_system(
                             .push("モメンタム不足で強化できませんでした (必要50)".to_string());
                     } else {
                         momentum.current -= 50;
-                        buffs.skill = 3;
+                        buffs.skill = 11;
                         log.0
-                            .push("強攻撃を強化した (3ターン持続, モメンタム-50)".to_string());
+                            .push("強攻撃を強化した (11ターン持続, モメンタム-50)".to_string());
                     }
                 }
                 CommandKind::EnhanceHeal => {
@@ -907,9 +908,9 @@ fn player_input_system(
                             .push("モメンタム不足で強化できませんでした (必要50)".to_string());
                     } else {
                         momentum.current -= 50;
-                        buffs.heal = 3;
+                        buffs.heal = 11;
                         log.0
-                            .push("回復を強化した (3ターン持続, モメンタム-50)".to_string());
+                            .push("回復を強化した (11ターン持続, モメンタム-50)".to_string());
                     }
                 }
                 CommandKind::EnhanceDefend => {
@@ -921,9 +922,9 @@ fn player_input_system(
                             .push("モメンタム不足で強化できませんでした (必要50)".to_string());
                     } else {
                         momentum.current -= 50;
-                        buffs.defend = 3;
+                        buffs.defend = 11;
                         log.0
-                            .push("防御を強化した (3ターン持続, モメンタム-50)".to_string());
+                            .push("防御を強化した (11ターン持続, モメンタム-50)".to_string());
                     }
                 }
                 CommandKind::Heal => {
@@ -949,8 +950,8 @@ fn player_input_system(
                     let mut dmg = base;
                     let mut break_bonus = 0;
                     if e_bstate.remaining_turns > 0 {
-                        dmg *= 2;
-                        break_bonus = dmg - base;
+                        break_bonus = 30 + base * 2;
+                        dmg = base + break_bonus;
                     }
                     e_hp.current = (e_hp.current - dmg).max(0);
                     if is_chain {
@@ -998,8 +999,8 @@ fn player_input_system(
                     let mut dmg = base;
                     let mut break_bonus = 0;
                     if e_bstate.remaining_turns > 0 {
-                        dmg *= 2;
-                        break_bonus = dmg - base;
+                        break_bonus = 30 + base * 2;
+                        dmg = base + break_bonus;
                     }
                     e_hp.current = (e_hp.current - dmg).max(0);
                     if is_guard_counter {
@@ -1028,7 +1029,7 @@ fn player_input_system(
                         }
                     }
                     let before_break = e_break.current;
-                    let mut add_break = if buffs.skill > 0 { 40 } else { dmg };
+                    let mut add_break = if buffs.skill > 0 { 40 } else { 25 };
                     if is_guard_counter {
                         add_break += 20; // ガードカウンター: ブレイク+20
                     }
@@ -1041,7 +1042,7 @@ fn player_input_system(
                 }
                 CommandKind::Wait => {
                     let before = p_sta.current;
-                    p_sta.current = (p_sta.current + 40).min(p_sta.max);
+                    p_sta.current = (p_sta.current + 60).min(p_sta.max);
                     let recovered = p_sta.current - before;
                     log.0.push(format!(
                         "プレイヤーは待機してスタミナを{}回復 (Stamina {} / {})",
@@ -1049,21 +1050,21 @@ fn player_input_system(
                     ));
                 }
             }
-            // 実行成功: 直前が攻撃だったかを更新
-            chain_state.last_was_attack = matches!(cmd, CommandKind::Attack);
+            // 実行成功: 直前が攻撃または強攻撃だったかを更新（強攻撃後の攻撃も連撃にする）
+            chain_state.last_was_attack = matches!(cmd, CommandKind::Attack | CommandKind::Skill);
             // ガードカウンター猶予の消費: 防御以外の行動で消費
             if !matches!(cmd, CommandKind::Defend) {
                 guard_counter.0 = false;
             }
         }
 
-        // プレイヤーの攻撃/強攻撃後にブレイク判定。閾値到達でこのターンの敵行動をキャンセルし、次ターンから3ターンブレイク。
+        // プレイヤーの攻撃/強攻撃後にブレイク判定。閾値到達でこのターンの敵行動をキャンセルし、次ターンから4ターンブレイク。
         let mut enemy_action_canceled_this_turn = false;
         if e_break.current >= 100 && e_bstate.remaining_turns == 0 {
             enemy_action_canceled_this_turn = true;
-            e_bstate.remaining_turns = 3; // 次ターンから3ターン行動不能
+            e_bstate.remaining_turns = 4; // 次ターンから4ターン行動不能
             log.0.push(
-                "敵がブレイク状態に入る!（次のターンから3ターン行動不能・被ダメ2倍）".to_string(),
+                "敵がブレイク状態に入る!（次のターンから4ターン行動不能・被ダメ2倍）".to_string(),
             );
         }
 
@@ -1376,7 +1377,12 @@ fn ui_update_system(
     let Ok((mut eff_atk_text, mut eff_atk_color)) = ui_eff_atk_q.single_mut() else {
         return;
     };
-    eff_atk_text.0 = format!("攻撃 力:{} 消費:{} (連撃時消費5)\n", atk_power, atk_cost);
+    let atk_break_add = if buffs.attack > 0 { 25 } else { 15 };
+    let atk_enh_suffix = if buffs.attack > 0 { " (強化中)" } else { "" };
+    eff_atk_text.0 = format!(
+        "攻撃 力:{} 消費:{}{} / ブレイク+{}\n",
+        atk_power, atk_cost, atk_enh_suffix, atk_break_add
+    );
     eff_atk_color.0 = if buffs.attack > 0 {
         Color::from(LinearRgba {
             red: 0.95,
@@ -1434,12 +1440,12 @@ fn ui_update_system(
             .iter()
             .map(|c| match c {
                 CommandKind::Attack => "攻撃",
-                CommandKind::Skill => "スキル",
+                CommandKind::Skill => "強攻撃",
                 CommandKind::Heal => "回復",
                 CommandKind::Defend => "防御",
                 CommandKind::Wait => "待機",
                 CommandKind::EnhanceAttack => "攻撃強化",
-                CommandKind::EnhanceSkill => "スキル強化",
+                CommandKind::EnhanceSkill => "強攻撃強化",
                 CommandKind::EnhanceHeal => "回復強化",
                 CommandKind::EnhanceDefend => "防御強化",
             })
@@ -1573,11 +1579,7 @@ fn ui_update_skill_effect_system(
     } else {
         skl_power
     };
-    let mut display_break = if buffs.skill > 0 {
-        40
-    } else {
-        display_skl_power
-    };
+    let mut display_break = if buffs.skill > 0 { 40 } else { 25 };
     if guard_ready {
         display_break += 20;
     }
