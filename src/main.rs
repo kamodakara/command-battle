@@ -3,6 +3,9 @@ use std::sync::Arc;
 use bevy::prelude::*;
 use rand::Rng;
 
+// 画面レイアウト切替用定数（false: 既存レイアウト / true: 新レイアウト）
+const USE_DQ_LIKE_LAYOUT: bool = true;
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
@@ -10,6 +13,11 @@ fn main() {
         .add_systems(Update, player_input_system)
         .add_systems(Update, battle_end_check_system)
         .add_systems(Update, ui_update_system)
+        .add_systems(Update, ui_update_enemy_system)
+        .add_systems(Update, ui_update_enemy_damage_popup_system)
+        .add_systems(Update, ui_update_player_status_system)
+        .add_systems(Update, ui_update_command_system)
+        .add_systems(Update, ui_update_message_system)
         .add_systems(Update, ui_update_skill_effect_system)
         .add_systems(Update, boss_slain_banner_system)
         .run();
@@ -52,6 +60,8 @@ struct Stamina {
 #[derive(Resource, PartialEq, Eq)]
 enum BattlePhase {
     AwaitCommand,
+    // 連続コマンドの次コマンドを実行するか確認するフェーズ
+    ConfirmQueued,
     InBattle,
     Finished,
 }
@@ -65,6 +75,20 @@ struct CombatLog(Vec<String>);
 #[derive(Resource, Default)]
 struct Momentum {
     current: i32,
+}
+
+// 敵ダメージポップアップ用リソース（タイマー制御）
+#[derive(Resource, Default)]
+struct EnemyDamagePopup {
+    amount: i32,
+    timer: f32, // 秒。0以下で非表示
+}
+
+// 連続コマンド実行バッチの総件数（選択確定時に設定）
+#[derive(Resource, Default)]
+struct ConsecutiveBatch {
+    total: usize,    // このバッチの総選択数
+    executed: usize, // このバッチで既に実行した数
 }
 
 // コマンド強化の残りターン
@@ -378,6 +402,51 @@ struct UiEffHeal;
 #[derive(Component)]
 struct UiEffDefend;
 
+//
+#[derive(Component)]
+struct UiBackground;
+
+#[derive(Component)]
+struct UiPlayerStatus;
+#[derive(Component)]
+struct UiHpText;
+#[derive(Component)]
+struct UiHpGaugeFill;
+#[derive(Component)]
+struct UiStaText;
+#[derive(Component)]
+struct UiStaGaugeFill;
+#[derive(Component)]
+struct UiMomentumText;
+#[derive(Component)]
+struct UiBuffsText;
+
+#[derive(Component)]
+struct UiEnemy;
+#[derive(Component)]
+struct UiEnemyStatus;
+
+// UiEnemy 内部の更新ターゲット
+#[derive(Component)]
+struct UiEnemyHpGaugeFill;
+#[derive(Component)]
+struct UiEnemyBreakGaugeFill;
+#[derive(Component)]
+struct UiEnemyBreakLabel; // 「ブレイク中」表示用
+#[derive(Component)]
+struct UiEnemyNextActionText; // 「次の行動: ...」
+
+// 敵ダメージ表示テキスト（HPゲージの横に一時表示）
+#[derive(Component)]
+struct UiEnemyDamageText;
+#[derive(Component)]
+struct UiMessage;
+
+#[derive(Component)]
+struct UiCommand;
+#[derive(Component)]
+struct UiCommandHelp;
+
 // ================== Boss Slain Banner ==================
 #[derive(Component)]
 struct BossSlainText; // ボス撃破表示用
@@ -387,6 +456,14 @@ struct BossSlainBanner {
     elapsed: f32,
     phase: BannerPhase,
 }
+
+// バナー背面の黒帯（グラデーション）
+#[derive(Component)]
+struct BossSlainBackdrop;
+#[derive(Component)]
+struct BossSlainBackdropCenter; // 中央の帯（不透明）
+#[derive(Component)]
+struct BossSlainBackdropRow(u8); // グラデーション行（0=最上段）
 
 enum BannerPhase {
     FadeIn,
@@ -441,141 +518,426 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(PlayerChainState::default());
     commands.insert_resource(PendingSelections::default());
     commands.insert_resource(EnemyPlannedAction(first_action));
-    commands.insert_resource(Momentum::default());
+    commands.insert_resource(Momentum { current: 0 });
+    commands.insert_resource(ConsecutiveBatch::default());
     commands.insert_resource(CommandBuffs::default());
+    commands.insert_resource(EnemyDamagePopup::default());
 
     const MARGIN: Val = Val::Px(12.);
     let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
-    // UI Text
+
+    // 画面下のログメッセージ（白枠、最大10行）
     commands
         .spawn((
-            UiRoot,
             Node {
-                // fill the entire window
-                width: percent(100),
-                height: percent(100),
-                flex_direction: FlexDirection::Row,
-                align_items: AlignItems::FlexStart,
-                row_gap: MARGIN,
+                width: Val::Px(750.0),
+                height: Val::Auto,
+                position_type: PositionType::Absolute,
+                right: Val::Px(12.0),
+                bottom: Val::Px(12.0),
+                border: UiRect::all(Val::Px(1.0)),
+                padding: UiRect::all(Val::Px(8.0)),
                 ..default()
             },
-            BackgroundColor(Color::BLACK),
+            BackgroundColor(Color::from(LinearRgba {
+                red: 0.0,
+                green: 0.0,
+                blue: 0.0,
+                alpha: 0.6,
+            })),
+            BorderColor::all(Color::WHITE),
+            ZIndex(10),
         ))
-        .with_children(|builder| {
-            builder
-                .spawn((
-                    Node {
-                        // fill the entire window
-                        width: Val::Px(500.0),
-                        height: percent(100),
-                        flex_direction: FlexDirection::Column,
-                        align_items: AlignItems::FlexStart,
-                        row_gap: Val::Px(0.0),
-                        margin: UiRect {
-                            left: MARGIN,
-                            ..default()
-                        },
-                        ..default()
-                    },
-                    BackgroundColor(Color::BLACK),
-                ))
-                .with_children(|builder| {
-                    builder.spawn((
-                        UiStatus,
-                        Text::new("プレイヤーHP: ???\n敵HP: ???\n\n"),
-                        TextFont {
-                            font: font.clone(),
-                            font_size: 16.0,
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                    ));
-                    builder.spawn((
-                        Text::new(
-                            "[コマンド説明]\n \
-                攻撃:   基本 消費15 威力10 / 連撃時: 消費5 \n \
-                      ※強攻撃後の攻撃も連撃として扱われ、消費5になります\n \
-                強攻撃: 基本 消費25 威力 25 / 強化中: 威力45 ブレイク40
-                    防御直後時ガードカウンターに変化 (威力+5, ブレイク+20)\n \
-                回復:   基本 消費15 回復 50 / 強化中: 消費20 / 回復 60\n \
-                防御:   基本 消費10 次の敵攻撃を無効化 / 強化中: 消費5\n \
-                待機:   消費0 / スタミナ+50 (強化不可)\n \
-                各強化: モメンタム50消費 11ターン持続\n\n",
-                        ),
-                        TextFont {
-                            font: font.clone(),
-                            font_size: 16.0,
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                    ));
-                    builder.spawn((
-                        Text::new("[有効値]\n"),
-                        TextFont {
-                            font: font.clone(),
-                            font_size: 16.0,
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                    ));
-                    // 有効値の各行（個別に色を切り替える）
-                    builder.spawn((
-                        UiEffAttack,
-                        Text::new("攻撃 力: ?? 消費: ?? (連撃時半減)\n"),
-                        TextFont {
-                            font: font.clone(),
-                            font_size: 16.0,
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                    ));
-                    builder.spawn((
-                        UiEffSkill,
-                        Text::new("強攻撃 威力: ?? 消費: ?? / ブレイク+??\n"),
-                        TextFont {
-                            font: font.clone(),
-                            font_size: 16.0,
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                    ));
-                    builder.spawn((
-                        UiEffHeal,
-                        Text::new("回復 量: ?? 消費: ??\n"),
-                        TextFont {
-                            font: font.clone(),
-                            font_size: 16.0,
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                    ));
-                    builder.spawn((
-                        UiEffDefend,
-                        Text::new("防御 消費: ??\n\n"),
-                        TextFont {
-                            font: font.clone(),
-                            font_size: 16.0,
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                    ));
-                    builder.spawn((
-                        UiPhase,
-                        Text::new("フェーズ: 初期化中\n\n"),
-                        TextFont {
-                            font: font.clone(),
-                            font_size: 16.0,
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                    ));
-                });
-            builder.spawn((
-                UiLog,
-                Text::new("ログ:\n"),
+        .with_children(|col| {
+            col.spawn((
+                UiMessage,
+                Text::new(""),
                 TextFont {
                     font: font.clone(),
                     font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+            ));
+        });
+
+    // 敵UI（中央配置）: 画像の上にHP/ブレイクゲージと次の行動を表示
+    let dragon = asset_server.load("images/dragon.png");
+    commands
+        .spawn((
+            UiEnemy,
+            Node {
+                width: percent(100),
+                height: percent(100),
+                position_type: PositionType::Absolute,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            ZIndex(0),
+        ))
+        .with_children(|center| {
+            // 画像コンテナ（相対位置指定にしてオーバーレイをAbsoluteで配置）
+            center
+                .spawn((
+                    Node {
+                        width: Val::Px(512.0),
+                        height: Val::Px(384.0),
+                        position_type: PositionType::Relative,
+                        border: UiRect::all(Val::Px(1.0)),
+                        ..default()
+                    },
+                    BorderColor::all(Color::WHITE),
+                    ImageNode::new(dragon.clone()),
+                ))
+                .with_children(|over| {
+                    // オーバーレイ（画像の上側に配置）
+                    over.spawn((Node {
+                        position_type: PositionType::Absolute,
+                        left: Val::Px(16.0),
+                        right: Val::Auto,
+                        top: Val::Px(12.0),
+                        bottom: Val::Auto,
+                        flex_direction: FlexDirection::Column,
+                        row_gap: Val::Px(8.0),
+                        ..default()
+                    },))
+                        .with_children(|col| {
+                            // HPゲージ行（ゲージ＋ダメージ表示）
+                            col.spawn((Node {
+                                width: Val::Auto,
+                                height: Val::Auto,
+                                flex_direction: FlexDirection::Row,
+                                column_gap: Val::Px(12.0),
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },))
+                                .with_children(|row| {
+                                    // HPゲージ
+                                    row.spawn((
+                                        Node {
+                                            width: Val::Px(360.0),
+                                            height: Val::Px(14.0),
+                                            border: UiRect::all(Val::Px(1.0)),
+                                            ..default()
+                                        },
+                                        BackgroundColor(Color::from(LinearRgba {
+                                            red: 0.15,
+                                            green: 0.15,
+                                            blue: 0.15,
+                                            alpha: 1.0,
+                                        })),
+                                        BorderColor::all(Color::WHITE),
+                                    ))
+                                    .with_children(|g| {
+                                        g.spawn((
+                                            UiEnemyHpGaugeFill,
+                                            Node {
+                                                width: percent(0),
+                                                height: percent(100),
+                                                ..default()
+                                            },
+                                            BackgroundColor(Color::from(LinearRgba {
+                                                red: 0.80,
+                                                green: 0.20,
+                                                blue: 0.20,
+                                                alpha: 1.0,
+                                            })),
+                                        ));
+                                    });
+
+                                    // ダメージ表示テキスト（初期は非表示）
+                                    row.spawn((
+                                        UiEnemyDamageText,
+                                        Text::new(""),
+                                        TextFont {
+                                            font: font.clone(),
+                                            font_size: 18.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::from(LinearRgba {
+                                            red: 0.95,
+                                            green: 0.85,
+                                            blue: 0.35,
+                                            alpha: 1.0,
+                                        })),
+                                        Visibility::Hidden,
+                                    ));
+                                });
+
+                            // ブレイク行（ゲージ＋「ブレイク中」ラベル）
+                            col.spawn((Node {
+                                width: Val::Auto,
+                                height: Val::Auto,
+                                flex_direction: FlexDirection::Row,
+                                column_gap: Val::Px(8.0),
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },))
+                                .with_children(|row| {
+                                    // ブレイクゲージ
+                                    row.spawn((
+                                        Node {
+                                            width: Val::Px(360.0),
+                                            height: Val::Px(10.0),
+                                            border: UiRect::all(Val::Px(1.0)),
+                                            ..default()
+                                        },
+                                        BackgroundColor(Color::from(LinearRgba {
+                                            red: 0.15,
+                                            green: 0.15,
+                                            blue: 0.15,
+                                            alpha: 1.0,
+                                        })),
+                                        BorderColor::all(Color::WHITE),
+                                    ))
+                                    .with_children(|g| {
+                                        g.spawn((
+                                            UiEnemyBreakGaugeFill,
+                                            Node {
+                                                width: percent(0),
+                                                height: percent(100),
+                                                ..default()
+                                            },
+                                            BackgroundColor(Color::from(LinearRgba {
+                                                red: 0.25,
+                                                green: 0.55,
+                                                blue: 0.95,
+                                                alpha: 1.0,
+                                            })),
+                                        ));
+                                    });
+
+                                    // ブレイク中ラベル（初期は非表示）
+                                    row.spawn((
+                                        UiEnemyBreakLabel,
+                                        Text::new("ブレイク中"),
+                                        TextFont {
+                                            font: font.clone(),
+                                            font_size: 14.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::WHITE),
+                                        Visibility::Hidden,
+                                    ));
+                                });
+
+                            // 次の行動
+                            col.spawn((
+                                UiEnemyNextActionText,
+                                Text::new(""),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 16.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                            ));
+                        });
+                });
+        });
+    // 右上にプレイヤーステータス枠（HP/スタミナの文字とゲージ、モメンタム表示）
+    commands
+        .spawn((
+            UiPlayerStatus,
+            Node {
+                width: Val::Px(280.0),
+                height: Val::Auto,
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(6.0),
+                border: UiRect::all(Val::Px(1.0)),
+                padding: UiRect::all(Val::Px(8.0)),
+                position_type: PositionType::Absolute,
+                left: Val::Px(16.0),
+                top: Val::Px(16.0),
+                ..default()
+            },
+            BackgroundColor(Color::BLACK),
+            BorderColor::all(Color::WHITE),
+        ))
+        .with_children(|col| {
+            // HP表示テキスト
+            col.spawn((
+                UiHpText,
+                Text::new("HP: --- / ---"),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+            ));
+            // HPゲージ（枠）
+            col.spawn((
+                Node {
+                    width: percent(100),
+                    height: Val::Px(12.0),
+                    border: UiRect::all(Val::Px(1.0)),
+                    ..default()
+                },
+                BackgroundColor(Color::from(LinearRgba {
+                    red: 0.15,
+                    green: 0.15,
+                    blue: 0.15,
+                    alpha: 1.0,
+                })),
+                BorderColor::all(Color::WHITE),
+            ))
+            .with_children(|g| {
+                g.spawn((
+                    UiHpGaugeFill,
+                    Node {
+                        width: percent(0),
+                        height: percent(100),
+                        ..default()
+                    },
+                    BackgroundColor(Color::from(LinearRgba {
+                        red: 0.80,
+                        green: 0.20,
+                        blue: 0.20,
+                        alpha: 1.0,
+                    })),
+                ));
+            });
+
+            // スタミナ表示テキスト
+            col.spawn((
+                UiStaText,
+                Text::new("スタミナ: --- / ---"),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+            ));
+            // スタミナゲージ（枠）
+            col.spawn((
+                Node {
+                    width: percent(100),
+                    height: Val::Px(12.0),
+                    border: UiRect::all(Val::Px(1.0)),
+                    ..default()
+                },
+                BackgroundColor(Color::from(LinearRgba {
+                    red: 0.15,
+                    green: 0.15,
+                    blue: 0.15,
+                    alpha: 1.0,
+                })),
+                BorderColor::all(Color::WHITE),
+            ))
+            .with_children(|g| {
+                g.spawn((
+                    UiStaGaugeFill,
+                    Node {
+                        width: percent(0),
+                        height: percent(100),
+                        ..default()
+                    },
+                    BackgroundColor(Color::from(LinearRgba {
+                        red: 0.20,
+                        green: 0.70,
+                        blue: 0.25,
+                        alpha: 1.0,
+                    })),
+                ));
+            });
+
+            // モメンタム表示テキスト
+            col.spawn((
+                UiMomentumText,
+                Text::new("モメンタム: --- / 100"),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+            ));
+            // 強化状態表示テキスト
+            col.spawn((
+                UiBuffsText,
+                Text::new("強化: なし"),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+            ));
+        });
+
+    // 画面右端のコマンド入力表示（白枠）
+    commands
+        .spawn((
+            UiCommand,
+            Node {
+                width: Val::Px(320.0),
+                height: Val::Auto,
+                position_type: PositionType::Absolute,
+                left: Val::Px(12.0),
+                bottom: Val::Px(16.0),
+                border: UiRect::all(Val::Px(1.0)),
+                padding: UiRect::all(Val::Px(8.0)),
+                ..default()
+            },
+            BackgroundColor(Color::BLACK),
+            BorderColor::all(Color::WHITE),
+            Visibility::Hidden, // 初期は非表示
+            ZIndex(10),
+        ))
+        .with_children(|col| {
+            col.spawn((
+                Text::new(""),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+            ));
+        });
+
+    // コマンド説明（コマンド入力パネルの上に固定表示）
+    commands
+        .spawn((
+            UiCommandHelp,
+            Node {
+                width: Val::Px(320.0),
+                height: Val::Auto,
+                position_type: PositionType::Absolute,
+                left: Val::Px(12.0),
+                bottom: Val::Px(180.0), // 入力パネルの上に来るようマージン多め
+                border: UiRect::all(Val::Px(1.0)),
+                padding: UiRect::all(Val::Px(8.0)),
+                ..default()
+            },
+            BackgroundColor(Color::from(LinearRgba {
+                red: 0.0,
+                green: 0.0,
+                blue: 0.0,
+                alpha: 0.6,
+            })),
+            BorderColor::all(Color::WHITE),
+            ZIndex(10),
+        ))
+        .with_children(|col| {
+            col.spawn((
+                Text::new(
+                    "[コマンド説明]
+攻撃:   消費15/威力10/ブレイク10 (強化中: 消費5/威力25/ブレイク25)
+        攻撃、強攻撃後の「連撃」に変化 消費が5になる
+強攻撃: 消費25/威力25/ブレイク25 (強化中: 威力45/ブレイク40)
+        防御直後「ガードカウンター」に変化 威力+5,ブレイク+20
+回復:   消費15/回復50 (強化中: 消費20 / 回復60)
+防御:   消費10/次の敵攻撃を無効化 (強化中: 消費5)
+待機:   消費0/スタミナ+60
+強化:   モメンタム50消費 / 11ターン持続\n",
+                ),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 14.0,
                     ..default()
                 },
                 TextColor(Color::WHITE),
@@ -604,14 +966,15 @@ fn player_input_system(
         (With<Enemy>, Without<Player>),
     >,
     mut log: ResMut<CombatLog>,
-    mut defend_flag: ResMut<DefendNextAttack>,
-    mut guard_counter: ResMut<GuardCounterReady>,
+    mut def_guard: ParamSet<(ResMut<DefendNextAttack>, ResMut<GuardCounterReady>)>,
     mut queue: ResMut<CommandQueue>,
     mut chain_state: ResMut<PlayerChainState>,
     mut pending: ResMut<PendingSelections>,
     mut planned: ResMut<EnemyPlannedAction>,
     mut momentum: ResMut<Momentum>,
     mut buffs: ResMut<CommandBuffs>,
+    mut batch: ResMut<ConsecutiveBatch>,
+    mut enemy_damage_popup: ResMut<EnemyDamagePopup>,
 ) {
     if *phase == BattlePhase::Finished {
         return;
@@ -627,15 +990,514 @@ fn player_input_system(
         return;
     };
 
+    // def_guard は必要に応じて分割取得します
+
+    // 連続コマンド確認フェーズの処理（Y=実行 / N=選択しなおし）
+    if *phase == BattlePhase::ConfirmQueued {
+        // キューが空なら待機に戻る
+        if queue.0.front().is_none() {
+            *phase = BattlePhase::AwaitCommand;
+            return;
+        }
+        // 実行確定（YまたはEnter）
+        if keyboard.just_pressed(KeyCode::KeyY) || keyboard.just_pressed(KeyCode::Enter) {
+            if let Some(next) = queue.0.pop_front() {
+                // 実行前に現在の実行回数で加算判定（2回目:+15, 3回目:+25）
+                match batch.executed + 1 {
+                    1 => {
+                        let before = momentum.current;
+                        momentum.current = (momentum.current + 15).min(100);
+                        let gained = momentum.current - before;
+                        if gained > 0 {
+                            log.0.push(format!(
+                                "モメンタムが{}増加 ({} → {} / 100)",
+                                gained, before, momentum.current
+                            ));
+                        }
+                    }
+                    2 => {
+                        let before = momentum.current;
+                        momentum.current = (momentum.current + 25).min(100);
+                        let gained = momentum.current - before;
+                        if gained > 0 {
+                            log.0.push(format!(
+                                "モメンタムが{}増加 ({} → {} / 100)",
+                                gained, before, momentum.current
+                            ));
+                        }
+                    }
+                    _ => {}
+                }
+                batch.executed += 1;
+                // この後の通常解決フローで処理する
+                let mut commands_to_process: Vec<CommandKind> = vec![next];
+                // 共通のコマンド解決処理
+                let mut resolve_command = |cmd: CommandKind| {
+                    *phase = BattlePhase::InBattle;
+                    let guard_ready_at_start = {
+                        let g = def_guard.p1();
+                        g.0
+                    };
+                    let name = match cmd {
+                        CommandKind::Attack => "攻撃",
+                        CommandKind::Skill => "強攻撃",
+                        CommandKind::Heal => "回復",
+                        CommandKind::Defend => "防御",
+                        CommandKind::Wait => "待機",
+                        CommandKind::EnhanceAttack => "攻撃強化",
+                        CommandKind::EnhanceSkill => "強攻撃強化",
+                        CommandKind::EnhanceHeal => "回復強化",
+                        CommandKind::EnhanceDefend => "防御強化",
+                    };
+                    log.0
+                        .push(format!("ターン {} プレイヤーは{}を選択", turn.0, name));
+                    // 連撃判定（直前が攻撃または強攻撃 かつ 今回が攻撃）
+                    let is_chain =
+                        chain_state.last_was_attack && matches!(cmd, CommandKind::Attack);
+
+                    // コストチェック（実行時にも確認）。不足なら行動失敗。
+                    let cost = match cmd {
+                        CommandKind::Attack => {
+                            if is_chain {
+                                5
+                            } else {
+                                15
+                            }
+                        }
+                        CommandKind::Skill => 25,
+                        CommandKind::Heal => {
+                            if buffs.heal > 0 {
+                                20
+                            } else {
+                                15
+                            }
+                        }
+                        CommandKind::Defend => {
+                            if buffs.defend > 0 {
+                                5
+                            } else {
+                                10
+                            }
+                        }
+                        CommandKind::Wait => 0,
+                        CommandKind::EnhanceAttack
+                        | CommandKind::EnhanceSkill
+                        | CommandKind::EnhanceHeal
+                        | CommandKind::EnhanceDefend => 0,
+                    };
+                    if p_sta.current < cost {
+                        log.0.push("スタミナ不足で行動できませんでした".to_string());
+                        // 実行失敗なので連撃を継続させない
+                        chain_state.last_was_attack = false;
+                    } else {
+                        p_sta.current -= cost;
+
+                        match cmd {
+                            CommandKind::EnhanceAttack => {
+                                if buffs.attack > 0 {
+                                    log.0
+                                        .push("攻撃は既に強化中のため強化できません".to_string());
+                                } else if momentum.current < 50 {
+                                    log.0.push(
+                                        "モメンタム不足で強化できませんでした (必要50)".to_string(),
+                                    );
+                                } else {
+                                    momentum.current -= 50;
+                                    buffs.attack = 11;
+                                    log.0.push(
+                                        "攻撃を強化した (11ターン持続, モメンタム-50)".to_string(),
+                                    );
+                                }
+                            }
+                            CommandKind::EnhanceSkill => {
+                                if buffs.skill > 0 {
+                                    log.0
+                                        .push("強攻撃は既に強化中のため強化できません".to_string());
+                                } else if momentum.current < 50 {
+                                    log.0.push(
+                                        "モメンタム不足で強化できませんでした (必要50)".to_string(),
+                                    );
+                                } else {
+                                    momentum.current -= 50;
+                                    buffs.skill = 11;
+                                    log.0.push(
+                                        "強攻撃を強化した (11ターン持続, モメンタム-50)"
+                                            .to_string(),
+                                    );
+                                }
+                            }
+                            CommandKind::EnhanceHeal => {
+                                if buffs.heal > 0 {
+                                    log.0
+                                        .push("回復は既に強化中のため強化できません".to_string());
+                                } else if momentum.current < 50 {
+                                    log.0.push(
+                                        "モメンタム不足で強化できませんでした (必要50)".to_string(),
+                                    );
+                                } else {
+                                    momentum.current -= 50;
+                                    buffs.heal = 11;
+                                    log.0.push(
+                                        "回復を強化した (11ターン持続, モメンタム-50)".to_string(),
+                                    );
+                                }
+                            }
+                            CommandKind::EnhanceDefend => {
+                                if buffs.defend > 0 {
+                                    log.0
+                                        .push("防御は既に強化中のため強化できません".to_string());
+                                } else if momentum.current < 50 {
+                                    log.0.push(
+                                        "モメンタム不足で強化できませんでした (必要50)".to_string(),
+                                    );
+                                } else {
+                                    momentum.current -= 50;
+                                    buffs.defend = 11;
+                                    log.0.push(
+                                        "防御を強化した (11ターン持続, モメンタム-50)".to_string(),
+                                    );
+                                }
+                            }
+                            CommandKind::Heal => {
+                                let amount = if buffs.heal > 0 { 60 } else { 50 };
+                                let before = p_hp.current;
+                                p_hp.current = (p_hp.current + amount).min(p_hp.max);
+                                let healed = p_hp.current - before;
+                                log.0.push(format!(
+                                    "プレイヤーは{}回復 (HP {} / {})",
+                                    healed, p_hp.current, p_hp.max
+                                ));
+                            }
+                            CommandKind::Defend => {
+                                {
+                                    let mut d = def_guard.p0();
+                                    d.0 = true;
+                                }
+                                {
+                                    let mut g = def_guard.p1();
+                                    g.0 = true; // 次プレイヤー行動のガードカウンター猶予
+                                }
+                                log.0.push(
+                                    "プレイヤーは防御態勢に入った (次の敵攻撃は無効)".to_string(),
+                                );
+                                log.0.push(
+                                    "ガードカウンターの構え! 次の行動で強攻撃が強化".to_string(),
+                                );
+                            }
+                            CommandKind::Attack => {
+                                let base = if buffs.attack > 0 { 25 } else { p_attack.0 };
+                                let mut dmg = base;
+                                let mut break_bonus = 0;
+                                if e_bstate.remaining_turns > 0 {
+                                    break_bonus = 30 + base * 2;
+                                    dmg = base + break_bonus;
+                                }
+                                e_hp.current = (e_hp.current - dmg).max(0);
+                                // 敵ダメージポップアップ設定
+                                enemy_damage_popup.amount = dmg;
+                                enemy_damage_popup.timer = 1.2;
+                                if is_chain {
+                                    if break_bonus > 0 {
+                                        log.0.push(format!(
+                                            "連撃! 敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
+                                            dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
+                                        ));
+                                    } else {
+                                        log.0.push(format!(
+                                            "連撃! 敵に{}ダメージ (消費スタミナ半減, 敵HP {} / {})",
+                                            dmg, e_hp.current, e_hp.max
+                                        ));
+                                    }
+                                } else {
+                                    if break_bonus > 0 {
+                                        log.0.push(format!(
+                                            "敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
+                                            dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
+                                        ));
+                                    } else {
+                                        log.0.push(format!(
+                                            "敵に{}ダメージ (敵HP {} / {})",
+                                            dmg, e_hp.current, e_hp.max
+                                        ));
+                                    }
+                                }
+                                // ブレイク値加算（攻撃時の固定増加量: 通常15・強化時25）
+                                let before_break = e_break.current;
+                                let add_break = if buffs.attack > 0 { 25 } else { 10 };
+                                e_break.current += add_break;
+                                log.0.push(format!(
+                                    "ブレイク値 +{} ({} → {} / 100)",
+                                    add_break, before_break, e_break.current
+                                ));
+                                // ダメージを受けたので自然回復量をリセット
+                                e_bregen.amount = 1;
+                            }
+                            CommandKind::Skill => {
+                                let mut base = if buffs.skill > 0 { 45 } else { 25 };
+                                let is_guard_counter = guard_ready_at_start;
+                                if is_guard_counter {
+                                    base += 5; // ガードカウンター: 威力+5
+                                }
+                                let mut dmg = base;
+                                let mut break_bonus = 0;
+                                if e_bstate.remaining_turns > 0 {
+                                    break_bonus = 30 + base * 2;
+                                    dmg = base + break_bonus;
+                                }
+                                e_hp.current = (e_hp.current - dmg).max(0);
+                                // 敵ダメージポップアップ設定
+                                enemy_damage_popup.amount = dmg;
+                                enemy_damage_popup.timer = 1.2;
+                                if is_guard_counter {
+                                    if break_bonus > 0 {
+                                        log.0.push(format!(
+                                            "ガードカウンター! 敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
+                                            dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
+                                        ));
+                                    } else {
+                                        log.0.push(format!(
+                                            "ガードカウンター! 敵に{}ダメージ (敵HP {} / {})",
+                                            dmg, e_hp.current, e_hp.max
+                                        ));
+                                    }
+                                } else {
+                                    if break_bonus > 0 {
+                                        log.0.push(format!(
+                                            "敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
+                                            dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
+                                        ));
+                                    } else {
+                                        log.0.push(format!(
+                                            "敵に{}ダメージ (敵HP {} / {})",
+                                            dmg, e_hp.current, e_hp.max
+                                        ));
+                                    }
+                                }
+                                let before_break = e_break.current;
+                                let mut add_break = if buffs.skill > 0 { 40 } else { 25 };
+                                if is_guard_counter {
+                                    add_break += 20; // ガードカウンター: ブレイク+20
+                                }
+                                e_break.current += add_break;
+                                log.0.push(format!(
+                                    "ブレイク値 +{} ({} → {} / 100)",
+                                    add_break, before_break, e_break.current
+                                ));
+                                e_bregen.amount = 1;
+                            }
+                            CommandKind::Wait => {
+                                let before = p_sta.current;
+                                p_sta.current = (p_sta.current + 60).min(p_sta.max);
+                                let recovered = p_sta.current - before;
+                                log.0.push(format!(
+                                    "プレイヤーは待機してスタミナを{}回復 (Stamina {} / {})",
+                                    recovered, p_sta.current, p_sta.max
+                                ));
+                            }
+                        }
+                        // 実行成功: 直前が攻撃または強攻撃だったかを更新（強攻撃後の攻撃も連撃にする）
+                        chain_state.last_was_attack =
+                            matches!(cmd, CommandKind::Attack | CommandKind::Skill);
+                        // ガードカウンター猶予の消費: 防御以外の行動で消費
+                        if !matches!(cmd, CommandKind::Defend) {
+                            let mut g = def_guard.p1();
+                            g.0 = false;
+                        }
+                    }
+
+                    // プレイヤーの攻撃/強攻撃後にブレイク判定。閾値到達でこのターンの敵行動をキャンセルし、次ターンから4ターンブレイク。
+                    let mut enemy_action_canceled_this_turn = false;
+                    if e_break.current >= 100 && e_bstate.remaining_turns == 0 {
+                        enemy_action_canceled_this_turn = true;
+                        e_bstate.remaining_turns = 4; // 次ターンから4ターン行動不能
+                        log.0.push(
+                            "敵がブレイク状態に入る!（次のターンから4ターン行動不能・被ダメ2倍）"
+                                .to_string(),
+                        );
+                    }
+
+                    if e_hp.current > 0 {
+                        // 事前決定済みの敵行動を実行
+                        if e_bstate.remaining_turns > 0 {
+                            // ブレイク中は行動不能
+                            log.0.push("敵はブレイク中のため行動不能".to_string());
+                        } else if enemy_action_canceled_this_turn {
+                            // このターンの行動はキャンセル
+                            log.0.push("敵の行動はブレイクによりキャンセル".to_string());
+                        } else {
+                            let action = &mut planned.0;
+                            let step = action.current_step().unwrap();
+                            match step.specification {
+                                ActionStepSpecificationEnum::Attack(spec) => {
+                                    let mut incoming = (e_attack.0 as f32 * spec.power) as i32;
+                                    {
+                                        let mut d = def_guard.p0();
+                                        if d.0 {
+                                            incoming = 0;
+                                            d.0 = false; // 一度きり
+                                        }
+                                    }
+                                    p_hp.current = (p_hp.current - incoming).max(0);
+                                    log.0.push(format!(
+                                        "敵の行動: {} → {}ダメージ (プレイヤーHP {} / {})",
+                                        step.name, incoming, p_hp.current, p_hp.max
+                                    ));
+                                }
+                                ActionStepSpecificationEnum::Wait(_) => {
+                                    log.0.push(format!("敵の行動: {} (何もしない)", step.name));
+                                }
+                                ActionStepSpecificationEnum::Heal(spec) => {
+                                    // プレイヤーがこのターンに攻撃していた場合、敵の回復量は半減
+                                    let base_heal = spec.amount;
+                                    let heal_amount = if matches!(
+                                        cmd,
+                                        CommandKind::Attack | CommandKind::Skill
+                                    ) {
+                                        base_heal / 2
+                                    } else {
+                                        base_heal
+                                    };
+                                    let before = e_hp.current;
+                                    e_hp.current = (e_hp.current + heal_amount).min(e_hp.max);
+                                    let healed = e_hp.current - before;
+                                    log.0.push(format!(
+                                        "敵の行動: {} → HPを{}回復 (敵HP {} / {})",
+                                        step.name, healed, e_hp.current, e_hp.max
+                                    ));
+                                }
+                            }
+                            action.next();
+                        }
+                    }
+                    // 次ターンの敵行動を事前決定（敵が生きている場合）
+                    if e_hp.current > 0 && p_hp.current > 0 {
+                        if planned.0.is_finished() {
+                            // 現在の行動が完了している場合、新たに行動を決定
+
+                            let roll: f32 = rand::random::<f32>();
+                            // 敵HPが半分以下なら、回復とため開始を選択肢に含める
+                            let next = if e_hp.current * 2 <= e_hp.max {
+                                // 攻撃 / 待機 / 回復 / ため(準備)
+                                match () {
+                                    _ if roll < 0.1 => create_enemy_wait(),
+                                    _ if roll < 0.2 => create_enemy_heal(),
+                                    _ if roll < 0.3 => create_enemy_attack(),
+                                    _ if roll < 0.5 => create_enemy_claw_combo_strong(),
+                                    _ if roll < 0.7 => create_enemy_claw_strong(),
+                                    _ if roll < 0.8 => create_enemy_stomp(),
+                                    _ => create_enemy_fire_breath(),
+                                }
+                            } else {
+                                match () {
+                                    _ if roll < 0.3 => create_enemy_wait(),
+                                    _ if roll < 0.6 => create_enemy_attack(),
+                                    _ if roll < 0.8 => create_enemy_claw_combo(),
+                                    _ if roll < 0.9 => create_enemy_claw_strong(),
+                                    _ => create_enemy_stomp(),
+                                }
+                            };
+
+                            // TODO: 毎回生成してるのやめる
+                            planned.0 = ActionProcess::from(&Arc::new(next));
+                        }
+                        log.0.push(format!(
+                            "次ターン敵行動予定: {}",
+                            planned.0.current_step().unwrap().name
+                        ));
+                    }
+                    // ターン終了時、ブレイク残りターンのデクリメント（ブレイク中のみ）。解除時にブレイク値リセット。
+                    if e_bstate.remaining_turns > 0 {
+                        e_bstate.remaining_turns = e_bstate.remaining_turns.saturating_sub(1);
+                        if e_bstate.remaining_turns == 0 {
+                            e_break.current = 0;
+                            log.0.push(
+                                "敵のブレイク状態が解除。ブレイク値を0にリセット".to_string(),
+                            );
+                            // 0になったので自然回復量もリセット
+                            e_bregen.amount = 1;
+                        }
+                    }
+                    // ターン終了時、攻撃/強攻撃が無ければ自然回復: 1,2,4,...と倍増。0到達またはダメージ受けで1へリセット。
+                    if !matches!(cmd, CommandKind::Attack | CommandKind::Skill) {
+                        let before = e_break.current;
+                        e_break.current = (e_break.current - e_bregen.amount).max(0);
+                        if e_break.current != before {
+                            log.0.push(format!(
+                                "敵のブレイク値が自然回復: {} → {} (回復量 {})",
+                                before, e_break.current, e_bregen.amount
+                            ));
+                        }
+                        if e_break.current == 0 {
+                            e_bregen.amount = 1;
+                        } else {
+                            e_bregen.amount = (e_bregen.amount * 2).max(1);
+                        }
+                    }
+                    // ターン終了時、強化の残りターンをデクリメント
+                    let prev = (buffs.attack, buffs.skill, buffs.heal, buffs.defend);
+                    if buffs.attack > 0 {
+                        buffs.attack -= 1;
+                        if buffs.attack == 0 && prev.0 > 0 {
+                            log.0.push("攻撃の強化が解除された".to_string());
+                        }
+                    }
+                    if buffs.skill > 0 {
+                        buffs.skill -= 1;
+                        if buffs.skill == 0 && prev.1 > 0 {
+                            log.0.push("強攻撃の強化が解除された".to_string());
+                        }
+                    }
+                    if buffs.heal > 0 {
+                        buffs.heal -= 1;
+                        if buffs.heal == 0 && prev.2 > 0 {
+                            log.0.push("回復の強化が解除された".to_string());
+                        }
+                    }
+                    if buffs.defend > 0 {
+                        buffs.defend -= 1;
+                        if buffs.defend == 0 && prev.3 > 0 {
+                            log.0.push("防御の強化が解除された".to_string());
+                        }
+                    }
+                    turn.0 += 1;
+                    *phase = BattlePhase::AwaitCommand;
+                };
+                // 今回は1件だけ処理（各ターン1コマンドのルール）
+                resolve_command(commands_to_process[0]);
+            }
+            return;
+        }
+        // 再選択（NまたはEsc）: 以降の予約コマンドをリセット
+        if keyboard.just_pressed(KeyCode::KeyN) || keyboard.just_pressed(KeyCode::Escape) {
+            let cleared = queue.0.len();
+            queue.0.clear();
+            pending.0.clear();
+            batch.total = 0;
+            batch.executed = 0;
+            if cleared > 0 {
+                log.0.push(
+                    "連続コマンドの予約をリセットしました。コマンドを選び直してください"
+                        .to_string(),
+                );
+            }
+            *phase = BattlePhase::AwaitCommand;
+            return;
+        }
+        // 入力待ち
+        return;
+    }
+
     // フェーズが待機でない場合は何もしない
     if *phase != BattlePhase::AwaitCommand {
         return;
     }
 
-    // 予約キューがあれば入力をスキップして先頭を実行
+    // 予約キューがあれば、先頭を実行するか確認フェーズに遷移
     let mut commands_to_process: Vec<CommandKind> = Vec::new();
-    if let Some(next) = queue.0.pop_front() {
-        commands_to_process.push(next);
+    if let Some(_next) = queue.0.front() {
+        // コマンド入力パネルで確認表示を行うため、ここではログ出力しない
+        *phase = BattlePhase::ConfirmQueued;
+        return;
     } else {
         // 未確定選択へ追加（このフレームで押されたキー）
         let mut added: Vec<&'static str> = Vec::new();
@@ -764,20 +1626,10 @@ fn player_input_system(
             for &cmd in pending.0.iter().skip(1) {
                 queue.0.push_back(cmd);
             }
-            // 連続入力によるモメンタム増加（2件で+15、3件以上で+25、最大100）
-            let count = pending.0.len();
-            if count >= 2 {
-                let inc = if count >= 3 { 25 } else { 15 };
-                let before = momentum.current;
-                momentum.current = (momentum.current + inc).min(100);
-                let gained = momentum.current - before;
-                if gained > 0 {
-                    log.0.push(format!(
-                        "モメンタムが{}増加 ({} → {} / 100)",
-                        gained, before, momentum.current
-                    ));
-                }
-            }
+            // 連続バッチ総数の記録と実行済み数のリセット
+            batch.total = pending.0.len();
+            batch.executed = 0;
+            // モメンタム増加は実行選択時に行うため、ここでは加算しない
             // ログ出力
             if pending.0.len() > 1 {
                 let names = pending
@@ -815,7 +1667,10 @@ fn player_input_system(
     // 共通のコマンド解決処理
     let mut resolve_command = |cmd: CommandKind| {
         *phase = BattlePhase::InBattle;
-        let guard_ready_at_start = guard_counter.0;
+        let guard_ready_at_start = {
+            let g = def_guard.p1();
+            g.0
+        };
         let name = match cmd {
             CommandKind::Attack => "攻撃",
             CommandKind::Skill => "強攻撃",
@@ -833,13 +1688,12 @@ fn player_input_system(
         let is_chain = chain_state.last_was_attack && matches!(cmd, CommandKind::Attack);
 
         // コストチェック（実行時にも確認）。不足なら行動失敗。
-        let base_attack_cost = 15;
         let cost = match cmd {
             CommandKind::Attack => {
                 if is_chain {
                     5
                 } else {
-                    base_attack_cost
+                    15
                 }
             }
             CommandKind::Skill => 25,
@@ -938,8 +1792,14 @@ fn player_input_system(
                     ));
                 }
                 CommandKind::Defend => {
-                    defend_flag.0 = true;
-                    guard_counter.0 = true; // 次プレイヤー行動のガードカウンター猶予
+                    {
+                        let mut d = def_guard.p0();
+                        d.0 = true;
+                    }
+                    {
+                        let mut g = def_guard.p1();
+                        g.0 = true; // 次プレイヤー行動のガードカウンター猶予
+                    }
                     log.0
                         .push("プレイヤーは防御態勢に入った (次の敵攻撃は無効)".to_string());
                     log.0
@@ -954,10 +1814,13 @@ fn player_input_system(
                         dmg = base + break_bonus;
                     }
                     e_hp.current = (e_hp.current - dmg).max(0);
+                    // 敵ダメージポップアップ設定
+                    enemy_damage_popup.amount = dmg;
+                    enemy_damage_popup.timer = 1.2;
                     if is_chain {
                         if break_bonus > 0 {
                             log.0.push(format!(
-                                "連撃! 敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 消費スタミナ半減, 敵HP {} / {})",
+                                "連撃! 敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
                                 dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
                             ));
                         } else {
@@ -981,7 +1844,7 @@ fn player_input_system(
                     }
                     // ブレイク値加算（攻撃時の固定増加量: 通常15・強化時25）
                     let before_break = e_break.current;
-                    let add_break = if buffs.attack > 0 { 25 } else { 15 };
+                    let add_break = if buffs.attack > 0 { 25 } else { 10 };
                     e_break.current += add_break;
                     log.0.push(format!(
                         "ブレイク値 +{} ({} → {} / 100)",
@@ -1003,6 +1866,9 @@ fn player_input_system(
                         dmg = base + break_bonus;
                     }
                     e_hp.current = (e_hp.current - dmg).max(0);
+                    // 敵ダメージポップアップ設定
+                    enemy_damage_popup.amount = dmg;
+                    enemy_damage_popup.timer = 1.2;
                     if is_guard_counter {
                         if break_bonus > 0 {
                             log.0.push(format!(
@@ -1054,7 +1920,8 @@ fn player_input_system(
             chain_state.last_was_attack = matches!(cmd, CommandKind::Attack | CommandKind::Skill);
             // ガードカウンター猶予の消費: 防御以外の行動で消費
             if !matches!(cmd, CommandKind::Defend) {
-                guard_counter.0 = false;
+                let mut g = def_guard.p1();
+                g.0 = false;
             }
         }
 
@@ -1082,9 +1949,12 @@ fn player_input_system(
                 match step.specification {
                     ActionStepSpecificationEnum::Attack(spec) => {
                         let mut incoming = (e_attack.0 as f32 * spec.power) as i32;
-                        if defend_flag.0 {
-                            incoming = 0;
-                            defend_flag.0 = false; // 一度きり
+                        {
+                            let mut d = def_guard.p0();
+                            if d.0 {
+                                incoming = 0;
+                                d.0 = false; // 一度きり
+                            }
                         }
                         p_hp.current = (p_hp.current - incoming).max(0);
                         log.0.push(format!(
@@ -1221,6 +2091,15 @@ fn battle_end_check_system(
     mut log: ResMut<CombatLog>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    mut vis_params: ParamSet<(
+        Query<&mut Visibility, With<UiEnemy>>,
+        Query<&mut Visibility, With<UiEnemyBreakLabel>>,
+    )>,
+    mut ui_enemy_next_text_q: Query<&mut Text, With<UiEnemyNextActionText>>,
+    mut gauge_params_end: ParamSet<(
+        Query<&mut Node, With<UiEnemyHpGaugeFill>>,
+        Query<&mut Node, With<UiEnemyBreakGaugeFill>>,
+    )>,
 ) {
     if *phase == BattlePhase::Finished {
         return;
@@ -1235,11 +2114,28 @@ fn battle_end_check_system(
         *phase = BattlePhase::Finished;
         log.0.push("勝利! 敵を倒しました".to_string());
 
+        // 敵UIを即時非表示（HP表示などは一瞬で消す）
+        if let Ok(mut vis) = vis_params.p0().single_mut() {
+            *vis = Visibility::Hidden;
+        }
+        if let Ok(mut br_vis) = vis_params.p1().single_mut() {
+            *br_vis = Visibility::Hidden;
+        }
+        if let Ok(mut next_text) = ui_enemy_next_text_q.single_mut() {
+            next_text.0 = String::new();
+        }
+        if let Ok(mut hp_node) = gauge_params_end.p0().single_mut() {
+            hp_node.width = percent(0);
+        }
+        if let Ok(mut br_node) = gauge_params_end.p1().single_mut() {
+            br_node.width = percent(0);
+        }
+        // 少し遅らせてからバナー表示（敵消失後に表示）
         let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
         commands
             .spawn((
                 BossSlainBanner {
-                    elapsed: 0.0,
+                    elapsed: -0.3, // 0.3秒遅延してからフェードイン開始
                     phase: BannerPhase::FadeIn,
                 },
                 Node {
@@ -1250,11 +2146,89 @@ fn battle_end_check_system(
                     position_type: PositionType::Absolute,
                     ..default()
                 },
+                ZIndex(100),
             ))
             .with_children(|builder| {
+                // 背景の黒帯（左右いっぱい、上下グラデ）
+                builder
+                    .spawn((
+                        BossSlainBackdrop,
+                        Node {
+                            width: percent(100),
+                            height: Val::Auto,
+                            position_type: PositionType::Absolute,
+                            left: Val::Px(0.0),
+                            right: Val::Px(0.0),
+                            // 画面全高に広げ、中央帯＋上下グラデを内包
+                            top: Val::Px(0.0),
+                            bottom: Val::Px(0.0),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            flex_direction: FlexDirection::Column,
+                            row_gap: Val::Px(0.0),
+                            ..default()
+                        },
+                        ZIndex(100),
+                    ))
+                    .with_children(|back| {
+                        // 上グラデーション（薄→濃へ）
+                        for i in (0..6u8).rev() {
+                            let alpha = (i as f32) * 0.08; // 0.0, 0.08, ...
+                            back.spawn((
+                                BossSlainBackdropRow(i),
+                                Node {
+                                    width: percent(100),
+                                    height: Val::Px(12.0),
+                                    ..default()
+                                },
+                                BackgroundColor(Color::from(LinearRgba {
+                                    red: 0.0,
+                                    green: 0.0,
+                                    blue: 0.0,
+                                    alpha: 0.0, // フェーズで乗算する
+                                })),
+                            ));
+                        }
+
+                        // 中央帯（不透明に近い）
+                        back.spawn((
+                            BossSlainBackdropCenter,
+                            Node {
+                                width: percent(100),
+                                height: Val::Px(140.0),
+                                ..default()
+                            },
+                            BackgroundColor(Color::from(LinearRgba {
+                                red: 0.0,
+                                green: 0.0,
+                                blue: 0.0,
+                                alpha: 0.0, // フェーズで乗算する
+                            })),
+                        ));
+
+                        // 下グラデーション（濃→薄へ）
+                        for i in 0..6u8 {
+                            let alpha = (i as f32) * 0.08; // 0.0, 0.08, ...
+                            back.spawn((
+                                BossSlainBackdropRow(10 + i),
+                                Node {
+                                    width: percent(100),
+                                    height: Val::Px(12.0),
+                                    ..default()
+                                },
+                                BackgroundColor(Color::from(LinearRgba {
+                                    red: 0.0,
+                                    green: 0.0,
+                                    blue: 0.0,
+                                    alpha: 0.0, // フェーズで乗算する
+                                })),
+                            ));
+                        }
+                    });
+
                 builder.spawn((
                     BossSlainText,
-                    Text::new("DORAGON SLAIN"),
+                    Text::new("DRAGON SLAIN"),
                     TextFont {
                         font: font.clone(),
                         font_size: 96.0,
@@ -1266,6 +2240,7 @@ fn battle_end_check_system(
                         blue: 0.20,
                         alpha: 0.0,
                     })),
+                    ZIndex(101),
                 ));
             });
     } else if p_hp.current <= 0 {
@@ -1283,10 +2258,12 @@ fn ui_update_system(
     momentum: Res<Momentum>,
     buffs: Res<CommandBuffs>,
     pending: Res<PendingSelections>,
+    queue: Res<CommandQueue>,
     // mut ui_q: Query<&mut Children, With<UiRoot>>,
-    // mut text_q: Query<&mut Text, With<Text>>,
     planned: Res<EnemyPlannedAction>,
     mut ui_staus_q: Query<&mut Text, (With<UiStatus>, Without<UiPhase>, Without<UiLog>)>,
+    // プレイヤーステータス（右上）の更新用: テキスト群（HP、スタミナ、モメンタム）
+    // 右上プレイヤーステータスは別システムで更新（引数が多すぎるため分割）
     mut ui_eff_atk_q: Query<
         (&mut Text, &mut TextColor),
         (
@@ -1454,8 +2431,29 @@ fn ui_update_system(
     };
     let phase_str = match *phase {
         BattlePhase::AwaitCommand => format!(
-            "コマンド入力待ち    敵の次の行動: {enemy_action_str}\nコマンドを選択してください(最大3つ)\n A=攻撃 S=強攻撃 H=回復 D=防御 W=待機\n Z=攻撃強化 / X=強攻撃強化 / C=回復強化 / V=防御強化\n Backspace=直前取り消し / Esc=全クリア\n Enter=決定\n [選択中] {selected_str}"
+            "コマンド入力待ち \nコマンドを選択してください(最大3つ)\n A=攻撃 S=強攻撃 H=回復 D=防御 W=待機\n Z=攻撃強化 / X=強攻撃強化 / C=回復強化 / V=防御強化\n Backspace=直前取り消し / Esc=全クリア\n Enter=決定\n [選択中] {selected_str}"
         ),
+        BattlePhase::ConfirmQueued => {
+            let next_name = if let Some(next) = queue.0.front() {
+                match next {
+                    CommandKind::Attack => "攻撃",
+                    CommandKind::Skill => "強攻撃",
+                    CommandKind::Heal => "回復",
+                    CommandKind::Defend => "防御",
+                    CommandKind::Wait => "待機",
+                    CommandKind::EnhanceAttack => "攻撃強化",
+                    CommandKind::EnhanceSkill => "強攻撃強化",
+                    CommandKind::EnhanceHeal => "回復強化",
+                    CommandKind::EnhanceDefend => "防御強化",
+                }
+            } else {
+                "(なし)"
+            };
+            format!(
+                "連続コマンド確認\n次の予約: {}\n Y=実行 / N=選択しなおし(以降リセット)",
+                next_name
+            )
+        }
         BattlePhase::InBattle => "処理中".to_string(),
         BattlePhase::Finished => "終了".to_string(),
     };
@@ -1475,32 +2473,227 @@ fn ui_update_system(
     ui_log_text.0 = log_text;
 }
 
+// コマンド入力表示（右端パネル）の表示制御と内容更新
+fn ui_update_command_system(
+    phase: Res<BattlePhase>,
+    planned: Res<EnemyPlannedAction>,
+    pending: Res<PendingSelections>,
+    queue: Res<CommandQueue>,
+    mut cmd_panel_q: Query<(&mut Visibility, &Children), With<UiCommand>>,
+    mut texts: Query<&mut Text>,
+) {
+    let Ok((mut vis, children)) = cmd_panel_q.single_mut() else {
+        return;
+    };
+    match *phase {
+        BattlePhase::AwaitCommand => {
+            *vis = Visibility::Visible;
+            for child in children.iter() {
+                if let Ok(mut t) = texts.get_mut(child) {
+                    let selected_str = if pending.0.is_empty() {
+                        "(なし)".to_string()
+                    } else {
+                        pending
+                            .0
+                            .iter()
+                            .map(|c| match c {
+                                CommandKind::Attack => "攻撃",
+                                CommandKind::Skill => "強攻撃",
+                                CommandKind::Heal => "回復",
+                                CommandKind::Defend => "防御",
+                                CommandKind::Wait => "待機",
+                                CommandKind::EnhanceAttack => "攻撃強化",
+                                CommandKind::EnhanceSkill => "強攻撃強化",
+                                CommandKind::EnhanceHeal => "回復強化",
+                                CommandKind::EnhanceDefend => "防御強化",
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    };
+                    t.0 = format!(
+                        "[コマンド入力] \nA=攻撃 S=強攻撃 H=回復 D=防御 W=待機\nZ=攻撃強化 X=強攻撃強化 C=回復強化 V=防御強化\nBackspace=直前取り消し Esc=全クリア Enter=決定 \n選択中: {selected_str}"
+                    );
+                }
+            }
+        }
+        BattlePhase::ConfirmQueued => {
+            *vis = Visibility::Visible;
+            for child in children.iter() {
+                if let Ok(mut t) = texts.get_mut(child) {
+                    let next_name = if let Some(next) = queue.0.front() {
+                        match next {
+                            CommandKind::Attack => "攻撃",
+                            CommandKind::Skill => "強攻撃",
+                            CommandKind::Heal => "回復",
+                            CommandKind::Defend => "防御",
+                            CommandKind::Wait => "待機",
+                            CommandKind::EnhanceAttack => "攻撃強化",
+                            CommandKind::EnhanceSkill => "強攻撃強化",
+                            CommandKind::EnhanceHeal => "回復強化",
+                            CommandKind::EnhanceDefend => "防御強化",
+                        }
+                    } else {
+                        "(なし)"
+                    };
+                    t.0 = format!(
+                        "[連続コマンド確認]\n次の予約: {}\nY=実行 / N=選び直し(以降の予約はリセット)",
+                        next_name
+                    );
+                }
+            }
+        }
+        _ => {
+            *vis = Visibility::Hidden;
+        }
+    }
+}
+
+// 画面下のUiMessageに最新メッセージを最大20行表示
+fn ui_update_message_system(log: Res<CombatLog>, mut msg_q: Query<&mut Text, With<UiMessage>>) {
+    let Ok(mut msg) = msg_q.single_mut() else {
+        return;
+    };
+    let max_lines = 20usize;
+    let start = if log.0.len() > max_lines {
+        log.0.len() - max_lines
+    } else {
+        0
+    };
+    let mut s = String::new();
+    for line in &log.0[start..] {
+        s.push_str(line);
+        s.push('\n');
+    }
+    msg.0 = s;
+}
+
+// 右上プレイヤーステータスの更新（HP/スタミナテキスト＆ゲージ、モメンタムテキスト）
+fn ui_update_player_status_system(
+    player_q: Query<&Hp, With<Player>>,
+    player_sta_q: Query<&Stamina, With<Player>>,
+    momentum: Res<Momentum>,
+    buffs: Res<CommandBuffs>,
+    mut hp_text_q: Query<&mut Text, (With<UiHpText>, Without<UiStaText>, Without<UiMomentumText>)>,
+    mut sta_text_q: Query<&mut Text, (With<UiStaText>, Without<UiHpText>, Without<UiMomentumText>)>,
+    mut momentum_text_q: Query<
+        &mut Text,
+        (With<UiMomentumText>, Without<UiHpText>, Without<UiStaText>),
+    >,
+    mut buffs_text_q: Query<
+        &mut Text,
+        (
+            With<UiBuffsText>,
+            Without<UiHpText>,
+            Without<UiStaText>,
+            Without<UiMomentumText>,
+        ),
+    >,
+    mut gauge_params: ParamSet<(
+        Query<&mut Node, With<UiHpGaugeFill>>,
+        Query<&mut Node, With<UiStaGaugeFill>>,
+    )>,
+) {
+    let Ok(p_hp) = player_q.single() else {
+        return;
+    };
+    let Ok(p_sta) = player_sta_q.single() else {
+        return;
+    };
+
+    // コンテナ内の最初のTextを簡潔表示用に更新
+    if let Ok(mut hp_text) = hp_text_q.single_mut() {
+        hp_text.0 = format!("HP: {} / {}", p_hp.current, p_hp.max);
+    }
+    if let Ok(mut sta_text) = sta_text_q.single_mut() {
+        sta_text.0 = format!("スタミナ: {} / {}", p_sta.current, p_sta.max);
+    }
+    if let Ok(mut momentum_text) = momentum_text_q.single_mut() {
+        momentum_text.0 = format!("モメンタム: {} / 100", momentum.current);
+    }
+    if let Ok(mut buffs_text) = buffs_text_q.single_mut() {
+        // 表示: 強化中のものと残りターン。未強化は「なし」。
+        let mut parts: Vec<String> = Vec::new();
+        if buffs.attack > 0 {
+            parts.push(format!("攻:{}", buffs.attack));
+        }
+        if buffs.skill > 0 {
+            parts.push(format!("強:{}", buffs.skill));
+        }
+        if buffs.heal > 0 {
+            parts.push(format!("回:{}", buffs.heal));
+        }
+        if buffs.defend > 0 {
+            parts.push(format!("防:{}", buffs.defend));
+        }
+        if parts.is_empty() {
+            buffs_text.0 = "強化: なし".to_string();
+        } else {
+            buffs_text.0 = format!("強化: {}", parts.join(" "));
+        }
+    }
+
+    // ゲージ幅更新
+    if let Ok(mut hp_node) = gauge_params.p0().single_mut() {
+        let ratio = if p_hp.max > 0 {
+            (p_hp.current as f32 / p_hp.max as f32).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        hp_node.width = percent((ratio * 100.0).round());
+    }
+    if let Ok(mut sta_node) = gauge_params.p1().single_mut() {
+        let ratio = if p_sta.max > 0 {
+            (p_sta.current as f32 / p_sta.max as f32).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        sta_node.width = percent((ratio * 100.0).round());
+    }
+}
+
 // （演出簡易版につきフェード等の更新システムは未実装）
 fn boss_slain_banner_system(
     time: Res<Time>,
     mut commands: Commands,
     mut banner_q: Query<(Entity, &mut BossSlainBanner, &Children)>,
     mut text_colors: Query<&mut TextColor, With<BossSlainText>>,
+    mut backdrop_colors: ParamSet<(
+        Query<&mut BackgroundColor, With<BossSlainBackdropRow>>,
+        Query<&mut BackgroundColor, With<BossSlainBackdropCenter>>,
+    )>,
 ) {
-    const FADE_IN: f32 = 1.0;
-    const HOLD: f32 = 1.5;
+    const FADE_IN: f32 = 0.5;
+    const HOLD: f32 = 3.0;
     const FADE_OUT: f32 = 1.0;
 
     for (entity, mut banner, children) in banner_q.iter_mut() {
         banner.elapsed += time.delta().as_secs_f32();
         match banner.phase {
             BannerPhase::FadeIn => {
-                let alpha = (banner.elapsed / FADE_IN).clamp(0.0, 1.0);
-                for i in 0..children.len() {
-                    let child = children[i];
-                    if let Ok(mut c) = text_colors.get_mut(child) {
-                        c.0 = Color::from(LinearRgba {
-                            red: 0.83,
-                            green: 0.72,
-                            blue: 0.20,
-                            alpha,
-                        });
-                    }
+                let phase_alpha = (banner.elapsed / FADE_IN).clamp(0.0, 1.0);
+                for mut c in text_colors.iter_mut() {
+                    c.0 = Color::from(LinearRgba {
+                        red: 0.83,
+                        green: 0.72,
+                        blue: 0.20,
+                        alpha: phase_alpha,
+                    });
+                }
+                for mut bc in backdrop_colors.p1().iter_mut() {
+                    bc.0 = Color::from(LinearRgba {
+                        red: 0.0,
+                        green: 0.0,
+                        blue: 0.0,
+                        alpha: phase_alpha,
+                    });
+                }
+                for mut br in backdrop_colors.p0().iter_mut() {
+                    br.0 = Color::from(LinearRgba {
+                        red: 0.0,
+                        green: 0.0,
+                        blue: 0.0,
+                        alpha: 0.9 * phase_alpha,
+                    });
                 }
                 if banner.elapsed >= FADE_IN {
                     banner.phase = BannerPhase::Hold;
@@ -1508,16 +2701,29 @@ fn boss_slain_banner_system(
                 }
             }
             BannerPhase::Hold => {
-                for i in 0..children.len() {
-                    let child = children[i];
-                    if let Ok(mut c) = text_colors.get_mut(child) {
-                        c.0 = Color::from(LinearRgba {
-                            red: 0.83,
-                            green: 0.72,
-                            blue: 0.20,
-                            alpha: 1.0,
-                        });
-                    }
+                for mut c in text_colors.iter_mut() {
+                    c.0 = Color::from(LinearRgba {
+                        red: 0.83,
+                        green: 0.72,
+                        blue: 0.20,
+                        alpha: 1.0,
+                    });
+                }
+                for mut bc in backdrop_colors.p1().iter_mut() {
+                    bc.0 = Color::from(LinearRgba {
+                        red: 0.0,
+                        green: 0.0,
+                        blue: 0.0,
+                        alpha: 1.0,
+                    });
+                }
+                for mut br in backdrop_colors.p0().iter_mut() {
+                    br.0 = Color::from(LinearRgba {
+                        red: 0.0,
+                        green: 0.0,
+                        blue: 0.0,
+                        alpha: 0.9,
+                    });
                 }
                 if banner.elapsed >= HOLD {
                     banner.phase = BannerPhase::FadeOut;
@@ -1525,17 +2731,30 @@ fn boss_slain_banner_system(
                 }
             }
             BannerPhase::FadeOut => {
-                let alpha = 1.0 - (banner.elapsed / FADE_OUT).clamp(0.0, 1.0);
-                for i in 0..children.len() {
-                    let child = children[i];
-                    if let Ok(mut c) = text_colors.get_mut(child) {
-                        c.0 = Color::from(LinearRgba {
-                            red: 0.83,
-                            green: 0.72,
-                            blue: 0.20,
-                            alpha,
-                        });
-                    }
+                let phase_alpha = 1.0 - (banner.elapsed / FADE_OUT).clamp(0.0, 1.0);
+                for mut c in text_colors.iter_mut() {
+                    c.0 = Color::from(LinearRgba {
+                        red: 0.83,
+                        green: 0.72,
+                        blue: 0.20,
+                        alpha: phase_alpha,
+                    });
+                }
+                for mut bc in backdrop_colors.p1().iter_mut() {
+                    bc.0 = Color::from(LinearRgba {
+                        red: 0.0,
+                        green: 0.0,
+                        blue: 0.0,
+                        alpha: phase_alpha,
+                    });
+                }
+                for mut br in backdrop_colors.p0().iter_mut() {
+                    br.0 = Color::from(LinearRgba {
+                        red: 0.0,
+                        green: 0.0,
+                        blue: 0.0,
+                        alpha: 0.9 * phase_alpha,
+                    });
                 }
                 if banner.elapsed >= FADE_OUT {
                     // 完了後削除
@@ -1604,4 +2823,66 @@ fn ui_update_skill_effect_system(
     } else {
         Color::WHITE
     };
+}
+
+// 敵UI（中央配置）の更新（HP/ブレイクのゲージ幅、ブレイク中表示、次の行動）
+fn ui_update_enemy_system(
+    enemy_q: Query<(&Hp, &BreakValue, &BreakState), With<Enemy>>,
+    planned: Res<EnemyPlannedAction>,
+    mut gauge_params: ParamSet<(
+        Query<&mut Node, With<UiEnemyHpGaugeFill>>,
+        Query<&mut Node, With<UiEnemyBreakGaugeFill>>,
+    )>,
+    mut br_label_q: Query<&mut Visibility, With<UiEnemyBreakLabel>>,
+    mut next_text_q: Query<&mut Text, With<UiEnemyNextActionText>>,
+) {
+    let Ok((e_hp, e_break, e_bstate)) = enemy_q.single() else {
+        return;
+    };
+
+    if let Ok(mut hp_node) = gauge_params.p0().single_mut() {
+        let ratio = if e_hp.max > 0 {
+            (e_hp.current as f32 / e_hp.max as f32).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        hp_node.width = percent((ratio * 100.0).round());
+    }
+    if let Ok(mut br_node) = gauge_params.p1().single_mut() {
+        let ratio = (e_break.current as f32 / 100.0).clamp(0.0, 1.0);
+        br_node.width = percent((ratio * 100.0).round());
+    }
+    if let Ok(mut vis) = br_label_q.single_mut() {
+        *vis = if e_bstate.remaining_turns > 0 {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+    }
+    if let Ok(mut t) = next_text_q.single_mut() {
+        let enemy_action_str = if let Some(step) = planned.0.current_step() {
+            step.name
+        } else {
+            "不明"
+        };
+        t.0 = format!("次の行動: {}", enemy_action_str);
+    }
+}
+
+// 敵ダメージの一時表示更新（一定時間で非表示に戻す）
+fn ui_update_enemy_damage_popup_system(
+    time: Res<Time>,
+    mut popup: ResMut<EnemyDamagePopup>,
+    mut dmg_q: Query<(&mut Text, &mut Visibility), With<UiEnemyDamageText>>,
+) {
+    if let Ok((mut text, mut vis)) = dmg_q.single_mut() {
+        if popup.timer > 0.0 {
+            popup.timer -= time.delta_secs();
+            *vis = Visibility::Visible;
+            text.0 = format!("-{}", popup.amount);
+        } else {
+            *vis = Visibility::Hidden;
+            text.0.clear();
+        }
+    }
 }
