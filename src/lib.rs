@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use bevy::asset::ron::de;
+
 // 敵
 struct Enemy {
     ability: EnemyAbility, // 能力
@@ -586,27 +588,22 @@ struct BattleIncidentConduct {
 }
 // 攻撃の成否
 enum BattleIncidentConductOutcome {
-    Success, // 発動
-    Failure, // 不発
+    Success(BattleIncidentConductOutcomeSuccess), // 発動
+    Failure(BattleIncidentConductOutcomeFailure), // 不発
 }
 // 行動成功
 struct BattleIncidentConductOutcomeSuccess {
-    damage: u32,
-    break_damage: u32,
-}
-// 行動成功効果
-struct BattleIncidentConductOutcomeSuccessEffect {
     // 行動者
-    attacker: BattleIncidentConductOutcomeSuccessEffectAttacker,
+    attacker: BattleIncidentConductOutcomeSuccessAttacker,
     // 被行動者
-    defenders: Vec<BattleIncidentConductOutcomeSuccessEffectDefender>,
+    defenders: Vec<BattleIncidentConductOutcomeSuccessDefender>,
 }
 
-struct BattleIncidentConductOutcomeSuccessEffectAttacker {
+struct BattleIncidentConductOutcomeSuccessAttacker {
     character_id: u32,
-    stats_changes: BattleIncidentStats,
+    stats_changes: Vec<BattleIncidentStats>,
 }
-struct BattleIncidentConductOutcomeSuccessEffectDefender {
+struct BattleIncidentConductOutcomeSuccessDefender {
     character_id: u32,
     stats_changes: Vec<BattleIncidentStats>,
     status_effects: Vec<BattleIncidentStatusEffect>, // 状態変化
@@ -747,33 +744,104 @@ fn determine_action_outcome_failure(
 }
 
 // 行動実行
-fn execute_conduct(battle: &mut Battle, conduct: &BattleConduct) -> BattleIncident {
+fn execute_conduct(battle: &mut Battle, conduct: BattleConduct) -> BattleIncident {
     enum PlayerOrEnemy<'a> {
         Player(&'a BattlePlayer),
         Enemy(&'a BattleEnemy),
     }
-    // ターゲットの決定
-    let attacker = if let Some(player) = battle.players.iter().find(|p| p.id == conduct.actor_id) {
-        player
-    } else if let Some(enemy) = battle.enemies.iter().find(|e| e.id == conduct.actor_id) {
-        enemy
-    } else {
-        panic!("Attacker not found");
+
+    // 行動者の決定
+    let attacker =
+        if let Some(player) = battle.players.iter_mut().find(|p| p.id == conduct.actor_id) {
+            player
+        } else if let Some(enemy) = battle.enemies.iter_mut().find(|e| e.id == conduct.actor_id) {
+            enemy
+        } else {
+            panic!("Attacker not found");
+        };
+    let attacker_id = attacker.id;
+
+    // 行動成否判定
+    if let Some(failure_reason) = determine_action_outcome_failure(&conduct, attacker) {
+        // TODO: 不発理由に応じた処理
+        return BattleIncident::Conduct(BattleIncidentConduct {
+            attacker_id,
+            defender_id: conduct.target_id,
+            conduct,
+            outcome: BattleIncidentConductOutcome::Failure(BattleIncidentConductOutcomeFailure {
+                reason: failure_reason,
+            }),
+        });
+    }
+
+    //
+    let mut attacker_stats_changes = Vec::new();
+
+    let before_sp = attacker.current_stats.max_sp - attacker.current_stats.sp_damage;
+    let sp_damage = conduct.conduct.sp_cost;
+    // SP消費
+    attacker.current_stats.sp_damage += sp_damage;
+    let after_sp = attacker.current_stats.max_sp - attacker.current_stats.sp_damage;
+    // インシデント
+    attacker_stats_changes.push(BattleIncidentStats::DamageSp(BattleIncidentDamageSp {
+        damage: sp_damage,
+        before: before_sp,
+        after: after_sp,
+    }));
+
+    // スタミナ消費
+    if let BattleCharacterType::Player(_) = attacker.character_type {
+        // プレイヤーの場合のみスタミナ消費処理
+        let before_stamina =
+            attacker.current_stats.max_stamina - attacker.current_stats.stamina_damage;
+        let stamina_damage = conduct.conduct.stamina_cost;
+        attacker.current_stats.stamina_damage += conduct.conduct.stamina_cost;
+        let after_stamina =
+            attacker.current_stats.max_stamina - attacker.current_stats.stamina_damage;
+        // インシデント
+        attacker_stats_changes.push(BattleIncidentStats::DamageStamina(
+            BattleIncidentDamageStamina {
+                damage: stamina_damage,
+                before: before_stamina,
+                after: after_stamina,
+            },
+        ));
+    }
+
+    // 行動者インシデント
+    let attacker_incident = BattleIncidentConductOutcomeSuccessAttacker {
+        character_id: attacker_id,
+        stats_changes: attacker_stats_changes,
     };
-    let defender = if let Some(player) = battle.players.iter().find(|p| p.id == conduct.target_id) {
+
+    // ターゲットの決定
+    let target = if let Some(player) = battle
+        .players
+        .iter_mut()
+        .find(|p| p.id == conduct.target_id)
+    {
         player
-    } else if let Some(enemy) = battle.enemies.iter().find(|e| e.id == conduct.target_id) {
+    } else if let Some(enemy) = battle
+        .enemies
+        .iter_mut()
+        .find(|e| e.id == conduct.target_id)
+    {
         enemy
     } else {
         panic!("Defender not found");
     };
+    // TODO: 複数ターゲットが存在した時のターゲットごとに効果処理
+    let defender_incident = conduct_effect(&conduct, target);
 
-    // TODO: ターゲットごとに効果処理
-
-    // TODO: SP消費
-    // TODO: スタミナ消費
-
-    panic!("Not implemented yet");
+    BattleIncident::Conduct(BattleIncidentConduct {
+        attacker_id,
+        defender_id: target.id,
+        conduct,
+        outcome: BattleIncidentConductOutcome::Success(BattleIncidentConductOutcomeSuccess {
+            attacker: attacker_incident,
+            defenders: vec![defender_incident],
+        }),
+    })
 }
 
 // 行動攻撃補正
@@ -864,15 +932,14 @@ fn support_status_effect(
 
 fn conduct_effect(
     conduct: &BattleConduct,
-    attacker: &BattleCharacter,
     target: &mut BattleCharacter,
-) -> BattleIncidentConductOutcomeSuccessEffectDefender {
+) -> BattleIncidentConductOutcomeSuccessDefender {
     // 回避判定
     for se in target.status_effects.iter() {
         match &se.potency {
             StatusEffectPotency::Evasion => {
                 // 回避効果処理
-                return BattleIncidentConductOutcomeSuccessEffectDefender {
+                return BattleIncidentConductOutcomeSuccessDefender {
                     character_id: target.id,
                     stats_changes: Vec::new(),
                     status_effects: Vec::new(),
@@ -884,7 +951,7 @@ fn conduct_effect(
                 // 空中効果処理
                 // 遠距離攻撃でない時は回避
                 if !conduct.conduct.perks.contains(&ConductPerk::Ranged) {
-                    return BattleIncidentConductOutcomeSuccessEffectDefender {
+                    return BattleIncidentConductOutcomeSuccessDefender {
                         character_id: target.id,
                         stats_changes: Vec::new(),
                         status_effects: Vec::new(),
@@ -897,7 +964,7 @@ fn conduct_effect(
                 // 浮遊効果処理
                 // 足元攻撃は回避
                 if conduct.conduct.perks.contains(&ConductPerk::AtFeet) {
-                    return BattleIncidentConductOutcomeSuccessEffectDefender {
+                    return BattleIncidentConductOutcomeSuccessDefender {
                         character_id: target.id,
                         stats_changes: Vec::new(),
                         status_effects: Vec::new(),
@@ -910,7 +977,7 @@ fn conduct_effect(
                 // 遠距離効果処理
                 // 近距離の攻撃を回避
                 if !conduct.conduct.perks.contains(&ConductPerk::Ranged) {
-                    return BattleIncidentConductOutcomeSuccessEffectDefender {
+                    return BattleIncidentConductOutcomeSuccessDefender {
                         character_id: target.id,
                         stats_changes: Vec::new(),
                         status_effects: Vec::new(),
@@ -974,9 +1041,8 @@ fn conduct_effect(
                         // ブレイク中でない時
                         let mut is_break = false;
                         for se in target.status_effects.iter() {
-                            match &se.potency {
-                                StatusEffectPotency::Break(_) => is_break = true,
-                                _ => {}
+                            if let StatusEffectPotency::Break(_) = &se.potency {
+                                is_break = true
                             }
                         }
 
@@ -1011,7 +1077,7 @@ fn conduct_effect(
                         }
                     }
 
-                    let target_incident = BattleIncidentConductOutcomeSuccessEffectDefender {
+                    let target_incident = BattleIncidentConductOutcomeSuccessDefender {
                         character_id: target.id,
                         stats_changes: stats_change_incidents,
                         status_effects: status_effect_incidents,
@@ -1027,15 +1093,13 @@ fn conduct_effect(
                             let new_incidents =
                                 support_status_effect(&status_effect.status_effects, target);
 
-                            target_incidents.push(
-                                BattleIncidentConductOutcomeSuccessEffectDefender {
-                                    character_id: target.id,
-                                    stats_changes: Vec::new(),
-                                    status_effects: new_incidents,
-                                    is_defended: false,
-                                    is_evaded: false,
-                                },
-                            );
+                            target_incidents.push(BattleIncidentConductOutcomeSuccessDefender {
+                                character_id: target.id,
+                                stats_changes: Vec::new(),
+                                status_effects: new_incidents,
+                                is_defended: false,
+                                is_evaded: false,
+                            });
                         }
                     };
                 }
@@ -1100,9 +1164,8 @@ fn conduct_effect(
                     // ブレイク中でない時
                     let mut is_break = false;
                     for se in target.status_effects.iter() {
-                        match &se.potency {
-                            StatusEffectPotency::Break(_) => is_break = true,
-                            _ => {}
+                        if let StatusEffectPotency::Break(_) = &se.potency {
+                            is_break = true
                         }
                     }
                     if !is_break {
@@ -1133,7 +1196,7 @@ fn conduct_effect(
                     }
                 }
 
-                let target_incident = BattleIncidentConductOutcomeSuccessEffectDefender {
+                let target_incident = BattleIncidentConductOutcomeSuccessDefender {
                     character_id: target.id,
                     stats_changes: stats_change_incidents,
                     status_effects: Vec::new(),
@@ -1149,7 +1212,7 @@ fn conduct_effect(
                         let new_incidents =
                             support_status_effect(&status_effect.status_effects, target);
 
-                        target_incidents.push(BattleIncidentConductOutcomeSuccessEffectDefender {
+                        target_incidents.push(BattleIncidentConductOutcomeSuccessDefender {
                             character_id: target.id,
                             stats_changes: Vec::new(),
                             status_effects: new_incidents,
@@ -1215,9 +1278,8 @@ fn conduct_effect(
                     // ブレイク中でない時
                     let mut is_break = false;
                     for se in target.status_effects.iter() {
-                        match &se.potency {
-                            StatusEffectPotency::Break(_) => is_break = true,
-                            _ => {}
+                        if let StatusEffectPotency::Break(_) = &se.potency {
+                            is_break = true
                         }
                     }
                     if !is_break {
@@ -1248,7 +1310,7 @@ fn conduct_effect(
                     }
                 }
 
-                let target_incident = BattleIncidentConductOutcomeSuccessEffectDefender {
+                let target_incident = BattleIncidentConductOutcomeSuccessDefender {
                     character_id: target.id,
                     stats_changes: stats_change_incidents,
                     status_effects: status_effect_incidents,
@@ -1263,7 +1325,7 @@ fn conduct_effect(
                         let new_incidents =
                             support_status_effect(&status_effect.status_effects, target);
 
-                        target_incidents.push(BattleIncidentConductOutcomeSuccessEffectDefender {
+                        target_incidents.push(BattleIncidentConductOutcomeSuccessDefender {
                             character_id: target.id,
                             stats_changes: Vec::new(),
                             status_effects: new_incidents,
