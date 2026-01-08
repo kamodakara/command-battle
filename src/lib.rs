@@ -992,8 +992,6 @@ fn conduct_effect(
         }
     }
 
-    let mut target_incidents = Vec::new();
-
     match &conduct.conduct.conduct_type {
         ConductType::Basic(basic) => {
             match basic {
@@ -1077,14 +1075,13 @@ fn conduct_effect(
                         }
                     }
 
-                    let target_incident = BattleIncidentConductOutcomeSuccessDefender {
+                    BattleIncidentConductOutcomeSuccessDefender {
                         character_id: target.id,
                         stats_changes: stats_change_incidents,
                         status_effects: status_effect_incidents,
                         is_defended,
                         is_evaded: false,
-                    };
-                    target_incidents.push(target_incident);
+                    }
                 }
                 ConductTypeBasic::Support(support) => {
                     // 支援行動処理
@@ -1093,15 +1090,15 @@ fn conduct_effect(
                             let new_incidents =
                                 support_status_effect(&status_effect.status_effects, target);
 
-                            target_incidents.push(BattleIncidentConductOutcomeSuccessDefender {
+                            BattleIncidentConductOutcomeSuccessDefender {
                                 character_id: target.id,
                                 stats_changes: Vec::new(),
                                 status_effects: new_incidents,
                                 is_defended: false,
                                 is_evaded: false,
-                            });
+                            }
                         }
-                    };
+                    }
                 }
             }
         }
@@ -1196,14 +1193,13 @@ fn conduct_effect(
                     }
                 }
 
-                let target_incident = BattleIncidentConductOutcomeSuccessDefender {
+                BattleIncidentConductOutcomeSuccessDefender {
                     character_id: target.id,
                     stats_changes: stats_change_incidents,
                     status_effects: Vec::new(),
                     is_defended,
                     is_evaded: false,
-                };
-                target_incidents.push(target_incident);
+                }
             }
             ConductTypeSkillPotency::Support(support) => {
                 // 支援行動処理
@@ -1212,15 +1208,15 @@ fn conduct_effect(
                         let new_incidents =
                             support_status_effect(&status_effect.status_effects, target);
 
-                        target_incidents.push(BattleIncidentConductOutcomeSuccessDefender {
+                        BattleIncidentConductOutcomeSuccessDefender {
                             character_id: target.id,
                             stats_changes: Vec::new(),
                             status_effects: new_incidents,
                             is_defended: false,
                             is_evaded: false,
-                        });
+                        }
                     }
-                };
+                }
             }
         },
         ConductType::Sorcery(sorcery) => match &sorcery {
@@ -1310,35 +1306,30 @@ fn conduct_effect(
                     }
                 }
 
-                let target_incident = BattleIncidentConductOutcomeSuccessDefender {
+                BattleIncidentConductOutcomeSuccessDefender {
                     character_id: target.id,
                     stats_changes: stats_change_incidents,
                     status_effects: status_effect_incidents,
                     is_defended,
                     is_evaded: false,
-                };
-                target_incidents.push(target_incident);
+                }
             }
-            ConductTypeSorcery::Support(support) => {
-                match &support {
-                    ConductTypeSorcerySupport::StatusEffect(status_effect) => {
-                        let new_incidents =
-                            support_status_effect(&status_effect.status_effects, target);
+            ConductTypeSorcery::Support(support) => match &support {
+                ConductTypeSorcerySupport::StatusEffect(status_effect) => {
+                    let new_incidents =
+                        support_status_effect(&status_effect.status_effects, target);
 
-                        target_incidents.push(BattleIncidentConductOutcomeSuccessDefender {
-                            character_id: target.id,
-                            stats_changes: Vec::new(),
-                            status_effects: new_incidents,
-                            is_defended: false,
-                            is_evaded: false,
-                        });
+                    BattleIncidentConductOutcomeSuccessDefender {
+                        character_id: target.id,
+                        stats_changes: Vec::new(),
+                        status_effects: new_incidents,
+                        is_defended: false,
+                        is_evaded: false,
                     }
-                };
-            }
+                }
+            },
         },
     }
-
-    panic!("Not implemented yet");
 }
 
 fn battle() {
