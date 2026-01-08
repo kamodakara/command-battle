@@ -1340,8 +1340,675 @@ fn battle() {
 mod tests {
     use super::*;
 
+    // ヘルパー: ダミーのプレイヤー原本
+    fn dummy_player() -> Rc<Player> {
+        Rc::new(Player {
+            ability: PlayerAbility {
+                vitality: 0,
+                spirit: 0,
+                endurance: 0,
+                agility: 0,
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+            },
+            stats: PlayerStats {
+                hp: 100,
+                sp: 10,
+                stamina: 10,
+                equip_load: 0,
+            },
+            equipment: Equipment {
+                weapon1: None,
+                weapon2: None,
+                armor1: None,
+                armor2: None,
+                armor3: None,
+                armor4: None,
+                armor5: None,
+                armor6: None,
+                armor7: None,
+                armor8: None,
+            },
+        })
+    }
+
+    // ヘルパー: 最低限の防御力(0除算を避けるため全て1)
+    fn min_defense() -> DefensePower {
+        DefensePower {
+            slash: 1,
+            strike: 1,
+            thrust: 1,
+            impact: 1,
+            magic: 1,
+            fire: 1,
+            lightning: 1,
+            chaos: 1,
+        }
+    }
+
+    // ヘルパー: デフォルト攻撃力(全て0)
+    fn zero_attack() -> AttackPower {
+        AttackPower::default()
+    }
+
+    // conduct_effect: 回避(Evasion)で早期リターンすること
     #[test]
-    fn test_battle() {
-        battle();
+    fn test_conduct_effect_evades_with_evasion() {
+        // ターゲット: プレイヤーで回避状態
+        let mut target = BattleCharacter {
+            id: 1,
+            current_ability: BattleAbility {
+                agility: 0,
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+            },
+            current_stats: BattleStats {
+                max_hp: 100,
+                max_sp: 10,
+                max_stamina: 10,
+                hp_damage: 0,
+                sp_damage: 0,
+                stamina_damage: 0,
+            },
+            defense_power: min_defense(),
+            status_effects: vec![BattleStatusEffect {
+                potency: StatusEffectPotency::Evasion,
+                duration: BattleStatusEffectDuration::Permanent,
+            }],
+            character_type: BattleCharacterType::Player(BattlePlayer {
+                original: dummy_player(),
+            }),
+        };
+
+        // 行動: 基本攻撃(近接)で十分
+        let conduct = BattleConduct {
+            actor_id: 100,
+            target_id: 1,
+            conduct: Conduct {
+                name: "Basic Attack".to_string(),
+                sp_cost: 0,
+                stamina_cost: 0,
+                perks: vec![ConductPerk::Melee],
+                requirement: ConductRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                conduct_type: ConductType::Basic(ConductTypeBasic::Attack(
+                    ConductTypeBasicAttack {
+                        attack_power: zero_attack(),
+                        break_power: 0,
+                    },
+                )),
+            },
+            weapon: None,
+        };
+
+        let result = conduct_effect(&conduct, &mut target);
+
+        assert!(result.is_evaded);
+        assert!(!result.is_defended);
+        assert!(result.stats_changes.is_empty());
+        assert!(result.status_effects.is_empty());
+    }
+
+    // conduct_effect: 非回避ルート（基本攻撃・攻撃力0）は回避せず、HPダメージ0の適用結果を返す
+    #[test]
+    fn test_conduct_effect_basic_attack_zero_damage() {
+        // ターゲット: プレイヤー(状態変化なし)
+        let mut target = BattleCharacter {
+            id: 2,
+            current_ability: BattleAbility {
+                agility: 0,
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+            },
+            current_stats: BattleStats {
+                max_hp: 100,
+                max_sp: 10,
+                max_stamina: 10,
+                hp_damage: 0,
+                sp_damage: 0,
+                stamina_damage: 0,
+            },
+            defense_power: min_defense(),
+            status_effects: vec![],
+            character_type: BattleCharacterType::Player(BattlePlayer {
+                original: dummy_player(),
+            }),
+        };
+
+        // 行動: 基本攻撃(近接)
+        let conduct = BattleConduct {
+            actor_id: 100,
+            target_id: 2,
+            conduct: Conduct {
+                name: "Basic Attack".to_string(),
+                sp_cost: 0,
+                stamina_cost: 0,
+                perks: vec![ConductPerk::Melee],
+                requirement: ConductRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                conduct_type: ConductType::Basic(ConductTypeBasic::Attack(
+                    ConductTypeBasicAttack {
+                        attack_power: zero_attack(),
+                        break_power: 0,
+                    },
+                )),
+            },
+            weapon: None,
+        };
+
+        let result = conduct_effect(&conduct, &mut target);
+
+        // 回避・防御なし
+        assert!(!result.is_evaded);
+        assert!(!result.is_defended);
+        // 状態変化なし
+        assert!(result.status_effects.is_empty());
+        // HPダメージ0が記録されていること
+        assert_eq!(result.stats_changes.len(), 1);
+        match &result.stats_changes[0] {
+            BattleIncidentStats::DamageHp(d) => {
+                assert_eq!(d.damage, 0);
+                assert_eq!(d.before, 0);
+                assert_eq!(d.after, 0);
+            }
+            _ => panic!("expected DamageHp incident"),
+        }
+        // 実際のターゲットのHPダメージも0のまま
+        assert_eq!(target.current_stats.hp_damage, 0);
+    }
+
+    // 基本攻撃でHPダメージが適用されること
+    #[test]
+    fn test_conduct_effect_basic_attack_applies_damage() {
+        let mut target = BattleCharacter {
+            id: 10,
+            current_ability: BattleAbility {
+                agility: 0,
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+            },
+            current_stats: BattleStats {
+                max_hp: 100,
+                max_sp: 10,
+                max_stamina: 10,
+                hp_damage: 0,
+                sp_damage: 0,
+                stamina_damage: 0,
+            },
+            defense_power: min_defense(),
+            status_effects: vec![],
+            character_type: BattleCharacterType::Player(BattlePlayer {
+                original: dummy_player(),
+            }),
+        };
+
+        let mut atk = zero_attack();
+        atk.slash = 10; // 期待ダメージ10
+
+        let conduct = BattleConduct {
+            actor_id: 100,
+            target_id: 10,
+            conduct: Conduct {
+                name: "Basic Attack".to_string(),
+                sp_cost: 0,
+                stamina_cost: 0,
+                perks: vec![ConductPerk::Melee],
+                requirement: ConductRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                conduct_type: ConductType::Basic(ConductTypeBasic::Attack(
+                    ConductTypeBasicAttack { attack_power: atk, break_power: 0 },
+                )),
+            },
+            weapon: None,
+        };
+
+        let result = conduct_effect(&conduct, &mut target);
+
+        assert!(!result.is_evaded);
+        assert!(!result.is_defended);
+        assert!(matches!(result.stats_changes.get(0), Some(BattleIncidentStats::DamageHp(_))));
+        if let BattleIncidentStats::DamageHp(d) = &result.stats_changes[0] {
+            assert_eq!(d.damage, 10);
+            assert_eq!(d.before, 0);
+            assert_eq!(d.after, 10);
+        } else {
+            panic!("expected DamageHp incident");
+        }
+        assert_eq!(target.current_stats.hp_damage, 10);
+    }
+
+    // 技攻撃でHPダメージが適用されること
+    #[test]
+    fn test_conduct_effect_skill_attack_applies_damage() {
+        let mut target = BattleCharacter {
+            id: 11,
+            current_ability: BattleAbility {
+                agility: 0,
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+            },
+            current_stats: BattleStats {
+                max_hp: 100,
+                max_sp: 10,
+                max_stamina: 10,
+                hp_damage: 0,
+                sp_damage: 0,
+                stamina_damage: 0,
+            },
+            defense_power: min_defense(),
+            status_effects: vec![],
+            character_type: BattleCharacterType::Player(BattlePlayer {
+                original: dummy_player(),
+            }),
+        };
+
+        let mut skill_ap = zero_attack();
+        skill_ap.slash = 12; // スキル基礎攻撃力
+
+        // 実装ロジック: 攻撃力 = 武器攻撃 + (スキル攻撃 * スケーリング)
+        // 武器を持たせ、スキル側のスケーリングも1.0にして合算を検証
+        let mut scaling = AttackPowerScaling::default();
+        scaling.slash = 1.0;
+
+        // ダミー武器（攻撃力 5 を付与）
+        let weapon = BattleWeapon {
+            original: Rc::new(Weapon {
+                kind: WeaponKind::StraightSword,
+                weight: 1,
+                ability_requirement: WeaponAbilityRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                attack_power: WeaponAttackPower {
+                    base: AttackPower::default(),
+                    ability_scaling: WeaponAttackPowerAbilityScaling {
+                        slash: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        strike: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        thrust: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        impact: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        magic: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        fire: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        lightning: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        chaos: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                    },
+                },
+                sorcery_power: WeaponSorceryPower { base: 1, scaling: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 } },
+                break_power: WeaponBreakPower { base_power: 0, scaling: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 } },
+                guard: WeaponGuard { cut_rate: GuardCutRate { slash: 1.0, strike: 1.0, thrust: 1.0, impact: 1.0, magic: 1.0, fire: 1.0, lightning: 1.0, chaos: 1.0 }, guard_strength: 0 },
+            }),
+            attack_power: AttackPower { slash: 5, strike: 0, thrust: 0, impact: 0, magic: 0, fire: 0, lightning: 0, chaos: 0 },
+            sorcery_power: 1.0,
+            break_power: 0,
+        };
+
+        let conduct = BattleConduct {
+            actor_id: 100,
+            target_id: 11,
+            conduct: Conduct {
+                name: "Skill Attack".to_string(),
+                sp_cost: 0,
+                stamina_cost: 0,
+                perks: vec![ConductPerk::Melee],
+                requirement: ConductRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                conduct_type: ConductType::Skill(ConductTypeSkill {
+                    usable_weapon_kinds: vec![],
+                    potency: ConductTypeSkillPotency::Attack(ConductTypeSkillPotencyAttack {
+                        attack_power: skill_ap,
+                        attack_power_scaling: scaling,
+                        break_power: 0,
+                        break_power_scaling: 0.0,
+                    }),
+                }),
+            },
+            weapon: Some(weapon),
+        };
+
+        let result = conduct_effect(&conduct, &mut target);
+
+        assert!(!result.is_evaded);
+        assert!(!result.is_defended);
+        if let BattleIncidentStats::DamageHp(d) = &result.stats_changes[0] {
+            // 期待値: weapon(5) + skill(12*1.0) = 17
+            assert_eq!(d.damage, 17);
+            assert_eq!(d.before, 0);
+            assert_eq!(d.after, 17);
+        } else {
+            panic!("expected DamageHp incident");
+        }
+        assert_eq!(target.current_stats.hp_damage, 17);
+    }
+
+    // 術攻撃でHPダメージが適用されること
+    #[test]
+    fn test_conduct_effect_sorcery_attack_applies_damage() {
+        let mut target = BattleCharacter {
+            id: 12,
+            current_ability: BattleAbility {
+                agility: 0,
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+            },
+            current_stats: BattleStats {
+                max_hp: 100,
+                max_sp: 10,
+                max_stamina: 10,
+                hp_damage: 0,
+                sp_damage: 0,
+                stamina_damage: 0,
+            },
+            defense_power: min_defense(),
+            status_effects: vec![],
+            character_type: BattleCharacterType::Player(BattlePlayer {
+                original: dummy_player(),
+            }),
+        };
+
+        let mut sorc_ap = zero_attack();
+        sorc_ap.slash = 8; // 期待ダメージ8（weaponなし→術力1.0）
+
+        let conduct = BattleConduct {
+            actor_id: 100,
+            target_id: 12,
+            conduct: Conduct {
+                name: "Sorcery Attack".to_string(),
+                sp_cost: 0,
+                stamina_cost: 0,
+                perks: vec![ConductPerk::Melee],
+                requirement: ConductRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                conduct_type: ConductType::Sorcery(ConductTypeSorcery::Attack(
+                    ConductTypeSorceryAttack { attack_power: sorc_ap, break_power: 0 },
+                )),
+            },
+            weapon: None, // weaponなし→術力1.0
+        };
+
+        let result = conduct_effect(&conduct, &mut target);
+
+        assert!(!result.is_evaded);
+        assert!(!result.is_defended);
+        if let BattleIncidentStats::DamageHp(d) = &result.stats_changes[0] {
+            assert_eq!(d.damage, 8);
+            assert_eq!(d.before, 0);
+            assert_eq!(d.after, 8);
+        } else {
+            panic!("expected DamageHp incident");
+        }
+        assert_eq!(target.current_stats.hp_damage, 8);
+    }
+
+    // 技: スケーリング0.0なら武器攻撃力のみが寄与すること
+    #[test]
+    fn test_conduct_effect_skill_attack_with_weapon_zero_scaling() {
+        let mut target = BattleCharacter {
+            id: 13,
+            current_ability: BattleAbility {
+                agility: 0,
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+            },
+            current_stats: BattleStats {
+                max_hp: 100,
+                max_sp: 10,
+                max_stamina: 10,
+                hp_damage: 0,
+                sp_damage: 0,
+                stamina_damage: 0,
+            },
+            defense_power: min_defense(),
+            status_effects: vec![],
+            character_type: BattleCharacterType::Player(BattlePlayer {
+                original: dummy_player(),
+            }),
+        };
+
+        // skill基礎攻撃力（高めに設定するが、スケーリング0.0なので無視される）
+        let mut skill_ap = zero_attack();
+        skill_ap.slash = 20;
+
+        let scaling = AttackPowerScaling::default(); // 全属性0.0
+
+        // ダミー武器（攻撃力 7 を付与）
+        let weapon = BattleWeapon {
+            original: Rc::new(Weapon {
+                kind: WeaponKind::StraightSword,
+                weight: 1,
+                ability_requirement: WeaponAbilityRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                attack_power: WeaponAttackPower {
+                    base: AttackPower::default(),
+                    ability_scaling: WeaponAttackPowerAbilityScaling {
+                        slash: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        strike: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        thrust: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        impact: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        magic: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        fire: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        lightning: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        chaos: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                    },
+                },
+                sorcery_power: WeaponSorceryPower { base: 1, scaling: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 } },
+                break_power: WeaponBreakPower { base_power: 0, scaling: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 } },
+                guard: WeaponGuard { cut_rate: GuardCutRate { slash: 1.0, strike: 1.0, thrust: 1.0, impact: 1.0, magic: 1.0, fire: 1.0, lightning: 1.0, chaos: 1.0 }, guard_strength: 0 },
+            }),
+            attack_power: AttackPower { slash: 7, strike: 0, thrust: 0, impact: 0, magic: 0, fire: 0, lightning: 0, chaos: 0 },
+            sorcery_power: 1.0,
+            break_power: 0,
+        };
+
+        let conduct = BattleConduct {
+            actor_id: 100,
+            target_id: 13,
+            conduct: Conduct {
+                name: "Skill Attack Zero Scaling".to_string(),
+                sp_cost: 0,
+                stamina_cost: 0,
+                perks: vec![ConductPerk::Melee],
+                requirement: ConductRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                conduct_type: ConductType::Skill(ConductTypeSkill {
+                    usable_weapon_kinds: vec![],
+                    potency: ConductTypeSkillPotency::Attack(ConductTypeSkillPotencyAttack {
+                        attack_power: skill_ap,
+                        attack_power_scaling: scaling, // 0.0
+                        break_power: 0,
+                        break_power_scaling: 0.0,
+                    }),
+                }),
+            },
+            weapon: Some(weapon),
+        };
+
+        let result = conduct_effect(&conduct, &mut target);
+        if let BattleIncidentStats::DamageHp(d) = &result.stats_changes[0] {
+            assert_eq!(d.damage, 7); // 武器のみ寄与
+            assert_eq!(d.before, 0);
+            assert_eq!(d.after, 7);
+        } else {
+            panic!("expected DamageHp incident");
+        }
+        assert_eq!(target.current_stats.hp_damage, 7);
+    }
+
+    // 技: 複数属性の合算が正しく行われること
+    #[test]
+    fn test_conduct_effect_skill_attack_multi_attribute_sum() {
+        let mut target = BattleCharacter {
+            id: 14,
+            current_ability: BattleAbility {
+                agility: 0,
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+            },
+            current_stats: BattleStats {
+                max_hp: 100,
+                max_sp: 10,
+                max_stamina: 10,
+                hp_damage: 0,
+                sp_damage: 0,
+                stamina_damage: 0,
+            },
+            defense_power: min_defense(),
+            status_effects: vec![],
+            character_type: BattleCharacterType::Player(BattlePlayer {
+                original: dummy_player(),
+            }),
+        };
+
+        // skill: slash=10, strike=6
+        let mut skill_ap = zero_attack();
+        skill_ap.slash = 10;
+        skill_ap.strike = 6;
+
+        let mut scaling = AttackPowerScaling::default();
+        scaling.slash = 1.0;
+        scaling.strike = 1.0;
+
+        // weapon: slash=5, strike=4
+        let weapon = BattleWeapon {
+            original: Rc::new(Weapon {
+                kind: WeaponKind::StraightSword,
+                weight: 1,
+                ability_requirement: WeaponAbilityRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                attack_power: WeaponAttackPower {
+                    base: AttackPower::default(),
+                    ability_scaling: WeaponAttackPowerAbilityScaling {
+                        slash: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        strike: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        thrust: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        impact: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        magic: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        fire: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        lightning: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                        chaos: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 },
+                    },
+                },
+                sorcery_power: WeaponSorceryPower { base: 1, scaling: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 } },
+                break_power: WeaponBreakPower { base_power: 0, scaling: AbilityScaling { strength: 0.0, dexterity: 0.0, intelligence: 0.0, faith: 0.0, arcane: 0.0, agility: 0.0 } },
+                guard: WeaponGuard { cut_rate: GuardCutRate { slash: 1.0, strike: 1.0, thrust: 1.0, impact: 1.0, magic: 1.0, fire: 1.0, lightning: 1.0, chaos: 1.0 }, guard_strength: 0 },
+            }),
+            attack_power: AttackPower { slash: 5, strike: 4, thrust: 0, impact: 0, magic: 0, fire: 0, lightning: 0, chaos: 0 },
+            sorcery_power: 1.0,
+            break_power: 0,
+        };
+
+        let conduct = BattleConduct {
+            actor_id: 100,
+            target_id: 14,
+            conduct: Conduct {
+                name: "Skill Attack Multi Attribute".to_string(),
+                sp_cost: 0,
+                stamina_cost: 0,
+                perks: vec![ConductPerk::Melee],
+                requirement: ConductRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                conduct_type: ConductType::Skill(ConductTypeSkill {
+                    usable_weapon_kinds: vec![],
+                    potency: ConductTypeSkillPotency::Attack(ConductTypeSkillPotencyAttack {
+                        attack_power: skill_ap,
+                        attack_power_scaling: scaling, // 1.0 on slash & strike
+                        break_power: 0,
+                        break_power_scaling: 0.0,
+                    }),
+                }),
+            },
+            weapon: Some(weapon),
+        };
+
+        let result = conduct_effect(&conduct, &mut target);
+        if let BattleIncidentStats::DamageHp(d) = &result.stats_changes[0] {
+            // 期待値: (slash 5 + 10) + (strike 4 + 6) = 25
+            assert_eq!(d.damage, 25);
+            assert_eq!(d.before, 0);
+            assert_eq!(d.after, 25);
+        } else {
+            panic!("expected DamageHp incident");
+        }
+        assert_eq!(target.current_stats.hp_damage, 25);
     }
 }
