@@ -1,12 +1,16 @@
 use super::*;
 use std::rc::Rc;
 
+pub struct BattleExecuteConductRequest {
+    pub conduct: BattleConduct,
+}
+
 // 行動実行
-pub fn execute_conduct(battle: &mut Battle, conduct: BattleConduct) -> BattleIncident {
-    enum PlayerOrEnemy<'a> {
-        Player(&'a BattlePlayer),
-        Enemy(&'a BattleEnemy),
-    }
+pub fn execute_conduct(
+    battle: &mut Battle,
+    request: BattleExecuteConductRequest,
+) -> BattleIncident {
+    let conduct = request.conduct;
 
     // 行動者の決定
     let mut attacker = if let Some(player) = battle

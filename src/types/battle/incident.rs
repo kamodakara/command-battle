@@ -1,12 +1,14 @@
 use super::*;
 
 // 戦闘出来事
+// TODO: これいらないかも
 pub enum BattleIncident {
-    Conduct(BattleIncidentConduct),
+    Conduct(BattleIncidentConduct),         // 行動
+    AutoTrigger(BattleIncidentAutoTrigger), // 自動発動
 }
 pub struct BattleIncidentConduct {
-    pub attacker_id: u32,
-    pub defender_id: u32,
+    pub attacker_id: BattleCharacterId,
+    pub defender_id: BattleCharacterId,
     pub conduct: BattleConduct,
     // 成否
     pub outcome: BattleIncidentConductOutcome,
@@ -26,11 +28,11 @@ pub struct BattleIncidentConductOutcomeSuccess {
 }
 
 pub struct BattleIncidentConductOutcomeSuccessAttacker {
-    pub character_id: u32,
+    pub character_id: BattleCharacterId,
     pub stats_changes: Vec<BattleIncidentStats>,
 }
 pub struct BattleIncidentConductOutcomeSuccessDefender {
-    pub character_id: u32,
+    pub character_id: BattleCharacterId,
     pub stats_changes: Vec<BattleIncidentStats>,
     pub status_effects: Vec<BattleIncidentStatusEffect>, // 状態変化
     pub is_evaded: bool,                                 // 回避したか
@@ -43,6 +45,10 @@ pub enum BattleIncidentStats {
     DamageSp(BattleIncidentDamageSp),
     DamageStamina(BattleIncidentDamageStamina),
     DamageBreak(BattleIncidentDamageBreak),
+    RecoverHp(BattleIncidentRecoverHp),
+    RecoverSp(BattleIncidentRecoverSp),
+    RecoverStamina(BattleIncidentRecoverStamina),
+    RecoverBreak(BattleIncidentRecoverBreak),
 }
 
 // HPダメージ
@@ -51,21 +57,46 @@ pub struct BattleIncidentDamageHp {
     pub before: u32,
     pub after: u32,
 }
-// SP減少
+// SPダメージ
 pub struct BattleIncidentDamageSp {
     pub damage: u32,
     pub before: u32,
     pub after: u32,
 }
-// スタミナ減少
+// スタミナダメージ
 pub struct BattleIncidentDamageStamina {
     pub damage: u32,
     pub before: u32,
     pub after: u32,
 }
-// ブレイク減少
+// ブレイクダメージ
 pub struct BattleIncidentDamageBreak {
     pub damage: u32,
+    pub before: u32,
+    pub after: u32,
+}
+
+// HP回復
+pub struct BattleIncidentRecoverHp {
+    pub recover: u32,
+    pub before: u32,
+    pub after: u32,
+}
+// SP回復
+pub struct BattleIncidentRecoverSp {
+    pub recover: u32,
+    pub before: u32,
+    pub after: u32,
+}
+// スタミナ回復
+pub struct BattleIncidentRecoverStamina {
+    pub recover: u32,
+    pub before: u32,
+    pub after: u32,
+}
+// ブレイク回復
+pub struct BattleIncidentRecoverBreak {
+    pub recover: u32,
     pub before: u32,
     pub after: u32,
 }
@@ -97,4 +128,10 @@ pub struct BattleIncidentConductOutcomeFailureReason {
     pub insufficient_stamina: bool, // スタミナ不足
     pub insufficient_ability: bool, // 能力不足
     pub insufficient_sp: bool,      // SP不足
+}
+
+pub struct BattleIncidentAutoTrigger {
+    pub character_id: BattleCharacterId,
+    pub stats_changes: Vec<BattleIncidentStats>,
+    pub status_effects: Vec<BattleIncidentStatusEffect>, // 状態変化
 }

@@ -30,10 +30,12 @@ pub struct BattleStats {
 }
 pub struct BattleEnemyOnlyStats {
     pub max_break: u32,      // ブレイク最大値
+    pub max_break_turn: u32, // ブレイク最大ターン
     pub break_recovery: u32, // ブレイク回復量
-    pub break_max_turn: u32, // ブレイク最大ターン
-    pub break_damage: u32,   // 受けたブレイクダメージ
-    pub break_turns: u32,    // 現在のブレイク経過ターン
+
+    pub break_damage: u32,            // 受けたブレイクダメージ
+    pub break_not_damaged_turns: u32, // ブレイクダメージを受けてないターン数
+    pub break_turns: u32,             // 現在のブレイク経過ターン
 }
 
 // 戦闘中の状態変化

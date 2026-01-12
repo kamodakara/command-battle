@@ -58,16 +58,18 @@ pub struct BattleCharacterBase {
     pub status_effects: Vec<BattleStatusEffect>,
 }
 
+pub type BattleCharacterId = u32;
+
 // バトル中のプレイヤーの状態
 pub struct BattlePlayer {
-    pub character_id: u32,
+    pub character_id: BattleCharacterId,
     pub original: Rc<Player>,
 
     pub base: BattleCharacterBase,
 }
 // バトル中の敵の状態
 pub struct BattleEnemy {
-    pub character_id: u32,
+    pub character_id: BattleCharacterId,
     pub original: Rc<Enemy>,
 
     pub base: BattleCharacterBase,
