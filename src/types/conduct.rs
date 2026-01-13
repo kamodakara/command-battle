@@ -9,7 +9,8 @@ pub struct Conduct {
     pub stamina_cost: u32,               // スタミナ消費
     pub perks: Vec<ConductPerk>,         // 特性
     pub requirement: ConductRequirement, // 必要能力
-    pub conduct_type: ConductType,       // 戦闘行動内容
+    // pub target: ConductTarget,           // 攻撃対象
+    pub conduct_type: ConductType, // 戦闘行動内容
 }
 
 // 戦闘行動特性
@@ -21,6 +22,12 @@ pub enum ConductPerk {
     Ranged,
     // 足元
     AtFeet,
+}
+
+pub enum ConductTarget {
+    Single,     // 単体
+    All,        // 全体
+    SelfTarget, // 自身
 }
 
 // 戦闘行動必要能力
@@ -49,10 +56,28 @@ pub struct ConductTypeBasicAttack {
 }
 pub enum ConductTypeBasicSupport {
     StatusEffect(SuportStatusEffect), // 状態変化付与
+    Recover(SupportRecover),          // HP回復量
 }
 
 pub struct SuportStatusEffect {
     pub status_effects: Vec<StatusEffect>,
+}
+pub struct SupportRecover {
+    pub potencies: Vec<SupportRecoverPotency>, // 回復効果
+}
+pub enum SupportRecoverPotency {
+    Hp(SupportRecoverPotencyHp),           // HP回復量
+    Sp(SupportRecoverPotencySp),           // SP回復量
+    Stamina(SupportRecoverPotencyStamina), // スタミナ回復量
+}
+pub struct SupportRecoverPotencyHp {
+    pub hp_recover: u32, // HP回復量
+}
+pub struct SupportRecoverPotencySp {
+    pub sp_recover: u32, // SP回復量
+}
+pub struct SupportRecoverPotencyStamina {
+    pub stamina_recover: u32, // スタミナ回復量
 }
 
 // 戦闘行動技
@@ -73,6 +98,7 @@ pub struct ConductTypeSkillPotencyAttack {
 }
 pub enum ConductTypeSkillPotencySupport {
     StatusEffect(SuportStatusEffect), // 状態変化付与
+    Recover(SupportRecover),          // HP回復量
 }
 
 // 術
@@ -86,4 +112,5 @@ pub struct ConductTypeSorceryAttack {
 }
 pub enum ConductTypeSorcerySupport {
     StatusEffect(SuportStatusEffect), // 状態変化付与
+    Recover(SupportRecover),          // HP回復量
 }

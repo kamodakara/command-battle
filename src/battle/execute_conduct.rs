@@ -201,6 +201,62 @@ fn support_status_effect(
     status_effect_incidents
 }
 
+fn support_recover(
+    recover: &SupportRecover,
+    target: &mut BattleCharacter,
+) -> Vec<BattleIncidentStats> {
+    // 支援回復処理
+    let mut stats_change_incidents = Vec::new();
+    for potency in &recover.potencies {
+        match potency {
+            SupportRecoverPotency::Hp(hp_recover) => {
+                let current_hp_damage = target.current_stats().hp_damage;
+                let next_hp_damage = current_hp_damage.saturating_sub(hp_recover.hp_recover);
+                target.current_stats_mut().hp_damage = next_hp_damage;
+                // HP回復のインシデント
+                stats_change_incidents.push(BattleIncidentStats::RecoverHp(
+                    BattleIncidentRecoverHp {
+                        recover: hp_recover.hp_recover,
+                        before: current_hp_damage,
+                        after: next_hp_damage,
+                    },
+                ));
+            }
+            SupportRecoverPotency::Sp(sp_recover) => {
+                let current_sp_damage = target.current_stats().sp_damage;
+                let next_sp_damage = current_sp_damage.saturating_sub(sp_recover.sp_recover);
+                target.current_stats_mut().sp_damage = next_sp_damage;
+                // SP回復のインシデント
+                stats_change_incidents.push(BattleIncidentStats::RecoverSp(
+                    BattleIncidentRecoverSp {
+                        recover: sp_recover.sp_recover,
+                        before: current_sp_damage,
+                        after: next_sp_damage,
+                    },
+                ));
+            }
+            SupportRecoverPotency::Stamina(stamina_recover) => {
+                // スタミナ回復処理はプレイヤーキャラクターのみ
+                if let BattleCharacter::Player(player) = target {
+                    let current_stamina_damage = player.base.current_stats.stamina_damage;
+                    let next_stamina_damage =
+                        current_stamina_damage.saturating_sub(stamina_recover.stamina_recover);
+                    player.base.current_stats.stamina_damage = next_stamina_damage;
+                    // スタミナ回復のインシデント
+                    stats_change_incidents.push(BattleIncidentStats::RecoverStamina(
+                        BattleIncidentRecoverStamina {
+                            recover: stamina_recover.stamina_recover,
+                            before: current_stamina_damage,
+                            after: next_stamina_damage,
+                        },
+                    ));
+                }
+            }
+        }
+    }
+    stats_change_incidents
+}
+
 fn conduct_effect(
     conduct: &BattleConduct,
     target: &mut BattleCharacter,
@@ -369,6 +425,17 @@ fn conduct_effect(
                                 is_evaded: false,
                             }
                         }
+                        ConductTypeBasicSupport::Recover(recover) => {
+                            let stats_change_incidents = support_recover(recover, target);
+
+                            BattleIncidentConductOutcomeSuccessDefender {
+                                character_id: target.character_id(),
+                                stats_changes: stats_change_incidents,
+                                status_effects: Vec::new(),
+                                is_defended: false,
+                                is_evaded: false,
+                            }
+                        }
                     }
                 }
             }
@@ -487,6 +554,17 @@ fn conduct_effect(
                             is_evaded: false,
                         }
                     }
+                    ConductTypeSkillPotencySupport::Recover(recover) => {
+                        let stats_change_incidents = support_recover(recover, target);
+
+                        BattleIncidentConductOutcomeSuccessDefender {
+                            character_id: target.character_id(),
+                            stats_changes: stats_change_incidents,
+                            status_effects: Vec::new(),
+                            is_defended: false,
+                            is_evaded: false,
+                        }
+                    }
                 }
             }
         },
@@ -594,6 +672,17 @@ fn conduct_effect(
                         character_id: target.character_id(),
                         stats_changes: Vec::new(),
                         status_effects: new_incidents,
+                        is_defended: false,
+                        is_evaded: false,
+                    }
+                }
+                ConductTypeSorcerySupport::Recover(recover) => {
+                    let stats_change_incidents = support_recover(recover, target);
+
+                    BattleIncidentConductOutcomeSuccessDefender {
+                        character_id: target.character_id(),
+                        stats_changes: stats_change_incidents,
+                        status_effects: Vec::new(),
                         is_defended: false,
                         is_evaded: false,
                     }
