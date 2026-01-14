@@ -59,6 +59,152 @@ struct ConsecutiveBatch {
     executed: usize, // このバッチで既に実行した数
 }
 
+// プレイヤーの行動定義（リソース）
+#[derive(Resource)]
+struct PlayerConducts {
+    attack: Arc<Conduct>,
+    skill: Arc<Conduct>,
+    heal: Arc<Conduct>,
+    defend: Arc<Conduct>,
+    wait: Arc<Conduct>,
+}
+
+fn create_default_player_conducts() -> PlayerConducts {
+    PlayerConducts {
+        attack: Arc::new(Conduct {
+            name: "攻撃".to_string(),
+            sp_cost: 0,
+            stamina_cost: 5,
+            perks: vec![ConductPerk::Melee],
+            requirement: ConductRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            conduct_type: ConductType::Basic(ConductTypeBasic::Attack(ConductTypeBasicAttack {
+                attack_power: AttackPower {
+                    slash: 25,
+                    strike: 0,
+                    thrust: 0,
+                    impact: 0,
+                    magic: 0,
+                    fire: 0,
+                    lightning: 0,
+                    chaos: 0,
+                },
+                break_power: 10,
+            })),
+        }),
+        skill: Arc::new(Conduct {
+            name: "強攻撃".to_string(),
+            sp_cost: 0,
+            stamina_cost: 25,
+            perks: vec![ConductPerk::Melee],
+            requirement: ConductRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            conduct_type: ConductType::Basic(ConductTypeBasic::Attack(ConductTypeBasicAttack {
+                attack_power: AttackPower {
+                    slash: 40,
+                    strike: 0,
+                    thrust: 0,
+                    impact: 0,
+                    magic: 0,
+                    fire: 0,
+                    lightning: 0,
+                    chaos: 0,
+                },
+                break_power: 20,
+            })),
+        }),
+        heal: Arc::new(Conduct {
+            name: "回復".to_string(),
+            sp_cost: 0,
+            stamina_cost: 25,
+            perks: vec![],
+            requirement: ConductRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            conduct_type: ConductType::Basic(ConductTypeBasic::Support(
+                ConductTypeBasicSupport::Recover(SupportRecover {
+                    potencies: vec![SupportRecoverPotency::Hp(SupportRecoverPotencyHp {
+                        hp_recover: 50,
+                    })],
+                }),
+            )),
+        }),
+        defend: Arc::new(Conduct {
+            name: "防御".to_string(),
+            sp_cost: 0,
+            stamina_cost: 5,
+            perks: vec![],
+            requirement: ConductRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            conduct_type: ConductType::Basic(ConductTypeBasic::Support(
+                ConductTypeBasicSupport::StatusEffect(SuportStatusEffect {
+                    status_effects: vec![StatusEffect {
+                        potency: StatusEffectPotency::Resistance(StatusEffectResistance {
+                            cut_rate: GuardCutRate {
+                                slash: 0.5,
+                                strike: 0.5,
+                                thrust: 0.5,
+                                impact: 0.5,
+                                magic: 0.5,
+                                fire: 0.5,
+                                lightning: 0.5,
+                                chaos: 0.5,
+                            },
+                        }),
+                        duration: StatusEffectDuration::Turn(StatusEffectDurationTurn { turns: 1 }),
+                    }],
+                }),
+            )),
+        }),
+        wait: Arc::new(Conduct {
+            name: "待機".to_string(),
+            sp_cost: 0,
+            stamina_cost: 0,
+            perks: vec![],
+            requirement: ConductRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            conduct_type: ConductType::Basic(ConductTypeBasic::Support(
+                ConductTypeBasicSupport::Recover(SupportRecover {
+                    potencies: vec![SupportRecoverPotency::Stamina(
+                        SupportRecoverPotencyStamina {
+                            stamina_recover: 60,
+                        },
+                    )],
+                }),
+            )),
+        }),
+    }
+}
+
 // 敵の行動種別（事前決定）
 #[derive(Clone, Copy)]
 enum EnemyAction {
@@ -449,10 +595,6 @@ enum CommandKind {
     Heal,
     Defend,
     Wait,
-    EnhanceAttack,
-    EnhanceSkill,
-    EnhanceHeal,
-    EnhanceDefend,
 }
 
 // 予約コマンドのキュー
@@ -587,6 +729,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(EnemyPlannedAction(first_action));
     commands.insert_resource(ConsecutiveBatch::default());
     commands.insert_resource(EnemyDamagePopup::default());
+    // プレイヤー行動定義をリソースとして挿入
+    commands.insert_resource(create_default_player_conducts());
     // Battleモジュールの戦闘データを初期化
     commands.insert_resource(BattleResource(create_mock_battle()));
 
@@ -1027,6 +1171,7 @@ fn player_input_system(
     mut planned: ResMut<EnemyPlannedAction>,
     mut batch: ResMut<ConsecutiveBatch>,
     mut enemy_damage_popup: ResMut<EnemyDamagePopup>,
+    player_conducts: Res<PlayerConducts>,
     // Battleモジュール
     mut battle_resource: ResMut<BattleResource>,
 ) {
@@ -1059,10 +1204,6 @@ fn player_input_system(
                         CommandKind::Heal => "回復",
                         CommandKind::Defend => "防御",
                         CommandKind::Wait => "待機",
-                        CommandKind::EnhanceAttack => "攻撃強化",
-                        CommandKind::EnhanceSkill => "強攻撃強化",
-                        CommandKind::EnhanceHeal => "回復強化",
-                        CommandKind::EnhanceDefend => "防御強化",
                     };
                     log.0
                         .push(format!("ターン {} プレイヤーは{}を選択", turn.0, name));
@@ -1074,198 +1215,121 @@ fn player_input_system(
                     let player_id = battle.players.first().map(|p| p.character_id).unwrap_or(1);
                     let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
                     let player_conduct = match cmd {
-                        CommandKind::Attack => BattleConduct {
-                            actor_character_id: player_id,
-                            target_character_id: enemy_id,
-                            conduct: Conduct {
-                                name: "攻撃".to_string(),
-                                sp_cost: 0,
-                                stamina_cost: 5,
-                                perks: vec![ConductPerk::Melee],
-                                requirement: ConductRequirement {
-                                    strength: 0,
-                                    dexterity: 0,
-                                    intelligence: 0,
-                                    faith: 0,
-                                    arcane: 0,
-                                    agility: 0,
-                                },
-                                conduct_type: ConductType::Basic(ConductTypeBasic::Attack(
-                                    ConductTypeBasicAttack {
-                                        attack_power: AttackPower {
-                                            slash: 25,
-                                            strike: 0,
-                                            thrust: 0,
-                                            impact: 0,
-                                            magic: 0,
-                                            fire: 0,
-                                            lightning: 0,
-                                            chaos: 0,
-                                        },
-                                        break_power: 10,
+                        CommandKind::Attack => {
+                            let c = player_conducts.attack.as_ref();
+                            BattleConduct {
+                                actor_character_id: player_id,
+                                target_character_id: enemy_id,
+                                conduct: Conduct {
+                                    name: c.name.clone(),
+                                    sp_cost: c.sp_cost,
+                                    stamina_cost: c.stamina_cost,
+                                    perks: c.perks.clone(),
+                                    requirement: ConductRequirement {
+                                        strength: c.requirement.strength,
+                                        dexterity: c.requirement.dexterity,
+                                        intelligence: c.requirement.intelligence,
+                                        faith: c.requirement.faith,
+                                        arcane: c.requirement.arcane,
+                                        agility: c.requirement.agility,
                                     },
-                                )),
-                            },
-                            weapon: None,
-                        },
-                        CommandKind::Skill => BattleConduct {
-                            actor_character_id: player_id,
-                            target_character_id: enemy_id,
-                            conduct: Conduct {
-                                name: "強攻撃".to_string(),
-                                sp_cost: 0,
-                                stamina_cost: 25,
-                                perks: vec![ConductPerk::Melee],
-                                requirement: ConductRequirement {
-                                    strength: 0,
-                                    dexterity: 0,
-                                    intelligence: 0,
-                                    faith: 0,
-                                    arcane: 0,
-                                    agility: 0,
+                                    conduct_type: c.conduct_type.clone(),
                                 },
-                                conduct_type: ConductType::Basic(ConductTypeBasic::Attack(
-                                    ConductTypeBasicAttack {
-                                        attack_power: AttackPower {
-                                            slash: 40,
-                                            strike: 0,
-                                            thrust: 0,
-                                            impact: 0,
-                                            magic: 0,
-                                            fire: 0,
-                                            lightning: 0,
-                                            chaos: 0,
-                                        },
-                                        break_power: 20,
+                                weapon: None,
+                            }
+                        }
+                        CommandKind::Skill => {
+                            let c = player_conducts.skill.as_ref();
+                            BattleConduct {
+                                actor_character_id: player_id,
+                                target_character_id: enemy_id,
+                                conduct: Conduct {
+                                    name: c.name.clone(),
+                                    sp_cost: c.sp_cost,
+                                    stamina_cost: c.stamina_cost,
+                                    perks: c.perks.clone(),
+                                    requirement: ConductRequirement {
+                                        strength: c.requirement.strength,
+                                        dexterity: c.requirement.dexterity,
+                                        intelligence: c.requirement.intelligence,
+                                        faith: c.requirement.faith,
+                                        arcane: c.requirement.arcane,
+                                        agility: c.requirement.agility,
                                     },
-                                )),
-                            },
-                            weapon: None,
-                        },
-                        CommandKind::Heal => BattleConduct {
-                            actor_character_id: player_id,
-                            target_character_id: player_id,
-                            conduct: Conduct {
-                                name: "回復".to_string(),
-                                sp_cost: 0,
-                                stamina_cost: 25,
-                                perks: vec![],
-                                requirement: ConductRequirement {
-                                    strength: 0,
-                                    dexterity: 0,
-                                    intelligence: 0,
-                                    faith: 0,
-                                    arcane: 0,
-                                    agility: 0,
+                                    conduct_type: c.conduct_type.clone(),
                                 },
-                                conduct_type: ConductType::Basic(ConductTypeBasic::Support(
-                                    ConductTypeBasicSupport::Recover(SupportRecover {
-                                        potencies: vec![SupportRecoverPotency::Hp(
-                                            SupportRecoverPotencyHp { hp_recover: 50 },
-                                        )],
-                                    }),
-                                )),
-                            },
-                            weapon: None,
-                        },
-                        CommandKind::Defend => BattleConduct {
-                            actor_character_id: player_id,
-                            target_character_id: player_id,
-                            conduct: Conduct {
-                                name: "防御".to_string(),
-                                sp_cost: 0,
-                                stamina_cost: 5,
-                                perks: vec![],
-                                requirement: ConductRequirement {
-                                    strength: 0,
-                                    dexterity: 0,
-                                    intelligence: 0,
-                                    faith: 0,
-                                    arcane: 0,
-                                    agility: 0,
+                                weapon: None,
+                            }
+                        }
+                        CommandKind::Heal => {
+                            let c = player_conducts.heal.as_ref();
+                            BattleConduct {
+                                actor_character_id: player_id,
+                                target_character_id: player_id,
+                                conduct: Conduct {
+                                    name: c.name.clone(),
+                                    sp_cost: c.sp_cost,
+                                    stamina_cost: c.stamina_cost,
+                                    perks: c.perks.clone(),
+                                    requirement: ConductRequirement {
+                                        strength: c.requirement.strength,
+                                        dexterity: c.requirement.dexterity,
+                                        intelligence: c.requirement.intelligence,
+                                        faith: c.requirement.faith,
+                                        arcane: c.requirement.arcane,
+                                        agility: c.requirement.agility,
+                                    },
+                                    conduct_type: c.conduct_type.clone(),
                                 },
-                                conduct_type: ConductType::Basic(ConductTypeBasic::Support(
-                                    ConductTypeBasicSupport::StatusEffect(SuportStatusEffect {
-                                        status_effects: vec![StatusEffect {
-                                            potency: StatusEffectPotency::Resistance(
-                                                StatusEffectResistance {
-                                                    cut_rate: GuardCutRate {
-                                                        slash: 0.5,
-                                                        strike: 0.5,
-                                                        thrust: 0.5,
-                                                        impact: 0.5,
-                                                        magic: 0.5,
-                                                        fire: 0.5,
-                                                        lightning: 0.5,
-                                                        chaos: 0.5,
-                                                    },
-                                                },
-                                            ),
-                                            duration: StatusEffectDuration::Turn(
-                                                StatusEffectDurationTurn { turns: 1 },
-                                            ),
-                                        }],
-                                    }),
-                                )),
-                            },
-                            weapon: None,
-                        },
-                        CommandKind::Wait => BattleConduct {
-                            actor_character_id: player_id,
-                            target_character_id: player_id,
-                            conduct: Conduct {
-                                name: "待機".to_string(),
-                                sp_cost: 0,
-                                stamina_cost: 0,
-                                perks: vec![],
-                                requirement: ConductRequirement {
-                                    strength: 0,
-                                    dexterity: 0,
-                                    intelligence: 0,
-                                    faith: 0,
-                                    arcane: 0,
-                                    agility: 0,
+                                weapon: None,
+                            }
+                        }
+                        CommandKind::Defend => {
+                            let c = player_conducts.defend.as_ref();
+                            BattleConduct {
+                                actor_character_id: player_id,
+                                target_character_id: player_id,
+                                conduct: Conduct {
+                                    name: c.name.clone(),
+                                    sp_cost: c.sp_cost,
+                                    stamina_cost: c.stamina_cost,
+                                    perks: c.perks.clone(),
+                                    requirement: ConductRequirement {
+                                        strength: c.requirement.strength,
+                                        dexterity: c.requirement.dexterity,
+                                        intelligence: c.requirement.intelligence,
+                                        faith: c.requirement.faith,
+                                        arcane: c.requirement.arcane,
+                                        agility: c.requirement.agility,
+                                    },
+                                    conduct_type: c.conduct_type.clone(),
                                 },
-                                conduct_type: ConductType::Basic(ConductTypeBasic::Support(
-                                    ConductTypeBasicSupport::Recover(SupportRecover {
-                                        potencies: vec![SupportRecoverPotency::Stamina(
-                                            SupportRecoverPotencyStamina {
-                                                stamina_recover: 60,
-                                            },
-                                        )],
-                                    }),
-                                )),
-                            },
-                            weapon: None,
-                        },
-                        // TODO: いらない
-                        CommandKind::EnhanceAttack
-                        | CommandKind::EnhanceSkill
-                        | CommandKind::EnhanceHeal
-                        | CommandKind::EnhanceDefend => BattleConduct {
-                            actor_character_id: player_id,
-                            target_character_id: player_id,
-                            conduct: Conduct {
-                                name: "強化".to_string(),
-                                sp_cost: 0,
-                                stamina_cost: 0,
-                                perks: vec![],
-                                requirement: ConductRequirement {
-                                    strength: 0,
-                                    dexterity: 0,
-                                    intelligence: 0,
-                                    faith: 0,
-                                    arcane: 0,
-                                    agility: 0,
+                                weapon: None,
+                            }
+                        }
+                        CommandKind::Wait => {
+                            let c = player_conducts.wait.as_ref();
+                            BattleConduct {
+                                actor_character_id: player_id,
+                                target_character_id: player_id,
+                                conduct: Conduct {
+                                    name: c.name.clone(),
+                                    sp_cost: c.sp_cost,
+                                    stamina_cost: c.stamina_cost,
+                                    perks: c.perks.clone(),
+                                    requirement: ConductRequirement {
+                                        strength: c.requirement.strength,
+                                        dexterity: c.requirement.dexterity,
+                                        intelligence: c.requirement.intelligence,
+                                        faith: c.requirement.faith,
+                                        arcane: c.requirement.arcane,
+                                        agility: c.requirement.agility,
+                                    },
+                                    conduct_type: c.conduct_type.clone(),
                                 },
-                                conduct_type: ConductType::Basic(ConductTypeBasic::Support(
-                                    ConductTypeBasicSupport::StatusEffect(SuportStatusEffect {
-                                        status_effects: vec![],
-                                    }),
-                                )),
-                            },
-                            weapon: None,
-                        },
+                                weapon: None,
+                            }
+                        }
                     };
 
                     let enemy_conduct = battle.decide_enemy_conduct(DecideEnemyConductRequest {
@@ -1547,43 +1611,7 @@ fn player_input_system(
                     .push("これ以上選択を追加できません (最大3件)".to_string());
             }
         }
-        // 強化: Z=攻撃強化 X=強攻撃強化 C=回復強化 V=防御強化
-        if keyboard.just_pressed(KeyCode::KeyZ) {
-            if !at_limit {
-                pending.0.push(CommandKind::EnhanceAttack);
-                added.push("攻撃強化");
-            } else {
-                log.0
-                    .push("これ以上選択を追加できません (最大3件)".to_string());
-            }
-        }
-        if keyboard.just_pressed(KeyCode::KeyX) {
-            if !at_limit {
-                pending.0.push(CommandKind::EnhanceSkill);
-                added.push("強攻撃強化");
-            } else {
-                log.0
-                    .push("これ以上選択を追加できません (最大3件)".to_string());
-            }
-        }
-        if keyboard.just_pressed(KeyCode::KeyC) {
-            if !at_limit {
-                pending.0.push(CommandKind::EnhanceHeal);
-                added.push("回復強化");
-            } else {
-                log.0
-                    .push("これ以上選択を追加できません (最大3件)".to_string());
-            }
-        }
-        if keyboard.just_pressed(KeyCode::KeyV) {
-            if !at_limit {
-                pending.0.push(CommandKind::EnhanceDefend);
-                added.push("防御強化");
-            } else {
-                log.0
-                    .push("これ以上選択を追加できません (最大3件)".to_string());
-            }
-        }
+        // 強化系コマンドは廃止
         // 選択追加のログは出さず、UI側表示に任せる
 
         // Enterで確定: 先頭を実行、2つ目以降を予約キューへ
@@ -1598,10 +1626,6 @@ fn player_input_system(
                     CommandKind::Heal => "回復",
                     CommandKind::Defend => "防御",
                     CommandKind::Wait => "待機",
-                    CommandKind::EnhanceAttack => "攻撃強化",
-                    CommandKind::EnhanceSkill => "強攻撃強化",
-                    CommandKind::EnhanceHeal => "回復強化",
-                    CommandKind::EnhanceDefend => "防御強化",
                 })
                 .collect::<Vec<_>>()
                 .join(", ");
@@ -1628,10 +1652,6 @@ fn player_input_system(
                         CommandKind::Heal => "回復",
                         CommandKind::Defend => "防御",
                         CommandKind::Wait => "待機",
-                        CommandKind::EnhanceAttack => "攻撃強化",
-                        CommandKind::EnhanceSkill => "強攻撃強化",
-                        CommandKind::EnhanceHeal => "回復強化",
-                        CommandKind::EnhanceDefend => "防御強化",
                     })
                     .collect::<Vec<_>>()
                     .join(", ");
@@ -1659,10 +1679,6 @@ fn player_input_system(
             CommandKind::Heal => "回復",
             CommandKind::Defend => "防御",
             CommandKind::Wait => "待機",
-            CommandKind::EnhanceAttack => "攻撃強化",
-            CommandKind::EnhanceSkill => "強攻撃強化",
-            CommandKind::EnhanceHeal => "回復強化",
-            CommandKind::EnhanceDefend => "防御強化",
         };
         log.0
             .push(format!("ターン {} プレイヤーは{}を選択", turn.0, name));
@@ -1676,10 +1692,6 @@ fn player_input_system(
             CommandKind::Heal => 15,
             CommandKind::Defend => 10,
             CommandKind::Wait => 0,
-            CommandKind::EnhanceAttack
-            | CommandKind::EnhanceSkill
-            | CommandKind::EnhanceHeal
-            | CommandKind::EnhanceDefend => 0,
         };
 
         let player_id = battle.players.first().map(|p| p.character_id).unwrap_or(1);
@@ -1842,33 +1854,6 @@ fn player_input_system(
                                     stamina_recover: 60,
                                 },
                             )],
-                        }),
-                    )),
-                },
-                weapon: None,
-            },
-            CommandKind::EnhanceAttack
-            | CommandKind::EnhanceSkill
-            | CommandKind::EnhanceHeal
-            | CommandKind::EnhanceDefend => BattleConduct {
-                actor_character_id: player_id,
-                target_character_id: player_id,
-                conduct: Conduct {
-                    name: "強化".to_string(),
-                    sp_cost: 0,
-                    stamina_cost: 0,
-                    perks: vec![],
-                    requirement: ConductRequirement {
-                        strength: 0,
-                        dexterity: 0,
-                        intelligence: 0,
-                        faith: 0,
-                        arcane: 0,
-                        agility: 0,
-                    },
-                    conduct_type: ConductType::Basic(ConductTypeBasic::Support(
-                        ConductTypeBasicSupport::StatusEffect(SuportStatusEffect {
-                            status_effects: vec![],
                         }),
                     )),
                 },
@@ -2383,17 +2368,13 @@ fn ui_update_system(
                 CommandKind::Heal => "回復",
                 CommandKind::Defend => "防御",
                 CommandKind::Wait => "待機",
-                CommandKind::EnhanceAttack => "攻撃強化",
-                CommandKind::EnhanceSkill => "強攻撃強化",
-                CommandKind::EnhanceHeal => "回復強化",
-                CommandKind::EnhanceDefend => "防御強化",
             })
             .collect::<Vec<_>>()
             .join(", ")
     };
     let phase_str = match *phase {
         BattlePhase::AwaitCommand => format!(
-            "コマンド入力待ち \nコマンドを選択してください(最大3つ)\n A=攻撃 S=強攻撃 H=回復 D=防御 W=待機\n Z=攻撃強化 / X=強攻撃強化 / C=回復強化 / V=防御強化\n Backspace=直前取り消し / Esc=全クリア\n Enter=決定\n [選択中] {selected_str}"
+            "コマンド入力待ち \nコマンドを選択してください(最大3つ)\n A=攻撃 S=強攻撃 H=回復 D=防御 W=待機\n Backspace=直前取り消し / Esc=全クリア\n Enter=決定\n [選択中] {selected_str}"
         ),
         BattlePhase::ConfirmQueued => {
             let next_name = if let Some(next) = queue.0.front() {
@@ -2403,10 +2384,6 @@ fn ui_update_system(
                     CommandKind::Heal => "回復",
                     CommandKind::Defend => "防御",
                     CommandKind::Wait => "待機",
-                    CommandKind::EnhanceAttack => "攻撃強化",
-                    CommandKind::EnhanceSkill => "強攻撃強化",
-                    CommandKind::EnhanceHeal => "回復強化",
-                    CommandKind::EnhanceDefend => "防御強化",
                 }
             } else {
                 "(なし)"
@@ -2464,10 +2441,6 @@ fn ui_update_command_system(
                                 CommandKind::Heal => "回復",
                                 CommandKind::Defend => "防御",
                                 CommandKind::Wait => "待機",
-                                CommandKind::EnhanceAttack => "攻撃強化",
-                                CommandKind::EnhanceSkill => "強攻撃強化",
-                                CommandKind::EnhanceHeal => "回復強化",
-                                CommandKind::EnhanceDefend => "防御強化",
                             })
                             .collect::<Vec<_>>()
                             .join(", ")
@@ -2489,10 +2462,6 @@ fn ui_update_command_system(
                             CommandKind::Heal => "回復",
                             CommandKind::Defend => "防御",
                             CommandKind::Wait => "待機",
-                            CommandKind::EnhanceAttack => "攻撃強化",
-                            CommandKind::EnhanceSkill => "強攻撃強化",
-                            CommandKind::EnhanceHeal => "回復強化",
-                            CommandKind::EnhanceDefend => "防御強化",
                         }
                     } else {
                         "(なし)"
