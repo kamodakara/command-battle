@@ -789,7 +789,7 @@ mod tests {
         let conduct = BattleConduct {
             actor_character_id: 100,
             target_character_id: 1,
-            conduct: Conduct {
+            conduct: Arc::new(Conduct {
                 name: "Basic Attack".to_string(),
                 sp_cost: 0,
                 stamina_cost: 0,
@@ -808,7 +808,7 @@ mod tests {
                         break_power: 0,
                     },
                 )),
-            },
+            }),
             weapon: None,
         };
 
@@ -854,7 +854,7 @@ mod tests {
         let conduct = BattleConduct {
             actor_character_id: 100,
             target_character_id: 2,
-            conduct: Conduct {
+            conduct: Arc::new(Conduct {
                 name: "Basic Attack".to_string(),
                 sp_cost: 0,
                 stamina_cost: 0,
@@ -873,7 +873,7 @@ mod tests {
                         break_power: 0,
                     },
                 )),
-            },
+            }),
             weapon: None,
         };
 
@@ -933,7 +933,7 @@ mod tests {
         let conduct = BattleConduct {
             actor_character_id: 100,
             target_character_id: 10,
-            conduct: Conduct {
+            conduct: Arc::new(Conduct {
                 name: "Basic Attack".to_string(),
                 sp_cost: 0,
                 stamina_cost: 0,
@@ -952,7 +952,7 @@ mod tests {
                         break_power: 0,
                     },
                 )),
-            },
+            }),
             weapon: None,
         };
 
@@ -1146,7 +1146,7 @@ mod tests {
         let conduct = BattleConduct {
             actor_character_id: 100,
             target_character_id: 11,
-            conduct: Conduct {
+            conduct: Arc::new(Conduct {
                 name: "Skill Attack".to_string(),
                 sp_cost: 0,
                 stamina_cost: 0,
@@ -1168,7 +1168,7 @@ mod tests {
                         break_power_scaling: 0.0,
                     }),
                 }),
-            },
+            }),
             weapon: Some(weapon),
         };
 
@@ -1221,7 +1221,7 @@ mod tests {
         let conduct = BattleConduct {
             actor_character_id: 100,
             target_character_id: 12,
-            conduct: Conduct {
+            conduct: Arc::new(Conduct {
                 name: "Sorcery Attack".to_string(),
                 sp_cost: 0,
                 stamina_cost: 0,
@@ -1240,7 +1240,7 @@ mod tests {
                         break_power: 0,
                     },
                 )),
-            },
+            }),
             weapon: None, // weaponなし→術力1.0
         };
 
@@ -1428,7 +1428,7 @@ mod tests {
         let conduct = BattleConduct {
             actor_character_id: 100,
             target_character_id: 13,
-            conduct: Conduct {
+            conduct: Arc::new(Conduct {
                 name: "Skill Attack Zero Scaling".to_string(),
                 sp_cost: 0,
                 stamina_cost: 0,
@@ -1450,7 +1450,7 @@ mod tests {
                         break_power_scaling: 0.0,
                     }),
                 }),
-            },
+            }),
             weapon: Some(weapon),
         };
 
@@ -1638,7 +1638,7 @@ mod tests {
         let conduct = BattleConduct {
             actor_character_id: 100,
             target_character_id: 14,
-            conduct: Conduct {
+            conduct: Arc::new(Conduct {
                 name: "Skill Attack Multi Attribute".to_string(),
                 sp_cost: 0,
                 stamina_cost: 0,
@@ -1660,7 +1660,7 @@ mod tests {
                         break_power_scaling: 0.0,
                     }),
                 }),
-            },
+            }),
             weapon: Some(weapon),
         };
 

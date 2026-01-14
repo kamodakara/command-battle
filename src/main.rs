@@ -1207,129 +1207,41 @@ fn player_input_system(
                     };
                     log.0
                         .push(format!("ターン {} プレイヤーは{}を選択", turn.0, name));
-                    // 連撃判定（直前が攻撃または強攻撃 かつ 今回が攻撃）
-                    let is_chain =
-                        chain_state.last_was_attack && matches!(cmd, CommandKind::Attack);
 
                     // Battleモジュールで行動実行
                     let player_id = battle.players.first().map(|p| p.character_id).unwrap_or(1);
                     let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
                     let player_conduct = match cmd {
-                        CommandKind::Attack => {
-                            let c = player_conducts.attack.as_ref();
-                            BattleConduct {
-                                actor_character_id: player_id,
-                                target_character_id: enemy_id,
-                                conduct: Conduct {
-                                    name: c.name.clone(),
-                                    sp_cost: c.sp_cost,
-                                    stamina_cost: c.stamina_cost,
-                                    perks: c.perks.clone(),
-                                    requirement: ConductRequirement {
-                                        strength: c.requirement.strength,
-                                        dexterity: c.requirement.dexterity,
-                                        intelligence: c.requirement.intelligence,
-                                        faith: c.requirement.faith,
-                                        arcane: c.requirement.arcane,
-                                        agility: c.requirement.agility,
-                                    },
-                                    conduct_type: c.conduct_type.clone(),
-                                },
-                                weapon: None,
-                            }
-                        }
-                        CommandKind::Skill => {
-                            let c = player_conducts.skill.as_ref();
-                            BattleConduct {
-                                actor_character_id: player_id,
-                                target_character_id: enemy_id,
-                                conduct: Conduct {
-                                    name: c.name.clone(),
-                                    sp_cost: c.sp_cost,
-                                    stamina_cost: c.stamina_cost,
-                                    perks: c.perks.clone(),
-                                    requirement: ConductRequirement {
-                                        strength: c.requirement.strength,
-                                        dexterity: c.requirement.dexterity,
-                                        intelligence: c.requirement.intelligence,
-                                        faith: c.requirement.faith,
-                                        arcane: c.requirement.arcane,
-                                        agility: c.requirement.agility,
-                                    },
-                                    conduct_type: c.conduct_type.clone(),
-                                },
-                                weapon: None,
-                            }
-                        }
-                        CommandKind::Heal => {
-                            let c = player_conducts.heal.as_ref();
-                            BattleConduct {
-                                actor_character_id: player_id,
-                                target_character_id: player_id,
-                                conduct: Conduct {
-                                    name: c.name.clone(),
-                                    sp_cost: c.sp_cost,
-                                    stamina_cost: c.stamina_cost,
-                                    perks: c.perks.clone(),
-                                    requirement: ConductRequirement {
-                                        strength: c.requirement.strength,
-                                        dexterity: c.requirement.dexterity,
-                                        intelligence: c.requirement.intelligence,
-                                        faith: c.requirement.faith,
-                                        arcane: c.requirement.arcane,
-                                        agility: c.requirement.agility,
-                                    },
-                                    conduct_type: c.conduct_type.clone(),
-                                },
-                                weapon: None,
-                            }
-                        }
-                        CommandKind::Defend => {
-                            let c = player_conducts.defend.as_ref();
-                            BattleConduct {
-                                actor_character_id: player_id,
-                                target_character_id: player_id,
-                                conduct: Conduct {
-                                    name: c.name.clone(),
-                                    sp_cost: c.sp_cost,
-                                    stamina_cost: c.stamina_cost,
-                                    perks: c.perks.clone(),
-                                    requirement: ConductRequirement {
-                                        strength: c.requirement.strength,
-                                        dexterity: c.requirement.dexterity,
-                                        intelligence: c.requirement.intelligence,
-                                        faith: c.requirement.faith,
-                                        arcane: c.requirement.arcane,
-                                        agility: c.requirement.agility,
-                                    },
-                                    conduct_type: c.conduct_type.clone(),
-                                },
-                                weapon: None,
-                            }
-                        }
-                        CommandKind::Wait => {
-                            let c = player_conducts.wait.as_ref();
-                            BattleConduct {
-                                actor_character_id: player_id,
-                                target_character_id: player_id,
-                                conduct: Conduct {
-                                    name: c.name.clone(),
-                                    sp_cost: c.sp_cost,
-                                    stamina_cost: c.stamina_cost,
-                                    perks: c.perks.clone(),
-                                    requirement: ConductRequirement {
-                                        strength: c.requirement.strength,
-                                        dexterity: c.requirement.dexterity,
-                                        intelligence: c.requirement.intelligence,
-                                        faith: c.requirement.faith,
-                                        arcane: c.requirement.arcane,
-                                        agility: c.requirement.agility,
-                                    },
-                                    conduct_type: c.conduct_type.clone(),
-                                },
-                                weapon: None,
-                            }
-                        }
+                        CommandKind::Attack => BattleConduct {
+                            actor_character_id: player_id,
+                            target_character_id: enemy_id,
+                            conduct: Arc::clone(&player_conducts.attack),
+                            weapon: None,
+                        },
+                        CommandKind::Skill => BattleConduct {
+                            actor_character_id: player_id,
+                            target_character_id: enemy_id,
+                            conduct: Arc::clone(&player_conducts.skill),
+                            weapon: None,
+                        },
+                        CommandKind::Heal => BattleConduct {
+                            actor_character_id: player_id,
+                            target_character_id: player_id,
+                            conduct: Arc::clone(&player_conducts.heal),
+                            weapon: None,
+                        },
+                        CommandKind::Defend => BattleConduct {
+                            actor_character_id: player_id,
+                            target_character_id: player_id,
+                            conduct: Arc::clone(&player_conducts.defend),
+                            weapon: None,
+                        },
+                        CommandKind::Wait => BattleConduct {
+                            actor_character_id: player_id,
+                            target_character_id: player_id,
+                            conduct: Arc::clone(&player_conducts.wait),
+                            weapon: None,
+                        },
                     };
 
                     let enemy_conduct = battle.decide_enemy_conduct(DecideEnemyConductRequest {
@@ -1342,34 +1254,12 @@ fn player_input_system(
                     let mut player_dealt_damage_hp: u32 = 0;
                     for actor_id in order {
                         let conduct_to_execute = if actor_id == player_id {
-                            &player_conduct
+                            player_conduct.clone()
                         } else {
-                            &enemy_conduct
+                            enemy_conduct.clone()
                         };
                         let incident = battle.execute_conduct(BattleExecuteConductRequest {
-                            conduct: BattleConduct {
-                                actor_character_id: conduct_to_execute.actor_character_id,
-                                target_character_id: conduct_to_execute.target_character_id,
-                                conduct: Conduct {
-                                    name: conduct_to_execute.conduct.name.clone(),
-                                    sp_cost: conduct_to_execute.conduct.sp_cost,
-                                    stamina_cost: conduct_to_execute.conduct.stamina_cost,
-                                    perks: conduct_to_execute.conduct.perks.clone(),
-                                    requirement: ConductRequirement {
-                                        strength: conduct_to_execute.conduct.requirement.strength,
-                                        dexterity: conduct_to_execute.conduct.requirement.dexterity,
-                                        intelligence: conduct_to_execute
-                                            .conduct
-                                            .requirement
-                                            .intelligence,
-                                        faith: conduct_to_execute.conduct.requirement.faith,
-                                        arcane: conduct_to_execute.conduct.requirement.arcane,
-                                        agility: conduct_to_execute.conduct.requirement.agility,
-                                    },
-                                    conduct_type: conduct_to_execute.conduct.conduct_type.clone(),
-                                },
-                                weapon: None,
-                            },
+                            conduct: conduct_to_execute,
                         });
 
                         match incident {
@@ -1700,163 +1590,31 @@ fn player_input_system(
             CommandKind::Attack => BattleConduct {
                 actor_character_id: player_id,
                 target_character_id: enemy_id,
-                conduct: Conduct {
-                    name: "攻撃".to_string(),
-                    sp_cost: 0,
-                    stamina_cost: cost as u32,
-                    perks: vec![ConductPerk::Melee],
-                    requirement: ConductRequirement {
-                        strength: 0,
-                        dexterity: 0,
-                        intelligence: 0,
-                        faith: 0,
-                        arcane: 0,
-                        agility: 0,
-                    },
-                    conduct_type: ConductType::Basic(ConductTypeBasic::Attack(
-                        ConductTypeBasicAttack {
-                            attack_power: AttackPower {
-                                slash: 25,
-                                strike: 0,
-                                thrust: 0,
-                                impact: 0,
-                                magic: 0,
-                                fire: 0,
-                                lightning: 0,
-                                chaos: 0,
-                            },
-                            break_power: 10,
-                        },
-                    )),
-                },
+                conduct: Arc::clone(&player_conducts.attack),
                 weapon: None,
             },
             CommandKind::Skill => BattleConduct {
                 actor_character_id: player_id,
                 target_character_id: enemy_id,
-                conduct: Conduct {
-                    name: "強攻撃".to_string(),
-                    sp_cost: 0,
-                    stamina_cost: cost as u32,
-                    perks: vec![ConductPerk::Melee],
-                    requirement: ConductRequirement {
-                        strength: 0,
-                        dexterity: 0,
-                        intelligence: 0,
-                        faith: 0,
-                        arcane: 0,
-                        agility: 0,
-                    },
-                    conduct_type: ConductType::Basic(ConductTypeBasic::Attack(
-                        ConductTypeBasicAttack {
-                            attack_power: AttackPower {
-                                slash: 40,
-                                strike: 0,
-                                thrust: 0,
-                                impact: 0,
-                                magic: 0,
-                                fire: 0,
-                                lightning: 0,
-                                chaos: 0,
-                            },
-                            break_power: 20,
-                        },
-                    )),
-                },
+                conduct: Arc::clone(&player_conducts.skill),
                 weapon: None,
             },
             CommandKind::Heal => BattleConduct {
                 actor_character_id: player_id,
                 target_character_id: player_id,
-                conduct: Conduct {
-                    name: "回復".to_string(),
-                    sp_cost: 0,
-                    stamina_cost: cost as u32,
-                    perks: vec![],
-                    requirement: ConductRequirement {
-                        strength: 0,
-                        dexterity: 0,
-                        intelligence: 0,
-                        faith: 0,
-                        arcane: 0,
-                        agility: 0,
-                    },
-                    conduct_type: ConductType::Basic(ConductTypeBasic::Support(
-                        ConductTypeBasicSupport::Recover(SupportRecover {
-                            potencies: vec![SupportRecoverPotency::Hp(SupportRecoverPotencyHp {
-                                hp_recover: 50,
-                            })],
-                        }),
-                    )),
-                },
+                conduct: Arc::clone(&player_conducts.heal),
                 weapon: None,
             },
             CommandKind::Defend => BattleConduct {
                 actor_character_id: player_id,
                 target_character_id: player_id,
-                conduct: Conduct {
-                    name: "防御".to_string(),
-                    sp_cost: 0,
-                    stamina_cost: cost as u32,
-                    perks: vec![],
-                    requirement: ConductRequirement {
-                        strength: 0,
-                        dexterity: 0,
-                        intelligence: 0,
-                        faith: 0,
-                        arcane: 0,
-                        agility: 0,
-                    },
-                    conduct_type: ConductType::Basic(ConductTypeBasic::Support(
-                        ConductTypeBasicSupport::StatusEffect(SuportStatusEffect {
-                            status_effects: vec![StatusEffect {
-                                potency: StatusEffectPotency::Resistance(StatusEffectResistance {
-                                    cut_rate: GuardCutRate {
-                                        slash: 0.5,
-                                        strike: 0.5,
-                                        thrust: 0.5,
-                                        impact: 0.5,
-                                        magic: 0.5,
-                                        fire: 0.5,
-                                        lightning: 0.5,
-                                        chaos: 0.5,
-                                    },
-                                }),
-                                duration: StatusEffectDuration::Turn(StatusEffectDurationTurn {
-                                    turns: 1,
-                                }),
-                            }],
-                        }),
-                    )),
-                },
+                conduct: Arc::clone(&player_conducts.defend),
                 weapon: None,
             },
             CommandKind::Wait => BattleConduct {
                 actor_character_id: player_id,
                 target_character_id: player_id,
-                conduct: Conduct {
-                    name: "待機".to_string(),
-                    sp_cost: 0,
-                    stamina_cost: 0,
-                    perks: vec![],
-                    requirement: ConductRequirement {
-                        strength: 0,
-                        dexterity: 0,
-                        intelligence: 0,
-                        faith: 0,
-                        arcane: 0,
-                        agility: 0,
-                    },
-                    conduct_type: ConductType::Basic(ConductTypeBasic::Support(
-                        ConductTypeBasicSupport::Recover(SupportRecover {
-                            potencies: vec![SupportRecoverPotency::Stamina(
-                                SupportRecoverPotencyStamina {
-                                    stamina_recover: 60,
-                                },
-                            )],
-                        }),
-                    )),
-                },
+                conduct: Arc::clone(&player_conducts.wait),
                 weapon: None,
             },
         };
@@ -1871,31 +1629,12 @@ fn player_input_system(
         let mut player_dealt_damage_hp: u32 = 0;
         for actor_id in order {
             let conduct_to_execute = if actor_id == player_id {
-                &player_conduct
+                player_conduct.clone()
             } else {
-                &enemy_conduct
+                enemy_conduct.clone()
             };
             let incident = battle.execute_conduct(BattleExecuteConductRequest {
-                conduct: BattleConduct {
-                    actor_character_id: conduct_to_execute.actor_character_id,
-                    target_character_id: conduct_to_execute.target_character_id,
-                    conduct: Conduct {
-                        name: conduct_to_execute.conduct.name.clone(),
-                        sp_cost: conduct_to_execute.conduct.sp_cost,
-                        stamina_cost: conduct_to_execute.conduct.stamina_cost,
-                        perks: conduct_to_execute.conduct.perks.clone(),
-                        requirement: ConductRequirement {
-                            strength: conduct_to_execute.conduct.requirement.strength,
-                            dexterity: conduct_to_execute.conduct.requirement.dexterity,
-                            intelligence: conduct_to_execute.conduct.requirement.intelligence,
-                            faith: conduct_to_execute.conduct.requirement.faith,
-                            arcane: conduct_to_execute.conduct.requirement.arcane,
-                            agility: conduct_to_execute.conduct.requirement.agility,
-                        },
-                        conduct_type: conduct_to_execute.conduct.conduct_type.clone(),
-                    },
-                    weapon: None,
-                },
+                conduct: conduct_to_execute,
             });
 
             match incident {

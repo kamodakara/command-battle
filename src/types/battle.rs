@@ -71,6 +71,7 @@ pub struct Battle {
     pub enemies: Vec<BattleEnemy>,
 }
 
+#[derive(Clone)]
 pub struct BattleWeapon {
     pub original: Arc<Weapon>,
     pub attack_power: AttackPower, // 攻撃性能
@@ -78,9 +79,10 @@ pub struct BattleWeapon {
     pub break_power: u32,          // ブレイク力
 }
 
+#[derive(Clone)]
 pub struct BattleConduct {
     pub actor_character_id: u32,
     pub target_character_id: u32,
-    pub conduct: Conduct,
+    pub conduct: Arc<Conduct>,
     pub weapon: Option<BattleWeapon>,
 }

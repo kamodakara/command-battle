@@ -1,4 +1,5 @@
 use super::*;
+use std::sync::Arc;
 
 // TODO: 実装
 // 敵キャラクターの行動決定
@@ -16,7 +17,7 @@ pub fn decide_enemy_conduct(battle: &Battle, request: DecideEnemyConductRequest)
     BattleConduct {
         actor_character_id: request.enemy_character_id,
         target_character_id: target.character_id,
-        conduct: Conduct {
+        conduct: Arc::new(Conduct {
             name: "敵の攻撃".to_string(),
             sp_cost: 0,
             stamina_cost: 0,
@@ -42,7 +43,7 @@ pub fn decide_enemy_conduct(battle: &Battle, request: DecideEnemyConductRequest)
                 },
                 break_power: 5,
             })),
-        },
+        }),
         weapon: None,
     }
 }
