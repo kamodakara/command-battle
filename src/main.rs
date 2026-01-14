@@ -1,5 +1,12 @@
+mod battle;
+mod types;
+
 use std::sync::Arc;
 
+use crate::battle::{
+    BattleDecideOrderRequest, BattleExecuteConductRequest, DecideEnemyConductRequest,
+};
+use crate::types::*;
 use bevy::prelude::*;
 use rand::Rng;
 
@@ -24,39 +31,6 @@ fn main() {
 }
 
 // ================== Components & Resources ==================
-#[derive(Component)]
-struct Player;
-#[derive(Component)]
-struct Enemy;
-// 敵のブレイク値（0以上）
-#[derive(Component)]
-struct BreakValue {
-    current: i32,
-}
-// 敵のブレイク状態（残りターン数）
-#[derive(Component)]
-struct BreakState {
-    remaining_turns: u32, // 0なら非ブレイク
-}
-// ブレイク自然回復の現在量（ターンごとに倍増: 1,2,4,...）
-#[derive(Component)]
-struct BreakRegen {
-    amount: i32, // 最小1
-}
-#[derive(Component)]
-struct Hp {
-    current: i32,
-    max: i32,
-}
-#[derive(Component)]
-struct Attack(i32);
-
-#[derive(Component)]
-struct Stamina {
-    current: i32,
-    max: i32,
-}
-
 #[derive(Resource, PartialEq, Eq)]
 enum BattlePhase {
     AwaitCommand,
@@ -71,12 +45,6 @@ struct Turn(u32);
 #[derive(Resource)]
 struct CombatLog(Vec<String>);
 
-// モメンタム（最大100）
-#[derive(Resource, Default)]
-struct Momentum {
-    current: i32,
-}
-
 // 敵ダメージポップアップ用リソース（タイマー制御）
 #[derive(Resource, Default)]
 struct EnemyDamagePopup {
@@ -90,23 +58,6 @@ struct ConsecutiveBatch {
     total: usize,    // このバッチの総選択数
     executed: usize, // このバッチで既に実行した数
 }
-
-// コマンド強化の残りターン
-#[derive(Resource, Default)]
-struct CommandBuffs {
-    attack: u32,
-    skill: u32,
-    heal: u32,
-    defend: u32,
-}
-
-// 次の敵攻撃を無効化する防御フラグ
-#[derive(Resource, Default)]
-struct DefendNextAttack(bool);
-
-// 防御後の次プレイヤー行動に対するガードカウンター猶予
-#[derive(Resource, Default)]
-struct GuardCounterReady(bool);
 
 // 敵の行動種別（事前決定）
 #[derive(Clone, Copy)]
@@ -348,6 +299,144 @@ fn create_enemy_heal() -> Action {
     }
 }
 
+// ================== Battle Module Helpers ==================
+fn create_mock_battle() -> Battle {
+    // 共通防御力（0除算防止のため全て1）
+    let def = DefensePower {
+        slash: 1,
+        strike: 1,
+        thrust: 1,
+        impact: 1,
+        magic: 1,
+        fire: 1,
+        lightning: 1,
+        chaos: 1,
+    };
+
+    // プレイヤー原本（仮）
+    let player_original = Arc::new(types::Player {
+        ability: PlayerAbility {
+            vitality: 10,
+            spirit: 10,
+            endurance: 10,
+            agility: 15,
+            strength: 10,
+            dexterity: 10,
+            intelligence: 10,
+            faith: 10,
+            arcane: 10,
+        },
+        stats: PlayerStats {
+            hp: 100,
+            sp: 30,
+            stamina: 100,
+            equip_load: 0,
+        },
+        equipment: Equipment {
+            weapon1: None,
+            weapon2: None,
+            armor1: None,
+            armor2: None,
+            armor3: None,
+            armor4: None,
+            armor5: None,
+            armor6: None,
+            armor7: None,
+            armor8: None,
+        },
+    });
+
+    // 敵原本（仮）
+    let enemy_original = Arc::new(types::Enemy {
+        ability: EnemyAbility {
+            agility: 10,
+            strength: 10,
+            dexterity: 10,
+            intelligence: 10,
+            faith: 10,
+            arcane: 10,
+        },
+        stats: EnemyStats {
+            hp: 1500,
+            sp: 30,
+            break_max: 100,
+            break_recovery: 10,
+            break_turn: 4,
+        },
+        equipment: Equipment {
+            weapon1: None,
+            weapon2: None,
+            armor1: None,
+            armor2: None,
+            armor3: None,
+            armor4: None,
+            armor5: None,
+            armor6: None,
+            armor7: None,
+            armor8: None,
+        },
+    });
+
+    Battle {
+        players: vec![BattlePlayer {
+            character_id: 1,
+            original: player_original,
+            base: BattleCharacterBase {
+                current_ability: BattleAbility {
+                    agility: 15,
+                    strength: 10,
+                    dexterity: 10,
+                    intelligence: 10,
+                    faith: 10,
+                    arcane: 10,
+                },
+                current_stats: BattleStats {
+                    max_hp: 100,
+                    max_sp: 30,
+                    max_stamina: 100,
+                    hp_damage: 0,
+                    sp_damage: 0,
+                    stamina_damage: 0,
+                },
+                defense_power: def.clone(),
+                status_effects: vec![],
+            },
+        }],
+        enemies: vec![BattleEnemy {
+            character_id: 2,
+            original: enemy_original,
+            base: BattleCharacterBase {
+                current_ability: BattleAbility {
+                    agility: 10,
+                    strength: 10,
+                    dexterity: 10,
+                    intelligence: 10,
+                    faith: 10,
+                    arcane: 10,
+                },
+                current_stats: BattleStats {
+                    max_hp: 1500,
+                    max_sp: 30,
+                    max_stamina: 0,
+                    hp_damage: 0,
+                    sp_damage: 0,
+                    stamina_damage: 0,
+                },
+                defense_power: def,
+                status_effects: vec![],
+            },
+            current_enemy_only_stats: BattleEnemyOnlyStats {
+                max_break: 100,
+                max_break_turn: 4,
+                break_recovery: 10,
+                break_damage: 0,
+                break_not_damaged_turns: 0,
+                break_turns: 0,
+            },
+        }],
+    }
+}
+
 // 次ターンに表示される事前決定済み敵行動
 #[derive(Resource)]
 struct EnemyPlannedAction(ActionProcess);
@@ -471,32 +560,12 @@ enum BannerPhase {
     FadeOut,
 }
 
+#[derive(Resource)]
+struct BattleResource(Battle);
+
 // ================== Setup ==================
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2d);
-    commands.spawn((
-        Player,
-        Hp {
-            current: 100,
-            max: 100,
-        },
-        Attack(10),
-        Stamina {
-            current: 100,
-            max: 100,
-        },
-    ));
-    commands.spawn((
-        Enemy,
-        Hp {
-            current: 1500,
-            max: 1500,
-        },
-        Attack(40),
-        BreakValue { current: 0 },
-        BreakState { remaining_turns: 0 },
-        BreakRegen { amount: 1 },
-    ));
     commands.insert_resource(BattlePhase::AwaitCommand);
     commands.insert_resource(Turn(1));
     // 初期ログと敵行動決定
@@ -512,16 +581,14 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         format!("初期敵行動: {}", first_action.current_step().unwrap().name),
         "コマンドを選択してください (A=攻撃 S=強攻撃 H=回復 D=防御 W=待機 / Backspace=直前取り消し / Esc=全クリア / Enter=決定)".to_string(),
     ]));
-    commands.insert_resource(DefendNextAttack::default());
-    commands.insert_resource(GuardCounterReady::default());
     commands.insert_resource(CommandQueue::default());
     commands.insert_resource(PlayerChainState::default());
     commands.insert_resource(PendingSelections::default());
     commands.insert_resource(EnemyPlannedAction(first_action));
-    commands.insert_resource(Momentum { current: 0 });
     commands.insert_resource(ConsecutiveBatch::default());
-    commands.insert_resource(CommandBuffs::default());
     commands.insert_resource(EnemyDamagePopup::default());
+    // Battleモジュールの戦闘データを初期化
+    commands.insert_resource(BattleResource(create_mock_battle()));
 
     const MARGIN: Val = Val::Px(12.);
     let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
@@ -953,44 +1020,21 @@ fn player_input_system(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut phase: ResMut<BattlePhase>,
     mut turn: ResMut<Turn>,
-    mut player_q: Query<(&Attack, &mut Hp), (With<Player>, Without<Enemy>)>,
-    mut player_sta_q: Query<&mut Stamina, With<Player>>,
-    mut enemy_q: Query<
-        (
-            &Attack,
-            &mut Hp,
-            &mut BreakValue,
-            &mut BreakState,
-            &mut BreakRegen,
-        ),
-        (With<Enemy>, Without<Player>),
-    >,
     mut log: ResMut<CombatLog>,
-    mut def_guard: ParamSet<(ResMut<DefendNextAttack>, ResMut<GuardCounterReady>)>,
     mut queue: ResMut<CommandQueue>,
     mut chain_state: ResMut<PlayerChainState>,
     mut pending: ResMut<PendingSelections>,
     mut planned: ResMut<EnemyPlannedAction>,
-    mut momentum: ResMut<Momentum>,
-    mut buffs: ResMut<CommandBuffs>,
     mut batch: ResMut<ConsecutiveBatch>,
     mut enemy_damage_popup: ResMut<EnemyDamagePopup>,
+    // Battleモジュール
+    mut battle_resource: ResMut<BattleResource>,
 ) {
     if *phase == BattlePhase::Finished {
         return;
     }
-    let Ok((p_attack, mut p_hp)) = player_q.single_mut() else {
-        return;
-    };
-    let Ok(mut p_sta) = player_sta_q.single_mut() else {
-        return;
-    };
-    let Ok((e_attack, mut e_hp, mut e_break, mut e_bstate, mut e_bregen)) = enemy_q.single_mut()
-    else {
-        return;
-    };
 
-    // def_guard は必要に応じて分割取得します
+    let battle = &mut battle_resource.0;
 
     // 連続コマンド確認フェーズの処理（Y=実行 / N=選択しなおし）
     if *phase == BattlePhase::ConfirmQueued {
@@ -1002,42 +1046,13 @@ fn player_input_system(
         // 実行確定（YまたはEnter）
         if keyboard.just_pressed(KeyCode::KeyY) || keyboard.just_pressed(KeyCode::Enter) {
             if let Some(next) = queue.0.pop_front() {
-                // 実行前に現在の実行回数で加算判定（2回目:+15, 3回目:+25）
-                match batch.executed + 1 {
-                    1 => {
-                        let before = momentum.current;
-                        momentum.current = (momentum.current + 15).min(100);
-                        let gained = momentum.current - before;
-                        if gained > 0 {
-                            log.0.push(format!(
-                                "モメンタムが{}増加 ({} → {} / 100)",
-                                gained, before, momentum.current
-                            ));
-                        }
-                    }
-                    2 => {
-                        let before = momentum.current;
-                        momentum.current = (momentum.current + 25).min(100);
-                        let gained = momentum.current - before;
-                        if gained > 0 {
-                            log.0.push(format!(
-                                "モメンタムが{}増加 ({} → {} / 100)",
-                                gained, before, momentum.current
-                            ));
-                        }
-                    }
-                    _ => {}
-                }
                 batch.executed += 1;
                 // この後の通常解決フローで処理する
                 let mut commands_to_process: Vec<CommandKind> = vec![next];
+
                 // 共通のコマンド解決処理
                 let mut resolve_command = |cmd: CommandKind| {
                     *phase = BattlePhase::InBattle;
-                    let guard_ready_at_start = {
-                        let g = def_guard.p1();
-                        g.0
-                    };
                     let name = match cmd {
                         CommandKind::Attack => "攻撃",
                         CommandKind::Skill => "強攻撃",
@@ -1055,413 +1070,383 @@ fn player_input_system(
                     let is_chain =
                         chain_state.last_was_attack && matches!(cmd, CommandKind::Attack);
 
-                    // コストチェック（実行時にも確認）。不足なら行動失敗。
-                    let cost = match cmd {
-                        CommandKind::Attack => {
-                            if is_chain {
-                                5
-                            } else {
-                                15
-                            }
-                        }
-                        CommandKind::Skill => 25,
-                        CommandKind::Heal => {
-                            if buffs.heal > 0 {
-                                20
-                            } else {
-                                15
-                            }
-                        }
-                        CommandKind::Defend => {
-                            if buffs.defend > 0 {
-                                5
-                            } else {
-                                10
-                            }
-                        }
-                        CommandKind::Wait => 0,
+                    // Battleモジュールで行動実行
+                    let player_id = battle.players.first().map(|p| p.character_id).unwrap_or(1);
+                    let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
+                    let player_conduct = match cmd {
+                        CommandKind::Attack => BattleConduct {
+                            actor_character_id: player_id,
+                            target_character_id: enemy_id,
+                            conduct: Conduct {
+                                name: "攻撃".to_string(),
+                                sp_cost: 0,
+                                stamina_cost: 5,
+                                perks: vec![ConductPerk::Melee],
+                                requirement: ConductRequirement {
+                                    strength: 0,
+                                    dexterity: 0,
+                                    intelligence: 0,
+                                    faith: 0,
+                                    arcane: 0,
+                                    agility: 0,
+                                },
+                                conduct_type: ConductType::Basic(ConductTypeBasic::Attack(
+                                    ConductTypeBasicAttack {
+                                        attack_power: AttackPower {
+                                            slash: 25,
+                                            strike: 0,
+                                            thrust: 0,
+                                            impact: 0,
+                                            magic: 0,
+                                            fire: 0,
+                                            lightning: 0,
+                                            chaos: 0,
+                                        },
+                                        break_power: 10,
+                                    },
+                                )),
+                            },
+                            weapon: None,
+                        },
+                        CommandKind::Skill => BattleConduct {
+                            actor_character_id: player_id,
+                            target_character_id: enemy_id,
+                            conduct: Conduct {
+                                name: "強攻撃".to_string(),
+                                sp_cost: 0,
+                                stamina_cost: 25,
+                                perks: vec![ConductPerk::Melee],
+                                requirement: ConductRequirement {
+                                    strength: 0,
+                                    dexterity: 0,
+                                    intelligence: 0,
+                                    faith: 0,
+                                    arcane: 0,
+                                    agility: 0,
+                                },
+                                conduct_type: ConductType::Basic(ConductTypeBasic::Attack(
+                                    ConductTypeBasicAttack {
+                                        attack_power: AttackPower {
+                                            slash: 40,
+                                            strike: 0,
+                                            thrust: 0,
+                                            impact: 0,
+                                            magic: 0,
+                                            fire: 0,
+                                            lightning: 0,
+                                            chaos: 0,
+                                        },
+                                        break_power: 20,
+                                    },
+                                )),
+                            },
+                            weapon: None,
+                        },
+                        CommandKind::Heal => BattleConduct {
+                            actor_character_id: player_id,
+                            target_character_id: player_id,
+                            conduct: Conduct {
+                                name: "回復".to_string(),
+                                sp_cost: 0,
+                                stamina_cost: 25,
+                                perks: vec![],
+                                requirement: ConductRequirement {
+                                    strength: 0,
+                                    dexterity: 0,
+                                    intelligence: 0,
+                                    faith: 0,
+                                    arcane: 0,
+                                    agility: 0,
+                                },
+                                conduct_type: ConductType::Basic(ConductTypeBasic::Support(
+                                    ConductTypeBasicSupport::Recover(SupportRecover {
+                                        potencies: vec![SupportRecoverPotency::Hp(
+                                            SupportRecoverPotencyHp { hp_recover: 50 },
+                                        )],
+                                    }),
+                                )),
+                            },
+                            weapon: None,
+                        },
+                        CommandKind::Defend => BattleConduct {
+                            actor_character_id: player_id,
+                            target_character_id: player_id,
+                            conduct: Conduct {
+                                name: "防御".to_string(),
+                                sp_cost: 0,
+                                stamina_cost: 5,
+                                perks: vec![],
+                                requirement: ConductRequirement {
+                                    strength: 0,
+                                    dexterity: 0,
+                                    intelligence: 0,
+                                    faith: 0,
+                                    arcane: 0,
+                                    agility: 0,
+                                },
+                                conduct_type: ConductType::Basic(ConductTypeBasic::Support(
+                                    ConductTypeBasicSupport::StatusEffect(SuportStatusEffect {
+                                        status_effects: vec![StatusEffect {
+                                            potency: StatusEffectPotency::Resistance(
+                                                StatusEffectResistance {
+                                                    cut_rate: GuardCutRate {
+                                                        slash: 0.5,
+                                                        strike: 0.5,
+                                                        thrust: 0.5,
+                                                        impact: 0.5,
+                                                        magic: 0.5,
+                                                        fire: 0.5,
+                                                        lightning: 0.5,
+                                                        chaos: 0.5,
+                                                    },
+                                                },
+                                            ),
+                                            duration: StatusEffectDuration::Turn(
+                                                StatusEffectDurationTurn { turns: 1 },
+                                            ),
+                                        }],
+                                    }),
+                                )),
+                            },
+                            weapon: None,
+                        },
+                        CommandKind::Wait => BattleConduct {
+                            actor_character_id: player_id,
+                            target_character_id: player_id,
+                            conduct: Conduct {
+                                name: "待機".to_string(),
+                                sp_cost: 0,
+                                stamina_cost: 0,
+                                perks: vec![],
+                                requirement: ConductRequirement {
+                                    strength: 0,
+                                    dexterity: 0,
+                                    intelligence: 0,
+                                    faith: 0,
+                                    arcane: 0,
+                                    agility: 0,
+                                },
+                                conduct_type: ConductType::Basic(ConductTypeBasic::Support(
+                                    ConductTypeBasicSupport::Recover(SupportRecover {
+                                        potencies: vec![SupportRecoverPotency::Stamina(
+                                            SupportRecoverPotencyStamina {
+                                                stamina_recover: 60,
+                                            },
+                                        )],
+                                    }),
+                                )),
+                            },
+                            weapon: None,
+                        },
+                        // TODO: いらない
                         CommandKind::EnhanceAttack
                         | CommandKind::EnhanceSkill
                         | CommandKind::EnhanceHeal
-                        | CommandKind::EnhanceDefend => 0,
+                        | CommandKind::EnhanceDefend => BattleConduct {
+                            actor_character_id: player_id,
+                            target_character_id: player_id,
+                            conduct: Conduct {
+                                name: "強化".to_string(),
+                                sp_cost: 0,
+                                stamina_cost: 0,
+                                perks: vec![],
+                                requirement: ConductRequirement {
+                                    strength: 0,
+                                    dexterity: 0,
+                                    intelligence: 0,
+                                    faith: 0,
+                                    arcane: 0,
+                                    agility: 0,
+                                },
+                                conduct_type: ConductType::Basic(ConductTypeBasic::Support(
+                                    ConductTypeBasicSupport::StatusEffect(SuportStatusEffect {
+                                        status_effects: vec![],
+                                    }),
+                                )),
+                            },
+                            weapon: None,
+                        },
                     };
-                    if p_sta.current < cost {
-                        log.0.push("スタミナ不足で行動できませんでした".to_string());
-                        // 実行失敗なので連撃を継続させない
-                        chain_state.last_was_attack = false;
-                    } else {
-                        p_sta.current -= cost;
 
-                        match cmd {
-                            CommandKind::EnhanceAttack => {
-                                if buffs.attack > 0 {
-                                    log.0
-                                        .push("攻撃は既に強化中のため強化できません".to_string());
-                                } else if momentum.current < 50 {
-                                    log.0.push(
-                                        "モメンタム不足で強化できませんでした (必要50)".to_string(),
-                                    );
-                                } else {
-                                    momentum.current -= 50;
-                                    buffs.attack = 11;
-                                    log.0.push(
-                                        "攻撃を強化した (11ターン持続, モメンタム-50)".to_string(),
-                                    );
-                                }
-                            }
-                            CommandKind::EnhanceSkill => {
-                                if buffs.skill > 0 {
-                                    log.0
-                                        .push("強攻撃は既に強化中のため強化できません".to_string());
-                                } else if momentum.current < 50 {
-                                    log.0.push(
-                                        "モメンタム不足で強化できませんでした (必要50)".to_string(),
-                                    );
-                                } else {
-                                    momentum.current -= 50;
-                                    buffs.skill = 11;
-                                    log.0.push(
-                                        "強攻撃を強化した (11ターン持続, モメンタム-50)"
-                                            .to_string(),
-                                    );
-                                }
-                            }
-                            CommandKind::EnhanceHeal => {
-                                if buffs.heal > 0 {
-                                    log.0
-                                        .push("回復は既に強化中のため強化できません".to_string());
-                                } else if momentum.current < 50 {
-                                    log.0.push(
-                                        "モメンタム不足で強化できませんでした (必要50)".to_string(),
-                                    );
-                                } else {
-                                    momentum.current -= 50;
-                                    buffs.heal = 11;
-                                    log.0.push(
-                                        "回復を強化した (11ターン持続, モメンタム-50)".to_string(),
-                                    );
-                                }
-                            }
-                            CommandKind::EnhanceDefend => {
-                                if buffs.defend > 0 {
-                                    log.0
-                                        .push("防御は既に強化中のため強化できません".to_string());
-                                } else if momentum.current < 50 {
-                                    log.0.push(
-                                        "モメンタム不足で強化できませんでした (必要50)".to_string(),
-                                    );
-                                } else {
-                                    momentum.current -= 50;
-                                    buffs.defend = 11;
-                                    log.0.push(
-                                        "防御を強化した (11ターン持続, モメンタム-50)".to_string(),
-                                    );
-                                }
-                            }
-                            CommandKind::Heal => {
-                                let amount = if buffs.heal > 0 { 60 } else { 50 };
-                                let before = p_hp.current;
-                                p_hp.current = (p_hp.current + amount).min(p_hp.max);
-                                let healed = p_hp.current - before;
-                                log.0.push(format!(
-                                    "プレイヤーは{}回復 (HP {} / {})",
-                                    healed, p_hp.current, p_hp.max
-                                ));
-                            }
-                            CommandKind::Defend => {
-                                {
-                                    let mut d = def_guard.p0();
-                                    d.0 = true;
-                                }
-                                {
-                                    let mut g = def_guard.p1();
-                                    g.0 = true; // 次プレイヤー行動のガードカウンター猶予
-                                }
-                                log.0.push(
-                                    "プレイヤーは防御態勢に入った (次の敵攻撃は無効)".to_string(),
-                                );
-                                log.0.push(
-                                    "ガードカウンターの構え! 次の行動で強攻撃が強化".to_string(),
-                                );
-                            }
-                            CommandKind::Attack => {
-                                let base = if buffs.attack > 0 { 25 } else { p_attack.0 };
-                                let mut dmg = base;
-                                let mut break_bonus = 0;
-                                if e_bstate.remaining_turns > 0 {
-                                    break_bonus = 30 + base * 2;
-                                    dmg = base + break_bonus;
-                                }
-                                e_hp.current = (e_hp.current - dmg).max(0);
-                                // 敵ダメージポップアップ設定
-                                enemy_damage_popup.amount = dmg;
-                                enemy_damage_popup.timer = 1.2;
-                                if is_chain {
-                                    if break_bonus > 0 {
-                                        log.0.push(format!(
-                                            "連撃! 敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
-                                            dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
-                                        ));
-                                    } else {
-                                        log.0.push(format!(
-                                            "連撃! 敵に{}ダメージ (消費スタミナ半減, 敵HP {} / {})",
-                                            dmg, e_hp.current, e_hp.max
-                                        ));
-                                    }
-                                } else {
-                                    if break_bonus > 0 {
-                                        log.0.push(format!(
-                                            "敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
-                                            dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
-                                        ));
-                                    } else {
-                                        log.0.push(format!(
-                                            "敵に{}ダメージ (敵HP {} / {})",
-                                            dmg, e_hp.current, e_hp.max
-                                        ));
-                                    }
-                                }
-                                // ブレイク値加算（攻撃時の固定増加量: 通常15・強化時25）
-                                let before_break = e_break.current;
-                                let add_break = if buffs.attack > 0 { 25 } else { 10 };
-                                e_break.current += add_break;
-                                log.0.push(format!(
-                                    "ブレイク値 +{} ({} → {} / 100)",
-                                    add_break, before_break, e_break.current
-                                ));
-                                // ダメージを受けたので自然回復量をリセット
-                                e_bregen.amount = 1;
-                            }
-                            CommandKind::Skill => {
-                                let mut base = if buffs.skill > 0 { 45 } else { 25 };
-                                let is_guard_counter = guard_ready_at_start;
-                                if is_guard_counter {
-                                    base += 5; // ガードカウンター: 威力+5
-                                }
-                                let mut dmg = base;
-                                let mut break_bonus = 0;
-                                if e_bstate.remaining_turns > 0 {
-                                    break_bonus = 30 + base * 2;
-                                    dmg = base + break_bonus;
-                                }
-                                e_hp.current = (e_hp.current - dmg).max(0);
-                                // 敵ダメージポップアップ設定
-                                enemy_damage_popup.amount = dmg;
-                                enemy_damage_popup.timer = 1.2;
-                                if is_guard_counter {
-                                    if break_bonus > 0 {
-                                        log.0.push(format!(
-                                            "ガードカウンター! 敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
-                                            dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
-                                        ));
-                                    } else {
-                                        log.0.push(format!(
-                                            "ガードカウンター! 敵に{}ダメージ (敵HP {} / {})",
-                                            dmg, e_hp.current, e_hp.max
-                                        ));
-                                    }
-                                } else {
-                                    if break_bonus > 0 {
-                                        log.0.push(format!(
-                                            "敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
-                                            dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
-                                        ));
-                                    } else {
-                                        log.0.push(format!(
-                                            "敵に{}ダメージ (敵HP {} / {})",
-                                            dmg, e_hp.current, e_hp.max
-                                        ));
-                                    }
-                                }
-                                let before_break = e_break.current;
-                                let mut add_break = if buffs.skill > 0 { 40 } else { 25 };
-                                if is_guard_counter {
-                                    add_break += 20; // ガードカウンター: ブレイク+20
-                                }
-                                e_break.current += add_break;
-                                log.0.push(format!(
-                                    "ブレイク値 +{} ({} → {} / 100)",
-                                    add_break, before_break, e_break.current
-                                ));
-                                e_bregen.amount = 1;
-                            }
-                            CommandKind::Wait => {
-                                let before = p_sta.current;
-                                p_sta.current = (p_sta.current + 60).min(p_sta.max);
-                                let recovered = p_sta.current - before;
-                                log.0.push(format!(
-                                    "プレイヤーは待機してスタミナを{}回復 (Stamina {} / {})",
-                                    recovered, p_sta.current, p_sta.max
-                                ));
-                            }
-                        }
-                        // 実行成功: 直前が攻撃または強攻撃だったかを更新（強攻撃後の攻撃も連撃にする）
-                        chain_state.last_was_attack =
-                            matches!(cmd, CommandKind::Attack | CommandKind::Skill);
-                        // ガードカウンター猶予の消費: 防御以外の行動で消費
-                        if !matches!(cmd, CommandKind::Defend) {
-                            let mut g = def_guard.p1();
-                            g.0 = false;
-                        }
-                    }
+                    let enemy_conduct = battle.decide_enemy_conduct(DecideEnemyConductRequest {
+                        enemy_character_id: enemy_id,
+                    });
+                    let order = battle.decide_order(BattleDecideOrderRequest {
+                        character_ids: vec![player_id, enemy_id],
+                    });
 
-                    // プレイヤーの攻撃/強攻撃後にブレイク判定。閾値到達でこのターンの敵行動をキャンセルし、次ターンから4ターンブレイク。
-                    let mut enemy_action_canceled_this_turn = false;
-                    if e_break.current >= 100 && e_bstate.remaining_turns == 0 {
-                        enemy_action_canceled_this_turn = true;
-                        e_bstate.remaining_turns = 4; // 次ターンから4ターン行動不能
-                        log.0.push(
-                            "敵がブレイク状態に入る!（次のターンから4ターン行動不能・被ダメ2倍）"
-                                .to_string(),
-                        );
-                    }
-
-                    if e_hp.current > 0 {
-                        // 事前決定済みの敵行動を実行
-                        if e_bstate.remaining_turns > 0 {
-                            // ブレイク中は行動不能
-                            log.0.push("敵はブレイク中のため行動不能".to_string());
-                        } else if enemy_action_canceled_this_turn {
-                            // このターンの行動はキャンセル
-                            log.0.push("敵の行動はブレイクによりキャンセル".to_string());
+                    let mut player_dealt_damage_hp: u32 = 0;
+                    for actor_id in order {
+                        let conduct_to_execute = if actor_id == player_id {
+                            &player_conduct
                         } else {
-                            let action = &mut planned.0;
-                            let step = action.current_step().unwrap();
-                            match step.specification {
-                                ActionStepSpecificationEnum::Attack(spec) => {
-                                    let mut incoming = (e_attack.0 as f32 * spec.power) as i32;
-                                    {
-                                        let mut d = def_guard.p0();
-                                        if d.0 {
-                                            incoming = 0;
-                                            d.0 = false; // 一度きり
+                            &enemy_conduct
+                        };
+                        let incident = battle.execute_conduct(BattleExecuteConductRequest {
+                            conduct: BattleConduct {
+                                actor_character_id: conduct_to_execute.actor_character_id,
+                                target_character_id: conduct_to_execute.target_character_id,
+                                conduct: Conduct {
+                                    name: conduct_to_execute.conduct.name.clone(),
+                                    sp_cost: conduct_to_execute.conduct.sp_cost,
+                                    stamina_cost: conduct_to_execute.conduct.stamina_cost,
+                                    perks: conduct_to_execute.conduct.perks.clone(),
+                                    requirement: ConductRequirement {
+                                        strength: conduct_to_execute.conduct.requirement.strength,
+                                        dexterity: conduct_to_execute.conduct.requirement.dexterity,
+                                        intelligence: conduct_to_execute
+                                            .conduct
+                                            .requirement
+                                            .intelligence,
+                                        faith: conduct_to_execute.conduct.requirement.faith,
+                                        arcane: conduct_to_execute.conduct.requirement.arcane,
+                                        agility: conduct_to_execute.conduct.requirement.agility,
+                                    },
+                                    conduct_type: conduct_to_execute.conduct.conduct_type.clone(),
+                                },
+                                weapon: None,
+                            },
+                        });
+
+                        match incident {
+                            BattleIncident::Conduct(c) => match c.outcome {
+                                BattleIncidentConductOutcome::Failure(_) => {
+                                    log.0.push(format!("{}は不発", c.conduct.conduct.name));
+                                }
+                                BattleIncidentConductOutcome::Success(s) => {
+                                    for change in s.attacker.stats_changes.iter() {
+                                        match change {
+                                            BattleIncidentStats::DamageSp(d) => {
+                                                log.0.push(format!(
+                                                    "SP -{} ({} → {})",
+                                                    d.damage, d.before, d.after
+                                                ))
+                                            }
+                                            BattleIncidentStats::DamageStamina(d) => {
+                                                log.0.push(format!(
+                                                    "Stamina -{} ({} → {})",
+                                                    d.damage, d.before, d.after
+                                                ))
+                                            }
+                                            _ => {}
                                         }
                                     }
-                                    p_hp.current = (p_hp.current - incoming).max(0);
-                                    log.0.push(format!(
-                                        "敵の行動: {} → {}ダメージ (プレイヤーHP {} / {})",
-                                        step.name, incoming, p_hp.current, p_hp.max
-                                    ));
+                                    for def in s.defenders.iter() {
+                                        for change in def.stats_changes.iter() {
+                                            match change {
+                                                BattleIncidentStats::DamageHp(d) => {
+                                                    if c.attacker_id == player_id {
+                                                        player_dealt_damage_hp = d.damage;
+                                                    }
+                                                    log.0.push(format!(
+                                                        "{} に{}ダメージ (HP {} → {})",
+                                                        if def.character_id == enemy_id {
+                                                            "敵"
+                                                        } else {
+                                                            "プレイヤー"
+                                                        },
+                                                        d.damage,
+                                                        d.before,
+                                                        d.after
+                                                    ));
+                                                }
+                                                BattleIncidentStats::RecoverHp(r) => {
+                                                    log.0.push(format!(
+                                                        "{} のHPを{}回復 ({} → {})",
+                                                        if def.character_id == player_id {
+                                                            "プレイヤー"
+                                                        } else {
+                                                            "敵"
+                                                        },
+                                                        r.recover,
+                                                        r.before,
+                                                        r.after
+                                                    ))
+                                                }
+                                                BattleIncidentStats::DamageBreak(d) => log.0.push(
+                                                    format!("敵にブレイクダメージ {}", d.damage),
+                                                ),
+                                                BattleIncidentStats::RecoverBreak(r) => log.0.push(
+                                                    format!("敵のブレイク回復 {}", r.recover),
+                                                ),
+                                                BattleIncidentStats::RecoverStamina(r) => {
+                                                    log.0.push(format!(
+                                                        "Stamina +{} ({} → {})",
+                                                        r.recover, r.before, r.after
+                                                    ))
+                                                }
+                                                _ => {}
+                                            }
+                                        }
+                                        if def.is_evaded {
+                                            log.0.push("回避した".to_string());
+                                        }
+                                        if def.is_defended {
+                                            log.0.push("防御した".to_string());
+                                        }
+                                    }
                                 }
-                                ActionStepSpecificationEnum::Wait(_) => {
-                                    log.0.push(format!("敵の行動: {} (何もしない)", step.name));
-                                }
-                                ActionStepSpecificationEnum::Heal(spec) => {
-                                    // プレイヤーがこのターンに攻撃していた場合、敵の回復量は半減
-                                    let base_heal = spec.amount;
-                                    let heal_amount = if matches!(
-                                        cmd,
-                                        CommandKind::Attack | CommandKind::Skill
-                                    ) {
-                                        base_heal / 2
-                                    } else {
-                                        base_heal
-                                    };
-                                    let before = e_hp.current;
-                                    e_hp.current = (e_hp.current + heal_amount).min(e_hp.max);
-                                    let healed = e_hp.current - before;
-                                    log.0.push(format!(
-                                        "敵の行動: {} → HPを{}回復 (敵HP {} / {})",
-                                        step.name, healed, e_hp.current, e_hp.max
-                                    ));
-                                }
-                            }
-                            action.next();
+                            },
+                            BattleIncident::AutoTrigger(_) => {}
                         }
                     }
-                    // 次ターンの敵行動を事前決定（敵が生きている場合）
-                    if e_hp.current > 0 && p_hp.current > 0 {
-                        if planned.0.is_finished() {
-                            // 現在の行動が完了している場合、新たに行動を決定
 
-                            let roll: f32 = rand::random::<f32>();
-                            // 敵HPが半分以下なら、回復とため開始を選択肢に含める
-                            let next = if e_hp.current * 2 <= e_hp.max {
-                                // 攻撃 / 待機 / 回復 / ため(準備)
-                                match () {
-                                    _ if roll < 0.1 => create_enemy_wait(),
-                                    _ if roll < 0.2 => create_enemy_heal(),
-                                    _ if roll < 0.3 => create_enemy_attack(),
-                                    _ if roll < 0.5 => create_enemy_claw_combo_strong(),
-                                    _ if roll < 0.7 => create_enemy_claw_strong(),
-                                    _ if roll < 0.8 => create_enemy_stomp(),
-                                    _ => create_enemy_fire_breath(),
-                                }
-                            } else {
-                                match () {
-                                    _ if roll < 0.3 => create_enemy_wait(),
-                                    _ if roll < 0.6 => create_enemy_attack(),
-                                    _ if roll < 0.8 => create_enemy_claw_combo(),
-                                    _ if roll < 0.9 => create_enemy_claw_strong(),
-                                    _ => create_enemy_stomp(),
-                                }
-                            };
+                    // TODO: 敵の行動をexecute_conductで処理するようにする
+                    //     if e_hp.current > 0 {
+                    //         // 事前決定済みの敵行動を実行
+                    //         if enemy_action_canceled_this_turn {
+                    //             // このターンの行動はキャンセル
+                    //             log.0.push("敵の行動はブレイクによりキャンセル".to_string());
+                    //         } else {
+                    //             let action = &mut planned.0;
+                    //             let step = action.current_step().unwrap();
+                    //             match step.specification {
+                    //                 ActionStepSpecificationEnum::Attack(spec) => {
+                    //                     let mut incoming = (e_attack.0 as f32 * spec.power) as i32;
+                    //                     {
+                    //                         let mut d = def_guard.p0();
+                    //                         if d.0 {
+                    //                             incoming = 0;
+                    //                             d.0 = false; // 一度きり
+                    //                         }
+                    //                     }
+                    //                     p_hp.current = (p_hp.current - incoming).max(0);
+                    //                     log.0.push(format!(
+                    //                         "敵の行動: {} → {}ダメージ (プレイヤーHP {} / {})",
+                    //                         step.name, incoming, p_hp.current, p_hp.max
+                    //                     ));
+                    //                 }
+                    //                 ActionStepSpecificationEnum::Wait(_) => {
+                    //                     log.0.push(format!("敵の行動: {} (何もしない)", step.name));
+                    //                 }
+                    //                 ActionStepSpecificationEnum::Heal(spec) => {
+                    //                     // プレイヤーがこのターンに攻撃していた場合、敵の回復量は半減
+                    //                     let base_heal = spec.amount;
+                    //                     let heal_amount = if matches!(
+                    //                         cmd,
+                    //                         CommandKind::Attack | CommandKind::Skill
+                    //                     ) {
+                    //                         base_heal / 2
+                    //                     } else {
+                    //                         base_heal
+                    //                     };
+                    //                     let before = e_hp.current;
+                    //                     e_hp.current = (e_hp.current + heal_amount).min(e_hp.max);
+                    //                     let healed = e_hp.current - before;
+                    //                     log.0.push(format!(
+                    //                         "敵の行動: {} → HPを{}回復 (敵HP {} / {})",
+                    //                         step.name, healed, e_hp.current, e_hp.max
+                    //                     ));
+                    //                 }
+                    //             }
+                    //             action.next();
+                    //         }
+                    //     }
 
-                            // TODO: 毎回生成してるのやめる
-                            planned.0 = ActionProcess::from(&Arc::new(next));
-                        }
-                        log.0.push(format!(
-                            "次ターン敵行動予定: {}",
-                            planned.0.current_step().unwrap().name
-                        ));
-                    }
-                    // ターン終了時、ブレイク残りターンのデクリメント（ブレイク中のみ）。解除時にブレイク値リセット。
-                    if e_bstate.remaining_turns > 0 {
-                        e_bstate.remaining_turns = e_bstate.remaining_turns.saturating_sub(1);
-                        if e_bstate.remaining_turns == 0 {
-                            e_break.current = 0;
-                            log.0.push(
-                                "敵のブレイク状態が解除。ブレイク値を0にリセット".to_string(),
-                            );
-                            // 0になったので自然回復量もリセット
-                            e_bregen.amount = 1;
-                        }
-                    }
-                    // ターン終了時、攻撃/強攻撃が無ければ自然回復: 1,2,4,...と倍増。0到達またはダメージ受けで1へリセット。
-                    if !matches!(cmd, CommandKind::Attack | CommandKind::Skill) {
-                        let before = e_break.current;
-                        e_break.current = (e_break.current - e_bregen.amount).max(0);
-                        if e_break.current != before {
-                            log.0.push(format!(
-                                "敵のブレイク値が自然回復: {} → {} (回復量 {})",
-                                before, e_break.current, e_bregen.amount
-                            ));
-                        }
-                        if e_break.current == 0 {
-                            e_bregen.amount = 1;
-                        } else {
-                            e_bregen.amount = (e_bregen.amount * 2).max(1);
-                        }
-                    }
-                    // ターン終了時、強化の残りターンをデクリメント
-                    let prev = (buffs.attack, buffs.skill, buffs.heal, buffs.defend);
-                    if buffs.attack > 0 {
-                        buffs.attack -= 1;
-                        if buffs.attack == 0 && prev.0 > 0 {
-                            log.0.push("攻撃の強化が解除された".to_string());
-                        }
-                    }
-                    if buffs.skill > 0 {
-                        buffs.skill -= 1;
-                        if buffs.skill == 0 && prev.1 > 0 {
-                            log.0.push("強攻撃の強化が解除された".to_string());
-                        }
-                    }
-                    if buffs.heal > 0 {
-                        buffs.heal -= 1;
-                        if buffs.heal == 0 && prev.2 > 0 {
-                            log.0.push("回復の強化が解除された".to_string());
-                        }
-                    }
-                    if buffs.defend > 0 {
-                        buffs.defend -= 1;
-                        if buffs.defend == 0 && prev.3 > 0 {
-                            log.0.push("防御の強化が解除された".to_string());
-                        }
-                    }
                     turn.0 += 1;
                     *phase = BattlePhase::AwaitCommand;
                 };
+
                 // 今回は1件だけ処理（各ターン1コマンドのルール）
                 resolve_command(commands_to_process[0]);
             }
@@ -1481,6 +1466,7 @@ fn player_input_system(
                 );
             }
             *phase = BattlePhase::AwaitCommand;
+
             return;
         }
         // 入力待ち
@@ -1667,10 +1653,6 @@ fn player_input_system(
     // 共通のコマンド解決処理
     let mut resolve_command = |cmd: CommandKind| {
         *phase = BattlePhase::InBattle;
-        let guard_ready_at_start = {
-            let g = def_guard.p1();
-            g.0
-        };
         let name = match cmd {
             CommandKind::Attack => "攻撃",
             CommandKind::Skill => "強攻撃",
@@ -1689,392 +1671,413 @@ fn player_input_system(
 
         // コストチェック（実行時にも確認）。不足なら行動失敗。
         let cost = match cmd {
-            CommandKind::Attack => {
-                if is_chain {
-                    5
-                } else {
-                    15
-                }
-            }
+            CommandKind::Attack => 5,
             CommandKind::Skill => 25,
-            CommandKind::Heal => {
-                if buffs.heal > 0 {
-                    20
-                } else {
-                    15
-                }
-            }
-            CommandKind::Defend => {
-                if buffs.defend > 0 {
-                    5
-                } else {
-                    10
-                }
-            }
+            CommandKind::Heal => 15,
+            CommandKind::Defend => 10,
             CommandKind::Wait => 0,
             CommandKind::EnhanceAttack
             | CommandKind::EnhanceSkill
             | CommandKind::EnhanceHeal
             | CommandKind::EnhanceDefend => 0,
         };
-        if p_sta.current < cost {
-            log.0.push("スタミナ不足で行動できませんでした".to_string());
-            // 実行失敗なので連撃を継続させない
-            chain_state.last_was_attack = false;
-        } else {
-            p_sta.current -= cost;
 
-            match cmd {
-                CommandKind::EnhanceAttack => {
-                    if buffs.attack > 0 {
-                        log.0
-                            .push("攻撃は既に強化中のため強化できません".to_string());
-                    } else if momentum.current < 50 {
-                        log.0
-                            .push("モメンタム不足で強化できませんでした (必要50)".to_string());
-                    } else {
-                        momentum.current -= 50;
-                        buffs.attack = 11;
-                        log.0
-                            .push("攻撃を強化した (11ターン持続, モメンタム-50)".to_string());
-                    }
-                }
-                CommandKind::EnhanceSkill => {
-                    if buffs.skill > 0 {
-                        log.0
-                            .push("強攻撃は既に強化中のため強化できません".to_string());
-                    } else if momentum.current < 50 {
-                        log.0
-                            .push("モメンタム不足で強化できませんでした (必要50)".to_string());
-                    } else {
-                        momentum.current -= 50;
-                        buffs.skill = 11;
-                        log.0
-                            .push("強攻撃を強化した (11ターン持続, モメンタム-50)".to_string());
-                    }
-                }
-                CommandKind::EnhanceHeal => {
-                    if buffs.heal > 0 {
-                        log.0
-                            .push("回復は既に強化中のため強化できません".to_string());
-                    } else if momentum.current < 50 {
-                        log.0
-                            .push("モメンタム不足で強化できませんでした (必要50)".to_string());
-                    } else {
-                        momentum.current -= 50;
-                        buffs.heal = 11;
-                        log.0
-                            .push("回復を強化した (11ターン持続, モメンタム-50)".to_string());
-                    }
-                }
-                CommandKind::EnhanceDefend => {
-                    if buffs.defend > 0 {
-                        log.0
-                            .push("防御は既に強化中のため強化できません".to_string());
-                    } else if momentum.current < 50 {
-                        log.0
-                            .push("モメンタム不足で強化できませんでした (必要50)".to_string());
-                    } else {
-                        momentum.current -= 50;
-                        buffs.defend = 11;
-                        log.0
-                            .push("防御を強化した (11ターン持続, モメンタム-50)".to_string());
-                    }
-                }
-                CommandKind::Heal => {
-                    let amount = if buffs.heal > 0 { 60 } else { 50 };
-                    let before = p_hp.current;
-                    p_hp.current = (p_hp.current + amount).min(p_hp.max);
-                    let healed = p_hp.current - before;
-                    log.0.push(format!(
-                        "プレイヤーは{}回復 (HP {} / {})",
-                        healed, p_hp.current, p_hp.max
-                    ));
-                }
-                CommandKind::Defend => {
-                    {
-                        let mut d = def_guard.p0();
-                        d.0 = true;
-                    }
-                    {
-                        let mut g = def_guard.p1();
-                        g.0 = true; // 次プレイヤー行動のガードカウンター猶予
-                    }
-                    log.0
-                        .push("プレイヤーは防御態勢に入った (次の敵攻撃は無効)".to_string());
-                    log.0
-                        .push("ガードカウンターの構え! 次の行動で強攻撃が強化".to_string());
-                }
-                CommandKind::Attack => {
-                    let base = if buffs.attack > 0 { 25 } else { p_attack.0 };
-                    let mut dmg = base;
-                    let mut break_bonus = 0;
-                    if e_bstate.remaining_turns > 0 {
-                        break_bonus = 30 + base * 2;
-                        dmg = base + break_bonus;
-                    }
-                    e_hp.current = (e_hp.current - dmg).max(0);
-                    // 敵ダメージポップアップ設定
-                    enemy_damage_popup.amount = dmg;
-                    enemy_damage_popup.timer = 1.2;
-                    if is_chain {
-                        if break_bonus > 0 {
-                            log.0.push(format!(
-                                "連撃! 敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
-                                dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
-                            ));
-                        } else {
-                            log.0.push(format!(
-                                "連撃! 敵に{}ダメージ (消費スタミナ半減, 敵HP {} / {})",
-                                dmg, e_hp.current, e_hp.max
-                            ));
-                        }
-                    } else {
-                        if break_bonus > 0 {
-                            log.0.push(format!(
-                                "敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
-                                dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
-                            ));
-                        } else {
-                            log.0.push(format!(
-                                "敵に{}ダメージ (敵HP {} / {})",
-                                dmg, e_hp.current, e_hp.max
-                            ));
-                        }
-                    }
-                    // ブレイク値加算（攻撃時の固定増加量: 通常15・強化時25）
-                    let before_break = e_break.current;
-                    let add_break = if buffs.attack > 0 { 25 } else { 10 };
-                    e_break.current += add_break;
-                    log.0.push(format!(
-                        "ブレイク値 +{} ({} → {} / 100)",
-                        add_break, before_break, e_break.current
-                    ));
-                    // ダメージを受けたので自然回復量をリセット
-                    e_bregen.amount = 1;
-                }
-                CommandKind::Skill => {
-                    let mut base = if buffs.skill > 0 { 45 } else { 25 };
-                    let is_guard_counter = guard_ready_at_start;
-                    if is_guard_counter {
-                        base += 5; // ガードカウンター: 威力+5
-                    }
-                    let mut dmg = base;
-                    let mut break_bonus = 0;
-                    if e_bstate.remaining_turns > 0 {
-                        break_bonus = 30 + base * 2;
-                        dmg = base + break_bonus;
-                    }
-                    e_hp.current = (e_hp.current - dmg).max(0);
-                    // 敵ダメージポップアップ設定
-                    enemy_damage_popup.amount = dmg;
-                    enemy_damage_popup.timer = 1.2;
-                    if is_guard_counter {
-                        if break_bonus > 0 {
-                            log.0.push(format!(
-                                "ガードカウンター! 敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
-                                dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
-                            ));
-                        } else {
-                            log.0.push(format!(
-                                "ガードカウンター! 敵に{}ダメージ (敵HP {} / {})",
-                                dmg, e_hp.current, e_hp.max
-                            ));
-                        }
-                    } else {
-                        if break_bonus > 0 {
-                            log.0.push(format!(
-                                "敵に{}ダメージ (基本{} + ブレイク補正{} = 合計{}, 敵HP {} / {})",
-                                dmg, base, break_bonus, dmg, e_hp.current, e_hp.max
-                            ));
-                        } else {
-                            log.0.push(format!(
-                                "敵に{}ダメージ (敵HP {} / {})",
-                                dmg, e_hp.current, e_hp.max
-                            ));
-                        }
-                    }
-                    let before_break = e_break.current;
-                    let mut add_break = if buffs.skill > 0 { 40 } else { 25 };
-                    if is_guard_counter {
-                        add_break += 20; // ガードカウンター: ブレイク+20
-                    }
-                    e_break.current += add_break;
-                    log.0.push(format!(
-                        "ブレイク値 +{} ({} → {} / 100)",
-                        add_break, before_break, e_break.current
-                    ));
-                    e_bregen.amount = 1;
-                }
-                CommandKind::Wait => {
-                    let before = p_sta.current;
-                    p_sta.current = (p_sta.current + 60).min(p_sta.max);
-                    let recovered = p_sta.current - before;
-                    log.0.push(format!(
-                        "プレイヤーは待機してスタミナを{}回復 (Stamina {} / {})",
-                        recovered, p_sta.current, p_sta.max
-                    ));
-                }
-            }
-            // 実行成功: 直前が攻撃または強攻撃だったかを更新（強攻撃後の攻撃も連撃にする）
-            chain_state.last_was_attack = matches!(cmd, CommandKind::Attack | CommandKind::Skill);
-            // ガードカウンター猶予の消費: 防御以外の行動で消費
-            if !matches!(cmd, CommandKind::Defend) {
-                let mut g = def_guard.p1();
-                g.0 = false;
-            }
-        }
+        let player_id = battle.players.first().map(|p| p.character_id).unwrap_or(1);
+        let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
+        let player_conduct = match cmd {
+            CommandKind::Attack => BattleConduct {
+                actor_character_id: player_id,
+                target_character_id: enemy_id,
+                conduct: Conduct {
+                    name: "攻撃".to_string(),
+                    sp_cost: 0,
+                    stamina_cost: cost as u32,
+                    perks: vec![ConductPerk::Melee],
+                    requirement: ConductRequirement {
+                        strength: 0,
+                        dexterity: 0,
+                        intelligence: 0,
+                        faith: 0,
+                        arcane: 0,
+                        agility: 0,
+                    },
+                    conduct_type: ConductType::Basic(ConductTypeBasic::Attack(
+                        ConductTypeBasicAttack {
+                            attack_power: AttackPower {
+                                slash: 25,
+                                strike: 0,
+                                thrust: 0,
+                                impact: 0,
+                                magic: 0,
+                                fire: 0,
+                                lightning: 0,
+                                chaos: 0,
+                            },
+                            break_power: 10,
+                        },
+                    )),
+                },
+                weapon: None,
+            },
+            CommandKind::Skill => BattleConduct {
+                actor_character_id: player_id,
+                target_character_id: enemy_id,
+                conduct: Conduct {
+                    name: "強攻撃".to_string(),
+                    sp_cost: 0,
+                    stamina_cost: cost as u32,
+                    perks: vec![ConductPerk::Melee],
+                    requirement: ConductRequirement {
+                        strength: 0,
+                        dexterity: 0,
+                        intelligence: 0,
+                        faith: 0,
+                        arcane: 0,
+                        agility: 0,
+                    },
+                    conduct_type: ConductType::Basic(ConductTypeBasic::Attack(
+                        ConductTypeBasicAttack {
+                            attack_power: AttackPower {
+                                slash: 40,
+                                strike: 0,
+                                thrust: 0,
+                                impact: 0,
+                                magic: 0,
+                                fire: 0,
+                                lightning: 0,
+                                chaos: 0,
+                            },
+                            break_power: 20,
+                        },
+                    )),
+                },
+                weapon: None,
+            },
+            CommandKind::Heal => BattleConduct {
+                actor_character_id: player_id,
+                target_character_id: player_id,
+                conduct: Conduct {
+                    name: "回復".to_string(),
+                    sp_cost: 0,
+                    stamina_cost: cost as u32,
+                    perks: vec![],
+                    requirement: ConductRequirement {
+                        strength: 0,
+                        dexterity: 0,
+                        intelligence: 0,
+                        faith: 0,
+                        arcane: 0,
+                        agility: 0,
+                    },
+                    conduct_type: ConductType::Basic(ConductTypeBasic::Support(
+                        ConductTypeBasicSupport::Recover(SupportRecover {
+                            potencies: vec![SupportRecoverPotency::Hp(SupportRecoverPotencyHp {
+                                hp_recover: 50,
+                            })],
+                        }),
+                    )),
+                },
+                weapon: None,
+            },
+            CommandKind::Defend => BattleConduct {
+                actor_character_id: player_id,
+                target_character_id: player_id,
+                conduct: Conduct {
+                    name: "防御".to_string(),
+                    sp_cost: 0,
+                    stamina_cost: cost as u32,
+                    perks: vec![],
+                    requirement: ConductRequirement {
+                        strength: 0,
+                        dexterity: 0,
+                        intelligence: 0,
+                        faith: 0,
+                        arcane: 0,
+                        agility: 0,
+                    },
+                    conduct_type: ConductType::Basic(ConductTypeBasic::Support(
+                        ConductTypeBasicSupport::StatusEffect(SuportStatusEffect {
+                            status_effects: vec![StatusEffect {
+                                potency: StatusEffectPotency::Resistance(StatusEffectResistance {
+                                    cut_rate: GuardCutRate {
+                                        slash: 0.5,
+                                        strike: 0.5,
+                                        thrust: 0.5,
+                                        impact: 0.5,
+                                        magic: 0.5,
+                                        fire: 0.5,
+                                        lightning: 0.5,
+                                        chaos: 0.5,
+                                    },
+                                }),
+                                duration: StatusEffectDuration::Turn(StatusEffectDurationTurn {
+                                    turns: 1,
+                                }),
+                            }],
+                        }),
+                    )),
+                },
+                weapon: None,
+            },
+            CommandKind::Wait => BattleConduct {
+                actor_character_id: player_id,
+                target_character_id: player_id,
+                conduct: Conduct {
+                    name: "待機".to_string(),
+                    sp_cost: 0,
+                    stamina_cost: 0,
+                    perks: vec![],
+                    requirement: ConductRequirement {
+                        strength: 0,
+                        dexterity: 0,
+                        intelligence: 0,
+                        faith: 0,
+                        arcane: 0,
+                        agility: 0,
+                    },
+                    conduct_type: ConductType::Basic(ConductTypeBasic::Support(
+                        ConductTypeBasicSupport::Recover(SupportRecover {
+                            potencies: vec![SupportRecoverPotency::Stamina(
+                                SupportRecoverPotencyStamina {
+                                    stamina_recover: 60,
+                                },
+                            )],
+                        }),
+                    )),
+                },
+                weapon: None,
+            },
+            CommandKind::EnhanceAttack
+            | CommandKind::EnhanceSkill
+            | CommandKind::EnhanceHeal
+            | CommandKind::EnhanceDefend => BattleConduct {
+                actor_character_id: player_id,
+                target_character_id: player_id,
+                conduct: Conduct {
+                    name: "強化".to_string(),
+                    sp_cost: 0,
+                    stamina_cost: 0,
+                    perks: vec![],
+                    requirement: ConductRequirement {
+                        strength: 0,
+                        dexterity: 0,
+                        intelligence: 0,
+                        faith: 0,
+                        arcane: 0,
+                        agility: 0,
+                    },
+                    conduct_type: ConductType::Basic(ConductTypeBasic::Support(
+                        ConductTypeBasicSupport::StatusEffect(SuportStatusEffect {
+                            status_effects: vec![],
+                        }),
+                    )),
+                },
+                weapon: None,
+            },
+        };
 
-        // プレイヤーの攻撃/強攻撃後にブレイク判定。閾値到達でこのターンの敵行動をキャンセルし、次ターンから4ターンブレイク。
-        let mut enemy_action_canceled_this_turn = false;
-        if e_break.current >= 100 && e_bstate.remaining_turns == 0 {
-            enemy_action_canceled_this_turn = true;
-            e_bstate.remaining_turns = 4; // 次ターンから4ターン行動不能
-            log.0.push(
-                "敵がブレイク状態に入る!（次のターンから4ターン行動不能・被ダメ2倍）".to_string(),
-            );
-        }
+        let enemy_conduct = battle.decide_enemy_conduct(DecideEnemyConductRequest {
+            enemy_character_id: enemy_id,
+        });
+        let order = battle.decide_order(BattleDecideOrderRequest {
+            character_ids: vec![player_id, enemy_id],
+        });
 
-        if e_hp.current > 0 {
-            // 事前決定済みの敵行動を実行
-            if e_bstate.remaining_turns > 0 {
-                // ブレイク中は行動不能
-                log.0.push("敵はブレイク中のため行動不能".to_string());
-            } else if enemy_action_canceled_this_turn {
-                // このターンの行動はキャンセル
-                log.0.push("敵の行動はブレイクによりキャンセル".to_string());
+        let mut player_dealt_damage_hp: u32 = 0;
+        for actor_id in order {
+            let conduct_to_execute = if actor_id == player_id {
+                &player_conduct
             } else {
-                let action = &mut planned.0;
-                let step = action.current_step().unwrap();
-                match step.specification {
-                    ActionStepSpecificationEnum::Attack(spec) => {
-                        let mut incoming = (e_attack.0 as f32 * spec.power) as i32;
-                        {
-                            let mut d = def_guard.p0();
-                            if d.0 {
-                                incoming = 0;
-                                d.0 = false; // 一度きり
+                &enemy_conduct
+            };
+            let incident = battle.execute_conduct(BattleExecuteConductRequest {
+                conduct: BattleConduct {
+                    actor_character_id: conduct_to_execute.actor_character_id,
+                    target_character_id: conduct_to_execute.target_character_id,
+                    conduct: Conduct {
+                        name: conduct_to_execute.conduct.name.clone(),
+                        sp_cost: conduct_to_execute.conduct.sp_cost,
+                        stamina_cost: conduct_to_execute.conduct.stamina_cost,
+                        perks: conduct_to_execute.conduct.perks.clone(),
+                        requirement: ConductRequirement {
+                            strength: conduct_to_execute.conduct.requirement.strength,
+                            dexterity: conduct_to_execute.conduct.requirement.dexterity,
+                            intelligence: conduct_to_execute.conduct.requirement.intelligence,
+                            faith: conduct_to_execute.conduct.requirement.faith,
+                            arcane: conduct_to_execute.conduct.requirement.arcane,
+                            agility: conduct_to_execute.conduct.requirement.agility,
+                        },
+                        conduct_type: conduct_to_execute.conduct.conduct_type.clone(),
+                    },
+                    weapon: None,
+                },
+            });
+
+            match incident {
+                BattleIncident::Conduct(c) => match c.outcome {
+                    BattleIncidentConductOutcome::Failure(_) => {
+                        log.0.push(format!("{}は不発", c.conduct.conduct.name))
+                    }
+                    BattleIncidentConductOutcome::Success(s) => {
+                        for change in s.attacker.stats_changes.iter() {
+                            match change {
+                                BattleIncidentStats::DamageSp(d) => log
+                                    .0
+                                    .push(format!("SP -{} ({} → {})", d.damage, d.before, d.after)),
+                                BattleIncidentStats::DamageStamina(d) => log.0.push(format!(
+                                    "Stamina -{} ({} → {})",
+                                    d.damage, d.before, d.after
+                                )),
+                                _ => {}
                             }
                         }
-                        p_hp.current = (p_hp.current - incoming).max(0);
-                        log.0.push(format!(
-                            "敵の行動: {} → {}ダメージ (プレイヤーHP {} / {})",
-                            step.name, incoming, p_hp.current, p_hp.max
-                        ));
+                        for def in s.defenders.iter() {
+                            for change in def.stats_changes.iter() {
+                                match change {
+                                    BattleIncidentStats::DamageHp(d) => {
+                                        if c.attacker_id == player_id {
+                                            player_dealt_damage_hp = d.damage;
+                                        }
+                                        log.0.push(format!(
+                                            "{} に{}ダメージ (HP {} → {})",
+                                            if def.character_id == enemy_id {
+                                                "敵"
+                                            } else {
+                                                "プレイヤー"
+                                            },
+                                            d.damage,
+                                            d.before,
+                                            d.after
+                                        ));
+                                    }
+                                    BattleIncidentStats::RecoverHp(r) => log.0.push(format!(
+                                        "{} のHPを{}回復 ({} → {})",
+                                        if def.character_id == player_id {
+                                            "プレイヤー"
+                                        } else {
+                                            "敵"
+                                        },
+                                        r.recover,
+                                        r.before,
+                                        r.after
+                                    )),
+                                    BattleIncidentStats::DamageBreak(d) => {
+                                        log.0.push(format!("敵にブレイクダメージ {}", d.damage))
+                                    }
+                                    BattleIncidentStats::RecoverBreak(r) => {
+                                        log.0.push(format!("敵のブレイク回復 {}", r.recover))
+                                    }
+                                    BattleIncidentStats::RecoverStamina(r) => log.0.push(format!(
+                                        "Stamina +{} ({} → {})",
+                                        r.recover, r.before, r.after
+                                    )),
+                                    _ => {}
+                                }
+                            }
+                            if def.is_evaded {
+                                log.0.push("回避した".to_string());
+                            }
+                            if def.is_defended {
+                                log.0.push("防御した".to_string());
+                            }
+                        }
                     }
-                    ActionStepSpecificationEnum::Wait(_) => {
-                        log.0.push(format!("敵の行動: {} (何もしない)", step.name));
-                    }
-                    ActionStepSpecificationEnum::Heal(spec) => {
-                        // プレイヤーがこのターンに攻撃していた場合、敵の回復量は半減
-                        let base_heal = spec.amount;
-                        let heal_amount = if matches!(cmd, CommandKind::Attack | CommandKind::Skill)
-                        {
-                            base_heal / 2
-                        } else {
-                            base_heal
-                        };
-                        let before = e_hp.current;
-                        e_hp.current = (e_hp.current + heal_amount).min(e_hp.max);
-                        let healed = e_hp.current - before;
-                        log.0.push(format!(
-                            "敵の行動: {} → HPを{}回復 (敵HP {} / {})",
-                            step.name, healed, e_hp.current, e_hp.max
-                        ));
-                    }
-                }
-                action.next();
+                },
+                BattleIncident::AutoTrigger(_) => {}
             }
         }
+
+        // TODO: 敵の行動
+        // if e_hp.current > 0 {
+        //     // 事前決定済みの敵行動を実行
+        //     if e_bstate.remaining_turns > 0 {
+        //         // ブレイク中は行動不能
+        //         log.0.push("敵はブレイク中のため行動不能".to_string());
+        //     } else if enemy_action_canceled_this_turn {
+        //         // このターンの行動はキャンセル
+        //         log.0.push("敵の行動はブレイクによりキャンセル".to_string());
+        //     } else {
+        //         let action = &mut planned.0;
+        //         let step = action.current_step().unwrap();
+        //         match step.specification {
+        //             ActionStepSpecificationEnum::Attack(spec) => {
+        //                 let mut incoming = (e_attack.0 as f32 * spec.power) as i32;
+        //                 {
+        //                     let mut d = def_guard.p0();
+        //                     if d.0 {
+        //                         incoming = 0;
+        //                         d.0 = false; // 一度きり
+        //                     }
+        //                 }
+        //                 p_hp.current = (p_hp.current - incoming).max(0);
+        //                 log.0.push(format!(
+        //                     "敵の行動: {} → {}ダメージ (プレイヤーHP {} / {})",
+        //                     step.name, incoming, p_hp.current, p_hp.max
+        //                 ));
+        //             }
+        //             ActionStepSpecificationEnum::Wait(_) => {
+        //                 log.0.push(format!("敵の行動: {} (何もしない)", step.name));
+        //             }
+        //             ActionStepSpecificationEnum::Heal(spec) => {
+        //                 // プレイヤーがこのターンに攻撃していた場合、敵の回復量は半減
+        //                 let base_heal = spec.amount;
+        //                 let heal_amount = if matches!(cmd, CommandKind::Attack | CommandKind::Skill)
+        //                 {
+        //                     base_heal / 2
+        //                 } else {
+        //                     base_heal
+        //                 };
+        //                 let before = e_hp.current;
+        //                 e_hp.current = (e_hp.current + heal_amount).min(e_hp.max);
+        //                 let healed = e_hp.current - before;
+        //                 log.0.push(format!(
+        //                     "敵の行動: {} → HPを{}回復 (敵HP {} / {})",
+        //                     step.name, healed, e_hp.current, e_hp.max
+        //                 ));
+        //             }
+        //         }
+        //         action.next();
+        //     }
+        // }
+
+        // TODO:
         // 次ターンの敵行動を事前決定（敵が生きている場合）
-        if e_hp.current > 0 && p_hp.current > 0 {
-            if planned.0.is_finished() {
-                // 現在の行動が完了している場合、新たに行動を決定
+        // if e_hp.current > 0 && p_hp.current > 0 {
+        //     if planned.0.is_finished() {
+        //         // 現在の行動が完了している場合、新たに行動を決定
 
-                let roll: f32 = rand::random::<f32>();
-                // 敵HPが半分以下なら、回復とため開始を選択肢に含める
-                let next = if e_hp.current * 2 <= e_hp.max {
-                    // 攻撃 / 待機 / 回復 / ため(準備)
-                    match () {
-                        _ if roll < 0.1 => create_enemy_wait(),
-                        _ if roll < 0.2 => create_enemy_heal(),
-                        _ if roll < 0.3 => create_enemy_attack(),
-                        _ if roll < 0.5 => create_enemy_claw_combo_strong(),
-                        _ if roll < 0.7 => create_enemy_claw_strong(),
-                        _ if roll < 0.8 => create_enemy_stomp(),
-                        _ => create_enemy_fire_breath(),
-                    }
-                } else {
-                    match () {
-                        _ if roll < 0.3 => create_enemy_wait(),
-                        _ if roll < 0.6 => create_enemy_attack(),
-                        _ if roll < 0.8 => create_enemy_claw_combo(),
-                        _ if roll < 0.9 => create_enemy_claw_strong(),
-                        _ => create_enemy_stomp(),
-                    }
-                };
+        //         let roll: f32 = rand::random::<f32>();
+        //         // 敵HPが半分以下なら、回復とため開始を選択肢に含める
+        //         let next = if e_hp.current * 2 <= e_hp.max {
+        //             // 攻撃 / 待機 / 回復 / ため(準備)
+        //             match () {
+        //                 _ if roll < 0.1 => create_enemy_wait(),
+        //                 _ if roll < 0.2 => create_enemy_heal(),
+        //                 _ if roll < 0.3 => create_enemy_attack(),
+        //                 _ if roll < 0.5 => create_enemy_claw_combo_strong(),
+        //                 _ if roll < 0.7 => create_enemy_claw_strong(),
+        //                 _ if roll < 0.8 => create_enemy_stomp(),
+        //                 _ => create_enemy_fire_breath(),
+        //             }
+        //         } else {
+        //             match () {
+        //                 _ if roll < 0.3 => create_enemy_wait(),
+        //                 _ if roll < 0.6 => create_enemy_attack(),
+        //                 _ if roll < 0.8 => create_enemy_claw_combo(),
+        //                 _ if roll < 0.9 => create_enemy_claw_strong(),
+        //                 _ => create_enemy_stomp(),
+        //             }
+        //         };
 
-                // TODO: 毎回生成してるのやめる
-                planned.0 = ActionProcess::from(&Arc::new(next));
-            }
-            log.0.push(format!(
-                "次ターン敵行動予定: {}",
-                planned.0.current_step().unwrap().name
-            ));
-        }
-        // ターン終了時、ブレイク残りターンのデクリメント（ブレイク中のみ）。解除時にブレイク値リセット。
-        if e_bstate.remaining_turns > 0 {
-            e_bstate.remaining_turns = e_bstate.remaining_turns.saturating_sub(1);
-            if e_bstate.remaining_turns == 0 {
-                e_break.current = 0;
-                log.0
-                    .push("敵のブレイク状態が解除。ブレイク値を0にリセット".to_string());
-                // 0になったので自然回復量もリセット
-                e_bregen.amount = 1;
-            }
-        }
-        // ターン終了時、攻撃/強攻撃が無ければ自然回復: 1,2,4,...と倍増。0到達またはダメージ受けで1へリセット。
-        if !matches!(cmd, CommandKind::Attack | CommandKind::Skill) {
-            let before = e_break.current;
-            e_break.current = (e_break.current - e_bregen.amount).max(0);
-            if e_break.current != before {
-                log.0.push(format!(
-                    "敵のブレイク値が自然回復: {} → {} (回復量 {})",
-                    before, e_break.current, e_bregen.amount
-                ));
-            }
-            if e_break.current == 0 {
-                e_bregen.amount = 1;
-            } else {
-                e_bregen.amount = (e_bregen.amount * 2).max(1);
-            }
-        }
-        // ターン終了時、強化の残りターンをデクリメント
-        let prev = (buffs.attack, buffs.skill, buffs.heal, buffs.defend);
-        if buffs.attack > 0 {
-            buffs.attack -= 1;
-            if buffs.attack == 0 && prev.0 > 0 {
-                log.0.push("攻撃の強化が解除された".to_string());
-            }
-        }
-        if buffs.skill > 0 {
-            buffs.skill -= 1;
-            if buffs.skill == 0 && prev.1 > 0 {
-                log.0.push("強攻撃の強化が解除された".to_string());
-            }
-        }
-        if buffs.heal > 0 {
-            buffs.heal -= 1;
-            if buffs.heal == 0 && prev.2 > 0 {
-                log.0.push("回復の強化が解除された".to_string());
-            }
-        }
-        if buffs.defend > 0 {
-            buffs.defend -= 1;
-            if buffs.defend == 0 && prev.3 > 0 {
-                log.0.push("防御の強化が解除された".to_string());
-            }
-        }
+        //         // TODO: 毎回生成してるのやめる
+        //         planned.0 = ActionProcess::from(&Arc::new(next));
+        //     }
+        //     log.0.push(format!(
+        //         "次ターン敵行動予定: {}",
+        //         planned.0.current_step().unwrap().name
+        //     ));
+        // }
+
         turn.0 += 1;
         *phase = BattlePhase::AwaitCommand;
     };
@@ -2086,8 +2089,6 @@ fn player_input_system(
 // ================== End Check ==================
 fn battle_end_check_system(
     mut phase: ResMut<BattlePhase>,
-    player_q: Query<&Hp, With<Player>>,
-    enemy_q: Query<&Hp, With<Enemy>>,
     mut log: ResMut<CombatLog>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -2100,17 +2101,20 @@ fn battle_end_check_system(
         Query<&mut Node, With<UiEnemyHpGaugeFill>>,
         Query<&mut Node, With<UiEnemyBreakGaugeFill>>,
     )>,
+    mut battle_resource: ResMut<BattleResource>,
 ) {
     if *phase == BattlePhase::Finished {
         return;
     }
-    let Ok(p_hp) = player_q.single() else {
-        return;
-    };
-    let Ok(e_hp) = enemy_q.single() else {
-        return;
-    };
-    if e_hp.current <= 0 {
+
+    let battle = &mut battle_resource.0;
+    // TODO: 仮
+    let player = battle.players.first().unwrap();
+    let player_hp = player.base.current_stats.max_hp - player.base.current_stats.hp_damage;
+    let enemy = battle.enemies.first().unwrap();
+    let enemy_hp = enemy.base.current_stats.max_hp - enemy.base.current_stats.hp_damage;
+
+    if enemy_hp == 0 {
         *phase = BattlePhase::Finished;
         log.0.push("勝利! 敵を倒しました".to_string());
 
@@ -2243,24 +2247,20 @@ fn battle_end_check_system(
                     ZIndex(101),
                 ));
             });
-    } else if p_hp.current <= 0 {
+    } else if player_hp == 0 {
         *phase = BattlePhase::Finished;
         log.0.push("敗北... プレイヤーのHPが0です".to_string());
     }
 }
 
 fn ui_update_system(
-    player_q: Query<&Hp, With<Player>>,
-    player_sta_q: Query<&Stamina, With<Player>>,
-    enemy_q: Query<(&Hp, &BreakValue, &BreakState), With<Enemy>>,
     phase: Res<BattlePhase>,
     log: Res<CombatLog>,
-    momentum: Res<Momentum>,
-    buffs: Res<CommandBuffs>,
     pending: Res<PendingSelections>,
     queue: Res<CommandQueue>,
     // mut ui_q: Query<&mut Children, With<UiRoot>>,
     planned: Res<EnemyPlannedAction>,
+    battle_resource: Res<BattleResource>,
     mut ui_staus_q: Query<&mut Text, (With<UiStatus>, Without<UiPhase>, Without<UiLog>)>,
     // プレイヤーステータス（右上）の更新用: テキスト群（HP、スタミナ、モメンタム）
     // 右上プレイヤーステータスは別システムで更新（引数が多すぎるため分割）
@@ -2303,15 +2303,6 @@ fn ui_update_system(
     mut ui_phase_q: Query<&mut Text, (With<UiPhase>, Without<UiStatus>, Without<UiLog>)>,
     mut ui_log_q: Query<&mut Text, (With<UiLog>, Without<UiStatus>, Without<UiPhase>)>,
 ) {
-    let Ok(p_hp) = player_q.single() else {
-        return;
-    };
-    let Ok(p_sta) = player_sta_q.single() else {
-        return;
-    };
-    let Ok((e_hp, e_break, e_bstate)) = enemy_q.single() else {
-        return;
-    };
     let Ok(mut ui_status_text) = ui_staus_q.single_mut() else {
         return;
     };
@@ -2322,86 +2313,57 @@ fn ui_update_system(
         return;
     };
 
-    // 強化反映後の有効値
-    let atk_power = if buffs.attack > 0 { 25 } else { 10 };
-    let heal_amount = if buffs.heal > 0 { 60 } else { 50 };
-    let atk_cost = 15;
-    let heal_cost = if buffs.heal > 0 { 20 } else { 15 };
-    let def_cost = if buffs.defend > 0 { 5 } else { 10 };
+    let battle = &battle_resource.0;
+
+    let player = battle.players.first().unwrap();
+    let p_hp = &player.base.current_stats.max_hp - player.base.current_stats.hp_damage;
+    let p_stamina =
+        &player.base.current_stats.max_stamina - player.base.current_stats.stamina_damage;
+    let enemy = battle.enemies.first().unwrap();
+    let e_hp = &enemy.base.current_stats.max_hp - enemy.base.current_stats.hp_damage;
 
     ui_status_text.0 = format!(
-        "プレイヤーHP: {} / {}\nスタミナ: {} / {}\nモメンタム: {} / 100\n強化 残り(攻:{} 強:{} 回:{} 防:{})\n\n敵HP: {} / {}\n敵ブレイク値: {} / 100\n敵状態: {}\n\n",
-        p_hp.current,
-        p_hp.max,
-        p_sta.current,
-        p_sta.max,
-        momentum.current,
-        buffs.attack,
-        buffs.skill,
-        buffs.heal,
-        buffs.defend,
-        e_hp.current,
-        e_hp.max,
-        e_break.current,
-        if e_bstate.remaining_turns > 0 {
-            "ブレイク中"
-        } else {
-            "通常"
-        },
+        "プレイヤーHP: {} / {}\nスタミナ: {} / {}\n100\n\n敵HP: {} / {}\n敵ブレイク値: {} / 100\n敵状態: {}\n\n",
+        p_hp,
+        player.base.current_stats.max_hp,
+        p_stamina,
+        player.base.current_stats.max_stamina,
+        e_hp,
+        enemy.base.current_stats.max_hp,
+        enemy.current_enemy_only_stats.break_damage,
+        "通常" // TODO: 敵状態表示
+               // if e_bstate.remaining_turns > 0 {
+               //     "ブレイク中"
+               // } else {
+               //     "通常"
+               // },
     );
 
     // 有効値（コマンド別）テキスト更新＆色切り替え
     let Ok((mut eff_atk_text, mut eff_atk_color)) = ui_eff_atk_q.single_mut() else {
         return;
     };
-    let atk_break_add = if buffs.attack > 0 { 25 } else { 15 };
-    let atk_enh_suffix = if buffs.attack > 0 { " (強化中)" } else { "" };
-    eff_atk_text.0 = format!(
-        "攻撃 力:{} 消費:{}{} / ブレイク+{}\n",
-        atk_power, atk_cost, atk_enh_suffix, atk_break_add
-    );
-    eff_atk_color.0 = if buffs.attack > 0 {
-        Color::from(LinearRgba {
-            red: 0.95,
-            green: 0.85,
-            blue: 0.35,
-            alpha: 1.0,
-        })
-    } else {
-        Color::WHITE
-    };
+    // let atk_break_add = if buffs.attack > 0 { 25 } else { 15 };
+    // let atk_enh_suffix = if buffs.attack > 0 { " (強化中)" } else { "" };
+    // eff_atk_text.0 = format!(
+    //     "攻撃 力:{} 消費:{}{} / ブレイク+{}\n",
+    //     atk_power, atk_cost, atk_enh_suffix, atk_break_add
+    // );
+    eff_atk_color.0 = Color::WHITE;
 
     // 強攻撃の有効値表示は別システムで更新
 
     let Ok((mut eff_heal_text, mut eff_heal_color)) = ui_eff_heal_q.single_mut() else {
         return;
     };
-    eff_heal_text.0 = format!("回復 量:{} 消費:{}\n", heal_amount, heal_cost);
-    eff_heal_color.0 = if buffs.heal > 0 {
-        Color::from(LinearRgba {
-            red: 0.95,
-            green: 0.85,
-            blue: 0.35,
-            alpha: 1.0,
-        })
-    } else {
-        Color::WHITE
-    };
+    // eff_heal_text.0 = format!("回復 量:{} 消費:{}\n", heal_amount, heal_cost);
+    eff_heal_color.0 = Color::WHITE;
 
     let Ok((mut eff_def_text, mut eff_def_color)) = ui_eff_def_q.single_mut() else {
         return;
     };
-    eff_def_text.0 = format!("防御 消費:{}\n\n", def_cost);
-    eff_def_color.0 = if buffs.defend > 0 {
-        Color::from(LinearRgba {
-            red: 0.95,
-            green: 0.85,
-            blue: 0.35,
-            alpha: 1.0,
-        })
-    } else {
-        Color::WHITE
-    };
+    // eff_def_text.0 = format!("防御 消費:{}\n\n", def_cost);
+    eff_def_color.0 = Color::WHITE;
 
     let enemy_action_str = if let Some(step) = planned.0.current_step() {
         step.name
@@ -2569,10 +2531,7 @@ fn ui_update_message_system(log: Res<CombatLog>, mut msg_q: Query<&mut Text, Wit
 
 // 右上プレイヤーステータスの更新（HP/スタミナテキスト＆ゲージ、モメンタムテキスト）
 fn ui_update_player_status_system(
-    player_q: Query<&Hp, With<Player>>,
-    player_sta_q: Query<&Stamina, With<Player>>,
-    momentum: Res<Momentum>,
-    buffs: Res<CommandBuffs>,
+    battle_resource: Res<BattleResource>,
     mut hp_text_q: Query<&mut Text, (With<UiHpText>, Without<UiStaText>, Without<UiMomentumText>)>,
     mut sta_text_q: Query<&mut Text, (With<UiStaText>, Without<UiHpText>, Without<UiMomentumText>)>,
     mut momentum_text_q: Query<
@@ -2593,38 +2552,25 @@ fn ui_update_player_status_system(
         Query<&mut Node, With<UiStaGaugeFill>>,
     )>,
 ) {
-    let Ok(p_hp) = player_q.single() else {
-        return;
-    };
-    let Ok(p_sta) = player_sta_q.single() else {
-        return;
-    };
+    let battle = &battle_resource.0;
+
+    let player = battle.players.first().unwrap();
+    let p_hp = &player.base.current_stats.max_hp - player.base.current_stats.hp_damage;
+    let p_sta = &player.base.current_stats.max_stamina - player.base.current_stats.stamina_damage;
 
     // コンテナ内の最初のTextを簡潔表示用に更新
     if let Ok(mut hp_text) = hp_text_q.single_mut() {
-        hp_text.0 = format!("HP: {} / {}", p_hp.current, p_hp.max);
+        hp_text.0 = format!("HP: {} / {}", p_hp, player.base.current_stats.max_hp);
     }
     if let Ok(mut sta_text) = sta_text_q.single_mut() {
-        sta_text.0 = format!("スタミナ: {} / {}", p_sta.current, p_sta.max);
-    }
-    if let Ok(mut momentum_text) = momentum_text_q.single_mut() {
-        momentum_text.0 = format!("モメンタム: {} / 100", momentum.current);
+        sta_text.0 = format!(
+            "スタミナ: {} / {}",
+            p_sta, player.base.current_stats.max_stamina
+        );
     }
     if let Ok(mut buffs_text) = buffs_text_q.single_mut() {
         // 表示: 強化中のものと残りターン。未強化は「なし」。
         let mut parts: Vec<String> = Vec::new();
-        if buffs.attack > 0 {
-            parts.push(format!("攻:{}", buffs.attack));
-        }
-        if buffs.skill > 0 {
-            parts.push(format!("強:{}", buffs.skill));
-        }
-        if buffs.heal > 0 {
-            parts.push(format!("回:{}", buffs.heal));
-        }
-        if buffs.defend > 0 {
-            parts.push(format!("防:{}", buffs.defend));
-        }
         if parts.is_empty() {
             buffs_text.0 = "強化: なし".to_string();
         } else {
@@ -2634,16 +2580,16 @@ fn ui_update_player_status_system(
 
     // ゲージ幅更新
     if let Ok(mut hp_node) = gauge_params.p0().single_mut() {
-        let ratio = if p_hp.max > 0 {
-            (p_hp.current as f32 / p_hp.max as f32).clamp(0.0, 1.0)
+        let ratio = if player.base.current_stats.max_hp > 0 {
+            (p_hp as f32 / player.base.current_stats.max_hp as f32).clamp(0.0, 1.0)
         } else {
             0.0
         };
         hp_node.width = percent((ratio * 100.0).round());
     }
     if let Ok(mut sta_node) = gauge_params.p1().single_mut() {
-        let ratio = if p_sta.max > 0 {
-            (p_sta.current as f32 / p_sta.max as f32).clamp(0.0, 1.0)
+        let ratio = if player.base.current_stats.max_stamina > 0 {
+            (p_sta as f32 / player.base.current_stats.max_stamina as f32).clamp(0.0, 1.0)
         } else {
             0.0
         };
@@ -2771,8 +2717,7 @@ fn boss_slain_banner_system(
 
 // 強攻撃の有効値表示（ガードカウンターの反映もここで実施）
 fn ui_update_skill_effect_system(
-    buffs: Res<CommandBuffs>,
-    guard_counter: Res<GuardCounterReady>,
+    battle_resource: Res<BattleResource>,
     mut ui_eff_skl_q: Query<
         (&mut Text, &mut TextColor),
         (
@@ -2786,48 +2731,26 @@ fn ui_update_skill_effect_system(
         ),
     >,
 ) {
-    let skl_power = if buffs.skill > 0 { 45 } else { 25 };
-    let skl_cost = 25; // 消費は強化やカウンターでも変わらない
+    let battle = &battle_resource.0;
+
+    let skl_power = 25;
+    let skl_cost = 25;
 
     let Ok((mut eff_skl_text, mut eff_skl_color)) = ui_eff_skl_q.single_mut() else {
         return;
     };
-    let guard_ready = guard_counter.0;
-    let display_skl_power = if guard_ready {
-        skl_power + 5
-    } else {
-        skl_power
-    };
-    let mut display_break = if buffs.skill > 0 { 40 } else { 25 };
-    if guard_ready {
-        display_break += 20;
-    }
-    eff_skl_text.0 = if guard_ready {
-        format!(
-            "強攻撃(ガードカウンター) 威力:{} 消費:{} / ブレイク+{}\n",
-            display_skl_power, skl_cost, display_break
-        )
-    } else {
-        format!(
-            "強攻撃 威力:{} 消費:{} / ブレイク+{}\n",
-            display_skl_power, skl_cost, display_break
-        )
-    };
-    eff_skl_color.0 = if buffs.skill > 0 {
-        Color::from(LinearRgba {
-            red: 0.95,
-            green: 0.85,
-            blue: 0.35,
-            alpha: 1.0,
-        })
-    } else {
-        Color::WHITE
-    };
+    let display_skl_power = skl_power;
+    let display_break = 25;
+    eff_skl_text.0 = format!(
+        "強攻撃 威力:{} 消費:{} / ブレイク+{}\n",
+        display_skl_power, skl_cost, display_break
+    );
+    eff_skl_color.0 = Color::WHITE;
 }
 
 // 敵UI（中央配置）の更新（HP/ブレイクのゲージ幅、ブレイク中表示、次の行動）
 fn ui_update_enemy_system(
-    enemy_q: Query<(&Hp, &BreakValue, &BreakState), With<Enemy>>,
+    battle_resource: Res<BattleResource>,
     planned: Res<EnemyPlannedAction>,
     mut gauge_params: ParamSet<(
         Query<&mut Node, With<UiEnemyHpGaugeFill>>,
@@ -2836,29 +2759,32 @@ fn ui_update_enemy_system(
     mut br_label_q: Query<&mut Visibility, With<UiEnemyBreakLabel>>,
     mut next_text_q: Query<&mut Text, With<UiEnemyNextActionText>>,
 ) {
-    let Ok((e_hp, e_break, e_bstate)) = enemy_q.single() else {
-        return;
-    };
+    let battle = &battle_resource.0;
+
+    let enemy = battle.enemies.first().unwrap();
+    let e_hp = &enemy.base.current_stats.max_hp - enemy.base.current_stats.hp_damage;
+    let e_break = enemy.current_enemy_only_stats.break_damage;
 
     if let Ok(mut hp_node) = gauge_params.p0().single_mut() {
-        let ratio = if e_hp.max > 0 {
-            (e_hp.current as f32 / e_hp.max as f32).clamp(0.0, 1.0)
+        let ratio = if enemy.base.current_stats.max_hp > 0 {
+            (e_hp as f32 / enemy.base.current_stats.max_hp as f32).clamp(0.0, 1.0)
         } else {
             0.0
         };
         hp_node.width = percent((ratio * 100.0).round());
     }
     if let Ok(mut br_node) = gauge_params.p1().single_mut() {
-        let ratio = (e_break.current as f32 / 100.0).clamp(0.0, 1.0);
+        let ratio = (e_break as f32 / 100.0).clamp(0.0, 1.0);
         br_node.width = percent((ratio * 100.0).round());
     }
-    if let Ok(mut vis) = br_label_q.single_mut() {
-        *vis = if e_bstate.remaining_turns > 0 {
-            Visibility::Visible
-        } else {
-            Visibility::Hidden
-        };
-    }
+    // TODO: ブレイク状態の表示何とかする
+    // if let Ok(mut vis) = br_label_q.single_mut() {
+    //     *vis = if e_bstate.remaining_turns > 0 {
+    //         Visibility::Visible
+    //     } else {
+    //         Visibility::Hidden
+    //     };
+    // }
     if let Ok(mut t) = next_text_q.single_mut() {
         let enemy_action_str = if let Some(step) = planned.0.current_step() {
             step.name

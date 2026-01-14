@@ -1,5 +1,7 @@
 use super::*;
 
+use std::sync::Arc;
+
 pub enum BattleCharacter<'a> {
     Player(&'a mut BattlePlayer),
     Enemy(&'a mut BattleEnemy),
@@ -63,14 +65,14 @@ pub type BattleCharacterId = u32;
 // バトル中のプレイヤーの状態
 pub struct BattlePlayer {
     pub character_id: BattleCharacterId,
-    pub original: Rc<Player>,
+    pub original: Arc<Player>,
 
     pub base: BattleCharacterBase,
 }
 // バトル中の敵の状態
 pub struct BattleEnemy {
     pub character_id: BattleCharacterId,
-    pub original: Rc<Enemy>,
+    pub original: Arc<Enemy>,
 
     pub base: BattleCharacterBase,
     pub current_enemy_only_stats: BattleEnemyOnlyStats,

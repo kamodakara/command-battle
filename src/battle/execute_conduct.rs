@@ -1,5 +1,5 @@
 use super::*;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct BattleExecuteConductRequest {
     pub conduct: BattleConduct,
@@ -699,8 +699,8 @@ mod tests {
     use super::*;
 
     // ヘルパー: ダミーのプレイヤー原本
-    fn dummy_player() -> Rc<Player> {
-        Rc::new(Player {
+    fn dummy_player() -> Arc<Player> {
+        Arc::new(Player {
             ability: PlayerAbility {
                 vitality: 0,
                 spirit: 0,
@@ -1013,7 +1013,7 @@ mod tests {
 
         // ダミー武器（攻撃力 5 を付与）
         let weapon = BattleWeapon {
-            original: Rc::new(Weapon {
+            original: Arc::new(Weapon {
                 kind: WeaponKind::StraightSword,
                 weight: 1,
                 ability_requirement: WeaponAbilityRequirement {
@@ -1295,7 +1295,7 @@ mod tests {
 
         // ダミー武器（攻撃力 7 を付与）
         let weapon = BattleWeapon {
-            original: Rc::new(Weapon {
+            original: Arc::new(Weapon {
                 kind: WeaponKind::StraightSword,
                 weight: 1,
                 ability_requirement: WeaponAbilityRequirement {
@@ -1505,7 +1505,7 @@ mod tests {
 
         // weapon: slash=5, strike=4
         let weapon = BattleWeapon {
-            original: Rc::new(Weapon {
+            original: Arc::new(Weapon {
                 kind: WeaponKind::StraightSword,
                 weight: 1,
                 ability_requirement: WeaponAbilityRequirement {
@@ -1725,6 +1725,8 @@ fn determine_action_outcome_failure(
             // 敵のスタミナ管理は省略
         }
     };
+
+    // TODO: ブレイク中行動不能
 
     // 必要能力が足りないと不発
     let req = &conduct.conduct.requirement;

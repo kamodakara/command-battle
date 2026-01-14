@@ -6,7 +6,7 @@ use super::common::*;
 use super::conduct::Conduct;
 use super::equipment::Weapon;
 use super::status_ailment::StatusEffectPotency;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub use character::*;
 pub use incident::*;
@@ -72,7 +72,7 @@ pub struct Battle {
 }
 
 pub struct BattleWeapon {
-    pub original: Rc<Weapon>,
+    pub original: Arc<Weapon>,
     pub attack_power: AttackPower, // 攻撃性能
     pub sorcery_power: f32,        // 術力
     pub break_power: u32,          // ブレイク力

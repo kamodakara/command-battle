@@ -25,6 +25,7 @@ pub struct Weapon {
     pub guard: WeaponGuard,                            // 防御性能
 }
 
+#[derive(Clone)]
 pub enum WeaponKind {
     StraightSword, // 直剣
     Greatsword,    // 大剣

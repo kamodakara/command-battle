@@ -63,6 +63,7 @@ impl AttackPower {
     }
 }
 
+#[derive(Clone)]
 pub struct AttackPowerScaling {
     pub slash: f32,     // 斬撃
     pub strike: f32,    // 打撃
@@ -112,6 +113,7 @@ pub struct AbilityScaling {
     pub agility: f32,      // 敏捷性
 }
 
+#[derive(Clone)]
 pub struct DefensePower {
     pub slash: u32,     // 斬撃
     pub strike: u32,    // 打撃

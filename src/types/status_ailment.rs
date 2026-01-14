@@ -10,23 +10,27 @@ pub struct StatusCondition {
     // TODO
 }
 
+#[derive(Clone)]
 pub struct StatusEffect {
     pub potency: StatusEffectPotency,   // 効果量
     pub duration: StatusEffectDuration, // 継続時間
 }
 
 // 状態変化持続時間
+#[derive(Clone)]
 pub enum StatusEffectDuration {
     Permanent,
     Turn(StatusEffectDurationTurn),   // ターン数
     Count(StatusEffectDurationCount), // 回数
     UntilNextAction,                  // 次の行動まで
 }
+#[derive(Clone)]
 pub struct StatusEffectDurationTurn {
     // 効果ターン数
     pub turns: u32,
 }
 
+#[derive(Clone)]
 pub struct StatusEffectDurationCount {
     // 効果回数
     pub count: u32,
