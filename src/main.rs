@@ -537,9 +537,9 @@ fn create_mock_battle() -> Battle {
                     max_hp: 100,
                     max_sp: 30,
                     max_stamina: 100,
-                    hp_damage: 0,
-                    sp_damage: 0,
-                    stamina_damage: 0,
+                    current_hp: 100,
+                    current_sp: 30,
+                    current_stamina: 100,
                 },
                 defense_power: def.clone(),
                 status_effects: vec![],
@@ -550,7 +550,7 @@ fn create_mock_battle() -> Battle {
             original: enemy_original,
             base: BattleCharacterBase {
                 current_ability: BattleAbility {
-                    agility: 10,
+                    agility: 20,
                     strength: 10,
                     dexterity: 10,
                     intelligence: 10,
@@ -561,9 +561,9 @@ fn create_mock_battle() -> Battle {
                     max_hp: 1500,
                     max_sp: 30,
                     max_stamina: 0,
-                    hp_damage: 0,
-                    sp_damage: 0,
-                    stamina_damage: 0,
+                    current_hp: 1500,
+                    current_sp: 30,
+                    current_stamina: 0,
                 },
                 defense_power: def,
                 status_effects: vec![],
@@ -1412,11 +1412,14 @@ fn player_input_system(
                     enemy_character_id: enemy_id,
                 });
                 planned.0 = Some(enemy_conduct.clone());
+
+                // 行動順決定
                 let order = battle.decide_order(BattleDecideOrderRequest {
                     character_ids: vec![player_id, enemy_id],
                 });
 
                 let mut player_dealt_damage_hp: u32 = 0;
+                // 行動実行
                 for actor_id in order {
                     let conduct_to_execute = if actor_id == player_id {
                         player_conduct.clone()
@@ -1545,9 +1548,9 @@ fn battle_end_check_system(
     let battle = &mut battle_resource.0;
     // TODO: 仮
     let player = battle.players.first().unwrap();
-    let player_hp = player.base.current_stats.max_hp - player.base.current_stats.hp_damage;
+    let player_hp = player.base.current_stats.current_hp;
     let enemy = battle.enemies.first().unwrap();
-    let enemy_hp = enemy.base.current_stats.max_hp - enemy.base.current_stats.hp_damage;
+    let enemy_hp = enemy.base.current_stats.current_hp;
 
     if enemy_hp == 0 {
         *phase = BattlePhase::Finished;
@@ -1751,12 +1754,10 @@ fn ui_update_system(
     let battle = &battle_resource.0;
 
     let player = battle.players.first().unwrap();
-    let p_hp = &player.base.current_stats.max_hp - player.base.current_stats.hp_damage;
-    let p_stamina =
-        &player.base.current_stats.max_stamina - player.base.current_stats.stamina_damage;
+    let p_hp = player.base.current_stats.current_hp;
+    let p_stamina = player.base.current_stats.current_stamina;
     let enemy = battle.enemies.first().unwrap();
-    let e_hp = &enemy.base.current_stats.max_hp - enemy.base.current_stats.hp_damage;
-
+    let e_hp = enemy.base.current_stats.current_hp;
     ui_status_text.0 = format!(
         "プレイヤーHP: {} / {}\nスタミナ: {} / {}\n100\n\n敵HP: {} / {}\n敵ブレイク値: {} / 100\n敵状態: {}\n\n",
         p_hp,
@@ -1977,8 +1978,8 @@ fn ui_update_player_status_system(
     let battle = &battle_resource.0;
 
     let player = battle.players.first().unwrap();
-    let p_hp = &player.base.current_stats.max_hp - player.base.current_stats.hp_damage;
-    let p_sta = &player.base.current_stats.max_stamina - player.base.current_stats.stamina_damage;
+    let p_hp = player.base.current_stats.current_hp;
+    let p_sta = player.base.current_stats.current_stamina;
 
     // コンテナ内の最初のTextを簡潔表示用に更新
     if let Ok(mut hp_text) = hp_text_q.single_mut() {
@@ -2184,7 +2185,7 @@ fn ui_update_enemy_system(
     let battle = &battle_resource.0;
 
     let enemy = battle.enemies.first().unwrap();
-    let e_hp = &enemy.base.current_stats.max_hp - enemy.base.current_stats.hp_damage;
+    let e_hp = enemy.base.current_stats.current_hp;
     let e_break = enemy.current_enemy_only_stats.break_damage;
 
     if let Ok(mut hp_node) = gauge_params.p0().single_mut() {

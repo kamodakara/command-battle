@@ -46,14 +46,12 @@ pub fn execute_conduct(
     //
     let mut attacker_stats_changes = Vec::new();
 
-    let before_sp = attacker.current_stats().max_sp - attacker.current_stats().sp_damage;
-    let sp_damage = conduct.conduct.sp_cost;
     // SP消費
-    attacker.current_stats_mut().sp_damage += sp_damage;
-    let after_sp = attacker.current_stats().max_sp - attacker.current_stats().sp_damage;
+    let sp_cost = conduct.conduct.sp_cost;
+    let (before_sp, after_sp) = attacker.current_stats_mut().sp_subtract(sp_cost);
     // インシデント
     attacker_stats_changes.push(BattleIncidentStats::DamageSp(BattleIncidentDamageSp {
-        damage: sp_damage,
+        damage: sp_cost,
         before: before_sp,
         after: after_sp,
     }));
@@ -61,16 +59,13 @@ pub fn execute_conduct(
     // スタミナ消費
     if let BattleCharacter::Player(player) = attacker {
         // プレイヤーの場合のみスタミナ消費処理
-        let before_stamina =
-            player.base.current_stats.max_stamina - player.base.current_stats.stamina_damage;
-        let stamina_damage = conduct.conduct.stamina_cost;
-        player.base.current_stats.stamina_damage += conduct.conduct.stamina_cost;
-        let after_stamina =
-            player.base.current_stats.max_stamina - player.base.current_stats.stamina_damage;
+        let stamina_cost = conduct.conduct.stamina_cost;
+        let (before_stamina, after_stamina) =
+            player.base.current_stats.stamina_subtract(stamina_cost);
         // インシデント
         attacker_stats_changes.push(BattleIncidentStats::DamageStamina(
             BattleIncidentDamageStamina {
-                damage: stamina_damage,
+                damage: stamina_cost,
                 before: before_stamina,
                 after: after_stamina,
             },
@@ -210,44 +205,41 @@ fn support_recover(
     for potency in &recover.potencies {
         match potency {
             SupportRecoverPotency::Hp(hp_recover) => {
-                let current_hp_damage = target.current_stats().hp_damage;
-                let next_hp_damage = current_hp_damage.saturating_sub(hp_recover.hp_recover);
-                target.current_stats_mut().hp_damage = next_hp_damage;
+                let hp_rcv = hp_recover.hp_recover;
+                let (before_hp, after_hp) = target.current_stats_mut().hp_add(hp_rcv);
                 // HP回復のインシデント
                 stats_change_incidents.push(BattleIncidentStats::RecoverHp(
                     BattleIncidentRecoverHp {
-                        recover: hp_recover.hp_recover,
-                        before: current_hp_damage,
-                        after: next_hp_damage,
+                        recover: hp_rcv,
+                        before: before_hp,
+                        after: after_hp,
                     },
                 ));
             }
             SupportRecoverPotency::Sp(sp_recover) => {
-                let current_sp_damage = target.current_stats().sp_damage;
-                let next_sp_damage = current_sp_damage.saturating_sub(sp_recover.sp_recover);
-                target.current_stats_mut().sp_damage = next_sp_damage;
+                let sp_rcv = sp_recover.sp_recover;
+                let (before_sp, after_sp) = target.current_stats_mut().sp_add(sp_rcv);
                 // SP回復のインシデント
                 stats_change_incidents.push(BattleIncidentStats::RecoverSp(
                     BattleIncidentRecoverSp {
-                        recover: sp_recover.sp_recover,
-                        before: current_sp_damage,
-                        after: next_sp_damage,
+                        recover: sp_rcv,
+                        before: before_sp,
+                        after: after_sp,
                     },
                 ));
             }
             SupportRecoverPotency::Stamina(stamina_recover) => {
                 // スタミナ回復処理はプレイヤーキャラクターのみ
                 if let BattleCharacter::Player(player) = target {
-                    let current_stamina_damage = player.base.current_stats.stamina_damage;
-                    let next_stamina_damage =
-                        current_stamina_damage.saturating_sub(stamina_recover.stamina_recover);
-                    player.base.current_stats.stamina_damage = next_stamina_damage;
+                    let stamina_rcv = stamina_recover.stamina_recover;
+                    let (before_stamina, after_stamina) =
+                        player.base.current_stats.stamina_add(stamina_rcv);
                     // スタミナ回復のインシデント
                     stats_change_incidents.push(BattleIncidentStats::RecoverStamina(
                         BattleIncidentRecoverStamina {
-                            recover: stamina_recover.stamina_recover,
-                            before: current_stamina_damage,
-                            after: next_stamina_damage,
+                            recover: stamina_rcv,
+                            before: before_stamina,
+                            after: after_stamina,
                         },
                     ));
                 }
@@ -346,20 +338,17 @@ fn conduct_effect(
                     let defense_power = &target.defense_power();
                     let damage = calc_damage(&attak_power, defense_power);
 
-                    let current_hp_damage = target.current_stats().hp_damage;
-                    let mut next_hp_damage = current_hp_damage + damage;
-                    if next_hp_damage > target.current_stats().max_hp {
-                        next_hp_damage = target.current_stats().max_hp;
-                    }
-                    target.current_stats_mut().hp_damage = next_hp_damage;
+                    let (before_hp_damage, after_hp_damage) =
+                        target.current_stats_mut().hp_subtract(damage);
                     // HPダメージのインシデント
                     stats_change_incidents.push(BattleIncidentStats::DamageHp(
                         BattleIncidentDamageHp {
                             damage,
-                            before: current_hp_damage,
-                            after: next_hp_damage,
+                            before: before_hp_damage,
+                            after: after_hp_damage,
                         },
                     ));
+                    // TODO: 死亡判定
 
                     // ブレイクダメージ処理
                     if let BattleCharacter::Enemy(enemy) = &target {
@@ -479,18 +468,14 @@ fn conduct_effect(
 
                 // ダメージ
                 let damage = calc_damage(&attack_power, &target.defense_power());
-                let current_hp_damage = target.current_stats().hp_damage;
-                let mut next_hp_damage = current_hp_damage + damage;
-                if next_hp_damage > target.current_stats().max_hp {
-                    next_hp_damage = target.current_stats().max_hp;
-                }
-                target.current_stats_mut().hp_damage = next_hp_damage;
+                let (before_hp_damage, after_hp_damage) =
+                    target.current_stats_mut().hp_subtract(damage);
                 // HPダメージのインシデント
                 stats_change_incidents.push(BattleIncidentStats::DamageHp(
                     BattleIncidentDamageHp {
                         damage,
-                        before: current_hp_damage,
-                        after: next_hp_damage,
+                        before: before_hp_damage,
+                        after: after_hp_damage,
                     },
                 ));
 
@@ -603,18 +588,14 @@ fn conduct_effect(
                 // TODO: ブレイク状態のダメージ補正
                 // TODO: 防御側が敵の場合、ブレイクダメージ処理
 
-                let current_hp_damage = target.current_stats().hp_damage;
-                let mut next_hp_damage = current_hp_damage + damage;
-                if next_hp_damage > target.current_stats().max_hp {
-                    next_hp_damage = target.current_stats().max_hp;
-                }
-                target.current_stats_mut().hp_damage = next_hp_damage;
+                let (before_hp_damage, after_hp_damage) =
+                    target.current_stats_mut().hp_subtract(damage);
                 // HPダメージのインシデント
                 stats_change_incidents.push(BattleIncidentStats::DamageHp(
                     BattleIncidentDamageHp {
                         damage,
-                        before: current_hp_damage,
-                        after: next_hp_damage,
+                        before: before_hp_damage,
+                        after: after_hp_damage,
                     },
                 ));
 
@@ -772,9 +753,9 @@ mod tests {
                     max_hp: 100,
                     max_sp: 10,
                     max_stamina: 10,
-                    hp_damage: 0,
-                    sp_damage: 0,
-                    stamina_damage: 0,
+                    current_hp: 100,
+                    current_sp: 10,
+                    current_stamina: 10,
                 },
                 defense_power: min_defense(),
                 status_effects: vec![BattleStatusEffect {
@@ -840,9 +821,9 @@ mod tests {
                     max_hp: 100,
                     max_sp: 10,
                     max_stamina: 10,
-                    hp_damage: 0,
-                    sp_damage: 0,
-                    stamina_damage: 0,
+                    current_hp: 100,
+                    current_sp: 10,
+                    current_stamina: 10,
                 },
                 defense_power: min_defense(),
                 status_effects: vec![],
@@ -889,13 +870,13 @@ mod tests {
         match &result.stats_changes[0] {
             BattleIncidentStats::DamageHp(d) => {
                 assert_eq!(d.damage, 0);
-                assert_eq!(d.before, 0);
-                assert_eq!(d.after, 0);
+                assert_eq!(d.before, 100);
+                assert_eq!(d.after, 100);
             }
             _ => panic!("expected DamageHp incident"),
         }
         // 実際のターゲットのHPダメージも0のまま
-        assert_eq!(target.current_stats().hp_damage, 0);
+        assert_eq!(target.current_stats().current_hp, 100);
     }
 
     // 基本攻撃でHPダメージが適用されること
@@ -917,9 +898,9 @@ mod tests {
                     max_hp: 100,
                     max_sp: 10,
                     max_stamina: 10,
-                    hp_damage: 0,
-                    sp_damage: 0,
-                    stamina_damage: 0,
+                    current_hp: 100,
+                    current_sp: 10,
+                    current_stamina: 10,
                 },
                 defense_power: min_defense(),
                 status_effects: vec![],
@@ -966,12 +947,12 @@ mod tests {
         ));
         if let BattleIncidentStats::DamageHp(d) = &result.stats_changes[0] {
             assert_eq!(d.damage, 10);
-            assert_eq!(d.before, 0);
-            assert_eq!(d.after, 10);
+            assert_eq!(d.before, 100);
+            assert_eq!(d.after, 90);
         } else {
             panic!("expected DamageHp incident");
         }
-        assert_eq!(target.current_stats().hp_damage, 10);
+        assert_eq!(target.current_stats().current_hp, 90);
     }
 
     // 技攻撃でHPダメージが適用されること
@@ -993,9 +974,9 @@ mod tests {
                     max_hp: 100,
                     max_sp: 10,
                     max_stamina: 10,
-                    hp_damage: 0,
-                    sp_damage: 0,
-                    stamina_damage: 0,
+                    current_hp: 100,
+                    current_sp: 10,
+                    current_stamina: 10,
                 },
                 defense_power: min_defense(),
                 status_effects: vec![],
@@ -1179,12 +1160,12 @@ mod tests {
         if let BattleIncidentStats::DamageHp(d) = &result.stats_changes[0] {
             // 期待値: weapon(5) + skill(12*1.0) = 17
             assert_eq!(d.damage, 17);
-            assert_eq!(d.before, 0);
-            assert_eq!(d.after, 17);
+            assert_eq!(d.before, 100);
+            assert_eq!(d.after, 83);
         } else {
             panic!("expected DamageHp incident");
         }
-        assert_eq!(target.current_stats().hp_damage, 17);
+        assert_eq!(target.current_stats().current_hp, 83);
     }
 
     // 術攻撃でHPダメージが適用されること
@@ -1206,9 +1187,9 @@ mod tests {
                     max_hp: 100,
                     max_sp: 10,
                     max_stamina: 10,
-                    hp_damage: 0,
-                    sp_damage: 0,
-                    stamina_damage: 0,
+                    current_hp: 100,
+                    current_sp: 10,
+                    current_stamina: 10,
                 },
                 defense_power: min_defense(),
                 status_effects: vec![],
@@ -1250,12 +1231,12 @@ mod tests {
         assert!(!result.is_defended);
         if let BattleIncidentStats::DamageHp(d) = &result.stats_changes[0] {
             assert_eq!(d.damage, 8);
-            assert_eq!(d.before, 0);
-            assert_eq!(d.after, 8);
+            assert_eq!(d.before, 100);
+            assert_eq!(d.after, 92);
         } else {
             panic!("expected DamageHp incident");
         }
-        assert_eq!(target.current_stats().hp_damage, 8);
+        assert_eq!(target.current_stats().current_hp, 92);
     }
 
     // 技: スケーリング0.0なら武器攻撃力のみが寄与すること
@@ -1277,9 +1258,9 @@ mod tests {
                     max_hp: 100,
                     max_sp: 10,
                     max_stamina: 10,
-                    hp_damage: 0,
-                    sp_damage: 0,
-                    stamina_damage: 0,
+                    current_hp: 100,
+                    current_sp: 10,
+                    current_stamina: 10,
                 },
                 defense_power: min_defense(),
                 status_effects: vec![],
@@ -1457,12 +1438,12 @@ mod tests {
         let result = conduct_effect(&conduct, &mut target);
         if let BattleIncidentStats::DamageHp(d) = &result.stats_changes[0] {
             assert_eq!(d.damage, 7); // 武器のみ寄与
-            assert_eq!(d.before, 0);
-            assert_eq!(d.after, 7);
+            assert_eq!(d.before, 100);
+            assert_eq!(d.after, 93);
         } else {
             panic!("expected DamageHp incident");
         }
-        assert_eq!(target.current_stats().hp_damage, 7);
+        assert_eq!(target.current_stats().current_hp, 93);
     }
 
     // 技: 複数属性の合算が正しく行われること
@@ -1484,9 +1465,9 @@ mod tests {
                     max_hp: 100,
                     max_sp: 10,
                     max_stamina: 10,
-                    hp_damage: 0,
-                    sp_damage: 0,
-                    stamina_damage: 0,
+                    current_hp: 100,
+                    current_sp: 10,
+                    current_stamina: 10,
                 },
                 defense_power: min_defense(),
                 status_effects: vec![],
@@ -1668,12 +1649,12 @@ mod tests {
         if let BattleIncidentStats::DamageHp(d) = &result.stats_changes[0] {
             // 期待値: (slash 5 + 10) + (strike 4 + 6) = 25
             assert_eq!(d.damage, 25);
-            assert_eq!(d.before, 0);
-            assert_eq!(d.after, 25);
+            assert_eq!(d.before, 100);
+            assert_eq!(d.after, 75);
         } else {
             panic!("expected DamageHp incident");
         }
-        assert_eq!(target.current_stats().hp_damage, 25);
+        assert_eq!(target.current_stats().current_hp, 75);
     }
 }
 
@@ -1711,9 +1692,7 @@ fn determine_action_outcome_failure(
         BattleCharacter::Player(player) => {
             let current_status = &player.base.current_stats;
             // スタミナが足りないと不発
-            if current_status.max_stamina - current_status.stamina_damage
-                < conduct.conduct.stamina_cost
-            {
+            if current_status.current_stamina < conduct.conduct.stamina_cost {
                 return Some(BattleIncidentConductOutcomeFailureReason {
                     insufficient_stamina: true,
                     insufficient_ability: false,
@@ -1747,8 +1726,7 @@ fn determine_action_outcome_failure(
 
     // SPが足りないと不発
     let sp_cost = conduct.conduct.sp_cost;
-    let current_sp = attacker.current_stats().max_sp - attacker.current_stats().sp_damage;
-    if current_sp < sp_cost {
+    if attacker.current_stats().current_sp < sp_cost {
         return Some(BattleIncidentConductOutcomeFailureReason {
             insufficient_stamina: false,
             insufficient_ability: false,

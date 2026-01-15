@@ -54,51 +54,51 @@ pub enum BattleIncidentStats {
 // HPダメージ
 pub struct BattleIncidentDamageHp {
     pub damage: u32,
-    pub before: u32,
-    pub after: u32,
+    pub before: u32, // ダメージ前HP
+    pub after: u32,  // ダメージ後HP
 }
 // SPダメージ
 pub struct BattleIncidentDamageSp {
     pub damage: u32,
-    pub before: u32,
-    pub after: u32,
+    pub before: u32, // ダメージ前SP
+    pub after: u32,  // ダメージ後SP
 }
 // スタミナダメージ
 pub struct BattleIncidentDamageStamina {
     pub damage: u32,
-    pub before: u32,
-    pub after: u32,
+    pub before: u32, // ダメージ前スタミナ
+    pub after: u32,  // ダメージ後スタミナ
 }
 // ブレイクダメージ
 pub struct BattleIncidentDamageBreak {
     pub damage: u32,
-    pub before: u32,
-    pub after: u32,
+    pub before: u32, // ダメージ前ブレイク
+    pub after: u32,  // ダメージ後ブレイク
 }
 
 // HP回復
 pub struct BattleIncidentRecoverHp {
     pub recover: u32,
-    pub before: u32,
-    pub after: u32,
+    pub before: u32, // 回復前HP
+    pub after: u32,  // 回復後HP
 }
 // SP回復
 pub struct BattleIncidentRecoverSp {
     pub recover: u32,
-    pub before: u32,
-    pub after: u32,
+    pub before: u32, // 回復前SP
+    pub after: u32,  // 回復後SP
 }
 // スタミナ回復
 pub struct BattleIncidentRecoverStamina {
     pub recover: u32,
-    pub before: u32,
-    pub after: u32,
+    pub before: u32, // 回復前スタミナ
+    pub after: u32,  // 回復後スタミナ
 }
 // ブレイク回復
 pub struct BattleIncidentRecoverBreak {
     pub recover: u32,
-    pub before: u32,
-    pub after: u32,
+    pub before: u32, // 回復前ブレイク
+    pub after: u32,  // 回復後ブレイク
 }
 
 // 状態変化

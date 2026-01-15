@@ -21,13 +21,54 @@ pub struct BattleAbility {
 }
 
 pub struct BattleStats {
-    pub max_hp: u32,         // HP
-    pub max_sp: u32,         // SP
-    pub max_stamina: u32,    // スタミナ 敵は使用しない
-    pub hp_damage: u32,      // 受けたHPダメージ
-    pub sp_damage: u32,      // 受けたSPダメージ
-    pub stamina_damage: u32, // 受けたスタミナダメージ
+    pub max_hp: u32,      // HP
+    pub max_sp: u32,      // SP
+    pub max_stamina: u32, // スタミナ 敵は使用しない
+
+    pub current_hp: u32,      // 現在のHP
+    pub current_sp: u32,      // 現在のSP
+    pub current_stamina: u32, // 現在のスタミナ 敵は使用しない
 }
+impl BattleStats {
+    // HPに加算
+    pub fn hp_add(&mut self, amount: u32) -> (u32, u32) {
+        let before = self.current_hp;
+        self.current_hp = (self.current_hp + amount).min(self.max_hp);
+
+        (before, self.current_hp)
+    }
+    // SPに加算
+    pub fn sp_add(&mut self, amount: u32) -> (u32, u32) {
+        let before = self.current_sp;
+        self.current_sp = (self.current_sp + amount).min(self.max_sp);
+        (before, self.current_sp)
+    }
+    // スタミナに加算
+    pub fn stamina_add(&mut self, amount: u32) -> (u32, u32) {
+        let before = self.current_stamina;
+        self.current_stamina = (self.current_stamina + amount).min(self.max_stamina);
+        (before, self.current_stamina)
+    }
+    // HPに減算
+    pub fn hp_subtract(&mut self, amount: u32) -> (u32, u32) {
+        let before = self.current_hp;
+        self.current_hp = self.current_hp.saturating_sub(amount);
+        (before, self.current_hp)
+    }
+    // SPに減算
+    pub fn sp_subtract(&mut self, amount: u32) -> (u32, u32) {
+        let before = self.current_sp;
+        self.current_sp = self.current_sp.saturating_sub(amount);
+        (before, self.current_sp)
+    }
+    // スタミナに減算
+    pub fn stamina_subtract(&mut self, amount: u32) -> (u32, u32) {
+        let before = self.current_stamina;
+        self.current_stamina = self.current_stamina.saturating_sub(amount);
+        (before, self.current_stamina)
+    }
+}
+
 pub struct BattleEnemyOnlyStats {
     pub max_break: u32,      // ブレイク最大値
     pub max_break_turn: u32, // ブレイク最大ターン
