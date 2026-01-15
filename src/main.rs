@@ -10,9 +10,6 @@ use crate::types::*;
 use bevy::prelude::*;
 use rand::Rng;
 
-// 画面レイアウト切替用定数（false: 既存レイアウト / true: 新レイアウト）
-const USE_DQ_LIKE_LAYOUT: bool = true;
-
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
@@ -33,11 +30,11 @@ fn main() {
 // ================== Components & Resources ==================
 #[derive(Resource, PartialEq, Eq)]
 enum BattlePhase {
-    AwaitCommand,
-    // 連続コマンドの次コマンドを実行するか確認するフェーズ
-    ConfirmQueued,
+    DecideEnemyConduct, // 敵行動決定
+    AwaitCommand,       // プレイヤーコマンド入力待ち
+    ConfirmQueued,      // 連続コマンドの次コマンドを実行するか確認するフェーズ
     InBattle,
-    Finished,
+    Finished, // 戦闘終了
 }
 #[derive(Resource)]
 struct Turn(u32);
@@ -585,7 +582,7 @@ fn create_mock_battle() -> Battle {
 
 // 次ターンに表示される事前決定済み敵行動
 #[derive(Resource)]
-struct EnemyPlannedAction(ActionProcess);
+struct EnemyPlannedAction(Option<BattleConduct>);
 
 // コマンド種別
 #[derive(Clone, Copy)]
@@ -600,6 +597,9 @@ enum CommandKind {
 // 予約コマンドのキュー
 #[derive(Resource, Default)]
 struct CommandQueue(std::collections::VecDeque<CommandKind>);
+
+#[derive(Resource)]
+struct CurrentCoomand(Option<CommandKind>);
 
 // 直前のプレイヤー実行コマンドが攻撃だったかを保持（攻撃後の攻撃=連撃）
 #[derive(Resource, Default)]
@@ -708,7 +708,7 @@ struct BattleResource(Battle);
 // ================== Setup ==================
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2d);
-    commands.insert_resource(BattlePhase::AwaitCommand);
+    commands.insert_resource(BattlePhase::DecideEnemyConduct);
     commands.insert_resource(Turn(1));
     // 初期ログと敵行動決定
     let mut rng = rand::rng();
@@ -723,10 +723,11 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         format!("初期敵行動: {}", first_action.current_step().unwrap().name),
         "コマンドを選択してください (A=攻撃 S=強攻撃 H=回復 D=防御 W=待機 / Backspace=直前取り消し / Esc=全クリア / Enter=決定)".to_string(),
     ]));
+    commands.insert_resource(CurrentCoomand(None));
     commands.insert_resource(CommandQueue::default());
     commands.insert_resource(PlayerChainState::default());
     commands.insert_resource(PendingSelections::default());
-    commands.insert_resource(EnemyPlannedAction(first_action));
+    commands.insert_resource(EnemyPlannedAction(None));
     commands.insert_resource(ConsecutiveBatch::default());
     commands.insert_resource(EnemyDamagePopup::default());
     // プレイヤー行動定義をリソースとして挿入
@@ -1174,640 +1175,350 @@ fn player_input_system(
     player_conducts: Res<PlayerConducts>,
     // Battleモジュール
     mut battle_resource: ResMut<BattleResource>,
+    mut current_command: ResMut<CurrentCoomand>,
 ) {
-    if *phase == BattlePhase::Finished {
-        return;
-    }
-
     let battle = &mut battle_resource.0;
 
-    // 連続コマンド確認フェーズの処理（Y=実行 / N=選択しなおし）
-    if *phase == BattlePhase::ConfirmQueued {
-        // キューが空なら待機に戻る
-        if queue.0.front().is_none() {
+    match *phase {
+        BattlePhase::DecideEnemyConduct => {
+            let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
+            planned.0 = Some(battle.decide_enemy_conduct(DecideEnemyConductRequest {
+                enemy_character_id: enemy_id,
+            }));
+
             *phase = BattlePhase::AwaitCommand;
-            return;
         }
-        // 実行確定（YまたはEnter）
-        if keyboard.just_pressed(KeyCode::KeyY) || keyboard.just_pressed(KeyCode::Enter) {
-            if let Some(next) = queue.0.pop_front() {
-                batch.executed += 1;
-                // この後の通常解決フローで処理する
-                let mut commands_to_process: Vec<CommandKind> = vec![next];
+        BattlePhase::AwaitCommand => {
+            // 予約キューがあれば、先頭を実行するか確認フェーズに遷移
+            if let Some(_next) = queue.0.front() {
+                // コマンド入力パネルで確認表示を行うため、ここではログ出力しない
+                *phase = BattlePhase::ConfirmQueued;
+                return;
+            } else {
+                // 未確定選択へ追加（このフレームで押されたキー）
+                let mut added: Vec<&'static str> = Vec::new();
+                // 最大選択数制限（3件）
+                const MAX_SELECT: usize = 3;
+                let at_limit = pending.0.len() >= MAX_SELECT;
 
-                // 共通のコマンド解決処理
-                let mut resolve_command = |cmd: CommandKind| {
-                    *phase = BattlePhase::InBattle;
-                    let name = match cmd {
-                        CommandKind::Attack => "攻撃",
-                        CommandKind::Skill => "強攻撃",
-                        CommandKind::Heal => "回復",
-                        CommandKind::Defend => "防御",
-                        CommandKind::Wait => "待機",
-                    };
-                    log.0
-                        .push(format!("ターン {} プレイヤーは{}を選択", turn.0, name));
-
-                    // Battleモジュールで行動実行
-                    let player_id = battle.players.first().map(|p| p.character_id).unwrap_or(1);
-                    let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
-                    let player_conduct = match cmd {
-                        CommandKind::Attack => BattleConduct {
-                            actor_character_id: player_id,
-                            target_character_id: enemy_id,
-                            conduct: Arc::clone(&player_conducts.attack),
-                            weapon: None,
-                        },
-                        CommandKind::Skill => BattleConduct {
-                            actor_character_id: player_id,
-                            target_character_id: enemy_id,
-                            conduct: Arc::clone(&player_conducts.skill),
-                            weapon: None,
-                        },
-                        CommandKind::Heal => BattleConduct {
-                            actor_character_id: player_id,
-                            target_character_id: player_id,
-                            conduct: Arc::clone(&player_conducts.heal),
-                            weapon: None,
-                        },
-                        CommandKind::Defend => BattleConduct {
-                            actor_character_id: player_id,
-                            target_character_id: player_id,
-                            conduct: Arc::clone(&player_conducts.defend),
-                            weapon: None,
-                        },
-                        CommandKind::Wait => BattleConduct {
-                            actor_character_id: player_id,
-                            target_character_id: player_id,
-                            conduct: Arc::clone(&player_conducts.wait),
-                            weapon: None,
-                        },
-                    };
-
-                    let enemy_conduct = battle.decide_enemy_conduct(DecideEnemyConductRequest {
-                        enemy_character_id: enemy_id,
-                    });
-                    let order = battle.decide_order(BattleDecideOrderRequest {
-                        character_ids: vec![player_id, enemy_id],
-                    });
-
-                    let mut player_dealt_damage_hp: u32 = 0;
-                    for actor_id in order {
-                        let conduct_to_execute = if actor_id == player_id {
-                            player_conduct.clone()
-                        } else {
-                            enemy_conduct.clone()
-                        };
-                        let incident = battle.execute_conduct(BattleExecuteConductRequest {
-                            conduct: conduct_to_execute,
-                        });
-
-                        match incident {
-                            BattleIncident::Conduct(c) => match c.outcome {
-                                BattleIncidentConductOutcome::Failure(_) => {
-                                    log.0.push(format!("{}は不発", c.conduct.conduct.name));
-                                }
-                                BattleIncidentConductOutcome::Success(s) => {
-                                    for change in s.attacker.stats_changes.iter() {
-                                        match change {
-                                            BattleIncidentStats::DamageSp(d) => {
-                                                log.0.push(format!(
-                                                    "SP -{} ({} → {})",
-                                                    d.damage, d.before, d.after
-                                                ))
-                                            }
-                                            BattleIncidentStats::DamageStamina(d) => {
-                                                log.0.push(format!(
-                                                    "Stamina -{} ({} → {})",
-                                                    d.damage, d.before, d.after
-                                                ))
-                                            }
-                                            _ => {}
-                                        }
-                                    }
-                                    for def in s.defenders.iter() {
-                                        for change in def.stats_changes.iter() {
-                                            match change {
-                                                BattleIncidentStats::DamageHp(d) => {
-                                                    if c.attacker_id == player_id {
-                                                        player_dealt_damage_hp = d.damage;
-                                                    }
-                                                    log.0.push(format!(
-                                                        "{} に{}ダメージ (HP {} → {})",
-                                                        if def.character_id == enemy_id {
-                                                            "敵"
-                                                        } else {
-                                                            "プレイヤー"
-                                                        },
-                                                        d.damage,
-                                                        d.before,
-                                                        d.after
-                                                    ));
-                                                }
-                                                BattleIncidentStats::RecoverHp(r) => {
-                                                    log.0.push(format!(
-                                                        "{} のHPを{}回復 ({} → {})",
-                                                        if def.character_id == player_id {
-                                                            "プレイヤー"
-                                                        } else {
-                                                            "敵"
-                                                        },
-                                                        r.recover,
-                                                        r.before,
-                                                        r.after
-                                                    ))
-                                                }
-                                                BattleIncidentStats::DamageBreak(d) => log.0.push(
-                                                    format!("敵にブレイクダメージ {}", d.damage),
-                                                ),
-                                                BattleIncidentStats::RecoverBreak(r) => log.0.push(
-                                                    format!("敵のブレイク回復 {}", r.recover),
-                                                ),
-                                                BattleIncidentStats::RecoverStamina(r) => {
-                                                    log.0.push(format!(
-                                                        "Stamina +{} ({} → {})",
-                                                        r.recover, r.before, r.after
-                                                    ))
-                                                }
-                                                _ => {}
-                                            }
-                                        }
-                                        if def.is_evaded {
-                                            log.0.push("回避した".to_string());
-                                        }
-                                        if def.is_defended {
-                                            log.0.push("防御した".to_string());
-                                        }
-                                    }
-                                }
-                            },
-                            BattleIncident::AutoTrigger(_) => {}
-                        }
+                // 取り消し操作: Backspace=直前取り消し / Escape=全クリア（ログには出さない）
+                if keyboard.just_pressed(KeyCode::Escape) {
+                    if !pending.0.is_empty() {
+                        pending.0.clear();
                     }
+                }
+                if keyboard.just_pressed(KeyCode::Backspace) {
+                    if let Some(removed) = pending.0.pop() {
+                        let _ = removed; // ログは出さない
+                    }
+                }
+                if keyboard.just_pressed(KeyCode::KeyA) {
+                    if !at_limit {
+                        pending.0.push(CommandKind::Attack);
+                        added.push("攻撃");
+                    } else {
+                        log.0
+                            .push("これ以上選択を追加できません (最大3件)".to_string());
+                    }
+                }
+                if keyboard.just_pressed(KeyCode::KeyS) {
+                    if !at_limit {
+                        pending.0.push(CommandKind::Skill);
+                        added.push("強攻撃");
+                    } else {
+                        log.0
+                            .push("これ以上選択を追加できません (最大3件)".to_string());
+                    }
+                }
+                if keyboard.just_pressed(KeyCode::KeyH) {
+                    if !at_limit {
+                        pending.0.push(CommandKind::Heal);
+                        added.push("回復");
+                    } else {
+                        log.0
+                            .push("これ以上選択を追加できません (最大3件)".to_string());
+                    }
+                }
+                if keyboard.just_pressed(KeyCode::KeyD) {
+                    if !at_limit {
+                        pending.0.push(CommandKind::Defend);
+                        added.push("防御");
+                    } else {
+                        log.0
+                            .push("これ以上選択を追加できません (最大3件)".to_string());
+                    }
+                }
+                if keyboard.just_pressed(KeyCode::KeyW) {
+                    if !at_limit {
+                        pending.0.push(CommandKind::Wait);
+                        added.push("待機");
+                    } else {
+                        log.0
+                            .push("これ以上選択を追加できません (最大3件)".to_string());
+                    }
+                }
+                // 強化系コマンドは廃止
+                // 選択追加のログは出さず、UI側表示に任せる
 
-                    // TODO: 敵の行動をexecute_conductで処理するようにする
-                    //     if e_hp.current > 0 {
-                    //         // 事前決定済みの敵行動を実行
-                    //         if enemy_action_canceled_this_turn {
-                    //             // このターンの行動はキャンセル
-                    //             log.0.push("敵の行動はブレイクによりキャンセル".to_string());
-                    //         } else {
-                    //             let action = &mut planned.0;
-                    //             let step = action.current_step().unwrap();
-                    //             match step.specification {
-                    //                 ActionStepSpecificationEnum::Attack(spec) => {
-                    //                     let mut incoming = (e_attack.0 as f32 * spec.power) as i32;
-                    //                     {
-                    //                         let mut d = def_guard.p0();
-                    //                         if d.0 {
-                    //                             incoming = 0;
-                    //                             d.0 = false; // 一度きり
-                    //                         }
-                    //                     }
-                    //                     p_hp.current = (p_hp.current - incoming).max(0);
-                    //                     log.0.push(format!(
-                    //                         "敵の行動: {} → {}ダメージ (プレイヤーHP {} / {})",
-                    //                         step.name, incoming, p_hp.current, p_hp.max
-                    //                     ));
-                    //                 }
-                    //                 ActionStepSpecificationEnum::Wait(_) => {
-                    //                     log.0.push(format!("敵の行動: {} (何もしない)", step.name));
-                    //                 }
-                    //                 ActionStepSpecificationEnum::Heal(spec) => {
-                    //                     // プレイヤーがこのターンに攻撃していた場合、敵の回復量は半減
-                    //                     let base_heal = spec.amount;
-                    //                     let heal_amount = if matches!(
-                    //                         cmd,
-                    //                         CommandKind::Attack | CommandKind::Skill
-                    //                     ) {
-                    //                         base_heal / 2
-                    //                     } else {
-                    //                         base_heal
-                    //                     };
-                    //                     let before = e_hp.current;
-                    //                     e_hp.current = (e_hp.current + heal_amount).min(e_hp.max);
-                    //                     let healed = e_hp.current - before;
-                    //                     log.0.push(format!(
-                    //                         "敵の行動: {} → HPを{}回復 (敵HP {} / {})",
-                    //                         step.name, healed, e_hp.current, e_hp.max
-                    //                     ));
-                    //                 }
-                    //             }
-                    //             action.next();
-                    //         }
-                    //     }
+                // Enterで確定: 先頭を実行、2つ目以降を予約キューへ
+                if keyboard.just_pressed(KeyCode::Enter) && !pending.0.is_empty() {
+                    // 確定時、選択した全コマンドをログ出力
+                    let all_names = pending
+                        .0
+                        .iter()
+                        .map(|c| match c {
+                            CommandKind::Attack => "攻撃",
+                            CommandKind::Skill => "強攻撃",
+                            CommandKind::Heal => "回復",
+                            CommandKind::Defend => "防御",
+                            CommandKind::Wait => "待機",
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    log.0.push(format!("選択確定: {}", all_names));
 
-                    turn.0 += 1;
-                    *phase = BattlePhase::AwaitCommand;
-                };
+                    // 先頭を今回実行（連撃判定は実行時に行う）
+                    current_command.0 = Some(pending.0[0]);
 
-                // 今回は1件だけ処理（各ターン1コマンドのルール）
-                resolve_command(commands_to_process[0]);
+                    // 残りをキューへ（連撃判定は実行時に行う）
+                    for &cmd in pending.0.iter().skip(1) {
+                        queue.0.push_back(cmd);
+                    }
+                    // 連続バッチ総数の記録と実行済み数のリセット
+                    batch.total = pending.0.len();
+                    batch.executed = 0;
+                    // モメンタム増加は実行選択時に行うため、ここでは加算しない
+                    // ログ出力
+                    if pending.0.len() > 1 {
+                        let names = pending
+                            .0
+                            .iter()
+                            .skip(1)
+                            .map(|c| match c {
+                                CommandKind::Attack => "攻撃",
+                                CommandKind::Skill => "強攻撃",
+                                CommandKind::Heal => "回復",
+                                CommandKind::Defend => "防御",
+                                CommandKind::Wait => "待機",
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        log.0.push(format!(
+                            "{}件のコマンドを予約 ({})",
+                            pending.0.len() - 1,
+                            names
+                        ));
+                    }
+                    // バッファをクリア
+                    pending.0.clear();
+
+                    // フェーズを進行
+                    *phase = BattlePhase::InBattle;
+                }
             }
-            return;
         }
-        // 再選択（NまたはEsc）: 以降の予約コマンドをリセット
-        if keyboard.just_pressed(KeyCode::KeyN) || keyboard.just_pressed(KeyCode::Escape) {
-            let cleared = queue.0.len();
-            queue.0.clear();
-            pending.0.clear();
-            batch.total = 0;
-            batch.executed = 0;
-            if cleared > 0 {
-                log.0.push(
-                    "連続コマンドの予約をリセットしました。コマンドを選び直してください"
-                        .to_string(),
-                );
+        BattlePhase::ConfirmQueued => {
+            // キューが空なら待機に戻る
+            if queue.0.front().is_none() {
+                *phase = BattlePhase::AwaitCommand;
+                return;
             }
-            *phase = BattlePhase::AwaitCommand;
-
-            return;
-        }
-        // 入力待ち
-        return;
-    }
-
-    // フェーズが待機でない場合は何もしない
-    if *phase != BattlePhase::AwaitCommand {
-        return;
-    }
-
-    // 予約キューがあれば、先頭を実行するか確認フェーズに遷移
-    let mut commands_to_process: Vec<CommandKind> = Vec::new();
-    if let Some(_next) = queue.0.front() {
-        // コマンド入力パネルで確認表示を行うため、ここではログ出力しない
-        *phase = BattlePhase::ConfirmQueued;
-        return;
-    } else {
-        // 未確定選択へ追加（このフレームで押されたキー）
-        let mut added: Vec<&'static str> = Vec::new();
-        // 最大選択数制限（3件）
-        const MAX_SELECT: usize = 3;
-        let at_limit = pending.0.len() >= MAX_SELECT;
-
-        // 取り消し操作: Backspace=直前取り消し / Escape=全クリア（ログには出さない）
-        if keyboard.just_pressed(KeyCode::Escape) {
-            if !pending.0.is_empty() {
+            // 実行確定（YまたはEnter）
+            if keyboard.just_pressed(KeyCode::KeyY) || keyboard.just_pressed(KeyCode::Enter) {
+                if let Some(next) = queue.0.pop_front() {
+                    current_command.0 = Some(next);
+                    *phase = BattlePhase::InBattle;
+                }
+                return;
+            }
+            // 再選択（NまたはEsc）: 以降の予約コマンドをリセット
+            if keyboard.just_pressed(KeyCode::KeyN) || keyboard.just_pressed(KeyCode::Escape) {
+                let cleared = queue.0.len();
+                queue.0.clear();
                 pending.0.clear();
-            }
-        }
-        if keyboard.just_pressed(KeyCode::Backspace) {
-            if let Some(removed) = pending.0.pop() {
-                let _ = removed; // ログは出さない
-            }
-        }
-        if keyboard.just_pressed(KeyCode::KeyA) {
-            if !at_limit {
-                pending.0.push(CommandKind::Attack);
-                added.push("攻撃");
-            } else {
-                log.0
-                    .push("これ以上選択を追加できません (最大3件)".to_string());
-            }
-        }
-        if keyboard.just_pressed(KeyCode::KeyS) {
-            if !at_limit {
-                pending.0.push(CommandKind::Skill);
-                added.push("強攻撃");
-            } else {
-                log.0
-                    .push("これ以上選択を追加できません (最大3件)".to_string());
-            }
-        }
-        if keyboard.just_pressed(KeyCode::KeyH) {
-            if !at_limit {
-                pending.0.push(CommandKind::Heal);
-                added.push("回復");
-            } else {
-                log.0
-                    .push("これ以上選択を追加できません (最大3件)".to_string());
-            }
-        }
-        if keyboard.just_pressed(KeyCode::KeyD) {
-            if !at_limit {
-                pending.0.push(CommandKind::Defend);
-                added.push("防御");
-            } else {
-                log.0
-                    .push("これ以上選択を追加できません (最大3件)".to_string());
-            }
-        }
-        if keyboard.just_pressed(KeyCode::KeyW) {
-            if !at_limit {
-                pending.0.push(CommandKind::Wait);
-                added.push("待機");
-            } else {
-                log.0
-                    .push("これ以上選択を追加できません (最大3件)".to_string());
-            }
-        }
-        // 強化系コマンドは廃止
-        // 選択追加のログは出さず、UI側表示に任せる
+                batch.total = 0;
+                batch.executed = 0;
+                if cleared > 0 {
+                    log.0.push(
+                        "連続コマンドの予約をリセットしました。コマンドを選び直してください"
+                            .to_string(),
+                    );
+                }
+                *phase = BattlePhase::AwaitCommand;
 
-        // Enterで確定: 先頭を実行、2つ目以降を予約キューへ
-        if keyboard.just_pressed(KeyCode::Enter) && !pending.0.is_empty() {
-            // 確定時、選択した全コマンドをログ出力
-            let all_names = pending
-                .0
-                .iter()
-                .map(|c| match c {
+                return;
+            }
+        }
+        BattlePhase::InBattle => {
+            let command = if let Some(cmd) = current_command.0 {
+                cmd
+            } else {
+                // コマンドが無い場合は待機に戻る
+                *phase = BattlePhase::AwaitCommand;
+                return;
+            };
+
+            batch.executed += 1;
+            // 共通のコマンド解決処理
+            let mut resolve_command = |cmd: CommandKind| {
+                *phase = BattlePhase::InBattle;
+                let name = match cmd {
                     CommandKind::Attack => "攻撃",
                     CommandKind::Skill => "強攻撃",
                     CommandKind::Heal => "回復",
                     CommandKind::Defend => "防御",
                     CommandKind::Wait => "待機",
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
-            log.0.push(format!("選択確定: {}", all_names));
-            // 先頭を今回実行（連撃判定は実行時に行う）
-            commands_to_process.push(pending.0[0]);
-            // 残りをキューへ（連撃判定は実行時に行う）
-            for &cmd in pending.0.iter().skip(1) {
-                queue.0.push_back(cmd);
-            }
-            // 連続バッチ総数の記録と実行済み数のリセット
-            batch.total = pending.0.len();
-            batch.executed = 0;
-            // モメンタム増加は実行選択時に行うため、ここでは加算しない
-            // ログ出力
-            if pending.0.len() > 1 {
-                let names = pending
-                    .0
-                    .iter()
-                    .skip(1)
-                    .map(|c| match c {
-                        CommandKind::Attack => "攻撃",
-                        CommandKind::Skill => "強攻撃",
-                        CommandKind::Heal => "回復",
-                        CommandKind::Defend => "防御",
-                        CommandKind::Wait => "待機",
-                    })
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                log.0.push(format!(
-                    "{}件のコマンドを予約 ({})",
-                    pending.0.len() - 1,
-                    names
-                ));
-            }
-            // バッファをクリア
-            pending.0.clear();
-        }
-    }
+                };
+                log.0
+                    .push(format!("ターン {} プレイヤーは{}を選択", turn.0, name));
 
-    if commands_to_process.is_empty() {
-        return; // 入力も予約もなし
-    }
+                // Battleモジュールで行動実行
+                let player_id = battle.players.first().map(|p| p.character_id).unwrap_or(1);
+                let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
+                let player_conduct = match cmd {
+                    CommandKind::Attack => BattleConduct {
+                        actor_character_id: player_id,
+                        target_character_id: enemy_id,
+                        conduct: Arc::clone(&player_conducts.attack),
+                        weapon: None,
+                    },
+                    CommandKind::Skill => BattleConduct {
+                        actor_character_id: player_id,
+                        target_character_id: enemy_id,
+                        conduct: Arc::clone(&player_conducts.skill),
+                        weapon: None,
+                    },
+                    CommandKind::Heal => BattleConduct {
+                        actor_character_id: player_id,
+                        target_character_id: player_id,
+                        conduct: Arc::clone(&player_conducts.heal),
+                        weapon: None,
+                    },
+                    CommandKind::Defend => BattleConduct {
+                        actor_character_id: player_id,
+                        target_character_id: player_id,
+                        conduct: Arc::clone(&player_conducts.defend),
+                        weapon: None,
+                    },
+                    CommandKind::Wait => BattleConduct {
+                        actor_character_id: player_id,
+                        target_character_id: player_id,
+                        conduct: Arc::clone(&player_conducts.wait),
+                        weapon: None,
+                    },
+                };
 
-    // 共通のコマンド解決処理
-    let mut resolve_command = |cmd: CommandKind| {
-        *phase = BattlePhase::InBattle;
-        let name = match cmd {
-            CommandKind::Attack => "攻撃",
-            CommandKind::Skill => "強攻撃",
-            CommandKind::Heal => "回復",
-            CommandKind::Defend => "防御",
-            CommandKind::Wait => "待機",
-        };
-        log.0
-            .push(format!("ターン {} プレイヤーは{}を選択", turn.0, name));
-        // 連撃判定（直前が攻撃または強攻撃 かつ 今回が攻撃）
-        let is_chain = chain_state.last_was_attack && matches!(cmd, CommandKind::Attack);
+                let enemy_conduct = battle.decide_enemy_conduct(DecideEnemyConductRequest {
+                    enemy_character_id: enemy_id,
+                });
+                planned.0 = Some(enemy_conduct.clone());
+                let order = battle.decide_order(BattleDecideOrderRequest {
+                    character_ids: vec![player_id, enemy_id],
+                });
 
-        // コストチェック（実行時にも確認）。不足なら行動失敗。
-        let cost = match cmd {
-            CommandKind::Attack => 5,
-            CommandKind::Skill => 25,
-            CommandKind::Heal => 15,
-            CommandKind::Defend => 10,
-            CommandKind::Wait => 0,
-        };
+                let mut player_dealt_damage_hp: u32 = 0;
+                for actor_id in order {
+                    let conduct_to_execute = if actor_id == player_id {
+                        player_conduct.clone()
+                    } else {
+                        enemy_conduct.clone()
+                    };
+                    let incident = battle.execute_conduct(BattleExecuteConductRequest {
+                        conduct: conduct_to_execute,
+                    });
 
-        let player_id = battle.players.first().map(|p| p.character_id).unwrap_or(1);
-        let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
-        let player_conduct = match cmd {
-            CommandKind::Attack => BattleConduct {
-                actor_character_id: player_id,
-                target_character_id: enemy_id,
-                conduct: Arc::clone(&player_conducts.attack),
-                weapon: None,
-            },
-            CommandKind::Skill => BattleConduct {
-                actor_character_id: player_id,
-                target_character_id: enemy_id,
-                conduct: Arc::clone(&player_conducts.skill),
-                weapon: None,
-            },
-            CommandKind::Heal => BattleConduct {
-                actor_character_id: player_id,
-                target_character_id: player_id,
-                conduct: Arc::clone(&player_conducts.heal),
-                weapon: None,
-            },
-            CommandKind::Defend => BattleConduct {
-                actor_character_id: player_id,
-                target_character_id: player_id,
-                conduct: Arc::clone(&player_conducts.defend),
-                weapon: None,
-            },
-            CommandKind::Wait => BattleConduct {
-                actor_character_id: player_id,
-                target_character_id: player_id,
-                conduct: Arc::clone(&player_conducts.wait),
-                weapon: None,
-            },
-        };
-
-        let enemy_conduct = battle.decide_enemy_conduct(DecideEnemyConductRequest {
-            enemy_character_id: enemy_id,
-        });
-        let order = battle.decide_order(BattleDecideOrderRequest {
-            character_ids: vec![player_id, enemy_id],
-        });
-
-        let mut player_dealt_damage_hp: u32 = 0;
-        for actor_id in order {
-            let conduct_to_execute = if actor_id == player_id {
-                player_conduct.clone()
-            } else {
-                enemy_conduct.clone()
-            };
-            let incident = battle.execute_conduct(BattleExecuteConductRequest {
-                conduct: conduct_to_execute,
-            });
-
-            match incident {
-                BattleIncident::Conduct(c) => match c.outcome {
-                    BattleIncidentConductOutcome::Failure(_) => {
-                        log.0.push(format!("{}は不発", c.conduct.conduct.name))
-                    }
-                    BattleIncidentConductOutcome::Success(s) => {
-                        for change in s.attacker.stats_changes.iter() {
-                            match change {
-                                BattleIncidentStats::DamageSp(d) => log
-                                    .0
-                                    .push(format!("SP -{} ({} → {})", d.damage, d.before, d.after)),
-                                BattleIncidentStats::DamageStamina(d) => log.0.push(format!(
-                                    "Stamina -{} ({} → {})",
-                                    d.damage, d.before, d.after
-                                )),
-                                _ => {}
+                    match incident {
+                        BattleIncident::Conduct(c) => match c.outcome {
+                            BattleIncidentConductOutcome::Failure(_) => {
+                                log.0.push(format!("{}は不発", c.conduct.conduct.name));
                             }
-                        }
-                        for def in s.defenders.iter() {
-                            for change in def.stats_changes.iter() {
-                                match change {
-                                    BattleIncidentStats::DamageHp(d) => {
-                                        if c.attacker_id == player_id {
-                                            player_dealt_damage_hp = d.damage;
+                            BattleIncidentConductOutcome::Success(s) => {
+                                for change in s.attacker.stats_changes.iter() {
+                                    match change {
+                                        BattleIncidentStats::DamageSp(d) => log.0.push(format!(
+                                            "SP -{} ({} → {})",
+                                            d.damage, d.before, d.after
+                                        )),
+                                        BattleIncidentStats::DamageStamina(d) => {
+                                            log.0.push(format!(
+                                                "Stamina -{} ({} → {})",
+                                                d.damage, d.before, d.after
+                                            ))
                                         }
-                                        log.0.push(format!(
-                                            "{} に{}ダメージ (HP {} → {})",
-                                            if def.character_id == enemy_id {
-                                                "敵"
-                                            } else {
-                                                "プレイヤー"
-                                            },
-                                            d.damage,
-                                            d.before,
-                                            d.after
-                                        ));
+                                        _ => {}
                                     }
-                                    BattleIncidentStats::RecoverHp(r) => log.0.push(format!(
-                                        "{} のHPを{}回復 ({} → {})",
-                                        if def.character_id == player_id {
-                                            "プレイヤー"
-                                        } else {
-                                            "敵"
-                                        },
-                                        r.recover,
-                                        r.before,
-                                        r.after
-                                    )),
-                                    BattleIncidentStats::DamageBreak(d) => {
-                                        log.0.push(format!("敵にブレイクダメージ {}", d.damage))
+                                }
+                                for def in s.defenders.iter() {
+                                    for change in def.stats_changes.iter() {
+                                        match change {
+                                            BattleIncidentStats::DamageHp(d) => {
+                                                if c.attacker_id == player_id {
+                                                    player_dealt_damage_hp = d.damage;
+                                                }
+                                                log.0.push(format!(
+                                                    "{} に{}ダメージ (HP {} → {})",
+                                                    if def.character_id == enemy_id {
+                                                        "敵"
+                                                    } else {
+                                                        "プレイヤー"
+                                                    },
+                                                    d.damage,
+                                                    d.before,
+                                                    d.after
+                                                ));
+                                            }
+                                            BattleIncidentStats::RecoverHp(r) => {
+                                                log.0.push(format!(
+                                                    "{} のHPを{}回復 ({} → {})",
+                                                    if def.character_id == player_id {
+                                                        "プレイヤー"
+                                                    } else {
+                                                        "敵"
+                                                    },
+                                                    r.recover,
+                                                    r.before,
+                                                    r.after
+                                                ))
+                                            }
+                                            BattleIncidentStats::DamageBreak(d) => log
+                                                .0
+                                                .push(format!("敵にブレイクダメージ {}", d.damage)),
+                                            BattleIncidentStats::RecoverBreak(r) => log
+                                                .0
+                                                .push(format!("敵のブレイク回復 {}", r.recover)),
+                                            BattleIncidentStats::RecoverStamina(r) => {
+                                                log.0.push(format!(
+                                                    "Stamina +{} ({} → {})",
+                                                    r.recover, r.before, r.after
+                                                ))
+                                            }
+                                            _ => {}
+                                        }
                                     }
-                                    BattleIncidentStats::RecoverBreak(r) => {
-                                        log.0.push(format!("敵のブレイク回復 {}", r.recover))
+                                    if def.is_evaded {
+                                        log.0.push("回避した".to_string());
                                     }
-                                    BattleIncidentStats::RecoverStamina(r) => log.0.push(format!(
-                                        "Stamina +{} ({} → {})",
-                                        r.recover, r.before, r.after
-                                    )),
-                                    _ => {}
+                                    if def.is_defended {
+                                        log.0.push("防御した".to_string());
+                                    }
                                 }
                             }
-                            if def.is_evaded {
-                                log.0.push("回避した".to_string());
-                            }
-                            if def.is_defended {
-                                log.0.push("防御した".to_string());
-                            }
-                        }
+                        },
+                        BattleIncident::AutoTrigger(_) => {}
                     }
-                },
-                BattleIncident::AutoTrigger(_) => {}
-            }
+                }
+            };
+
+            // 今回は1件だけ処理（各ターン1コマンドのルール）
+            resolve_command(command);
+
+            turn.0 += 1;
+            *phase = BattlePhase::DecideEnemyConduct;
         }
-
-        // TODO: 敵の行動
-        // if e_hp.current > 0 {
-        //     // 事前決定済みの敵行動を実行
-        //     if e_bstate.remaining_turns > 0 {
-        //         // ブレイク中は行動不能
-        //         log.0.push("敵はブレイク中のため行動不能".to_string());
-        //     } else if enemy_action_canceled_this_turn {
-        //         // このターンの行動はキャンセル
-        //         log.0.push("敵の行動はブレイクによりキャンセル".to_string());
-        //     } else {
-        //         let action = &mut planned.0;
-        //         let step = action.current_step().unwrap();
-        //         match step.specification {
-        //             ActionStepSpecificationEnum::Attack(spec) => {
-        //                 let mut incoming = (e_attack.0 as f32 * spec.power) as i32;
-        //                 {
-        //                     let mut d = def_guard.p0();
-        //                     if d.0 {
-        //                         incoming = 0;
-        //                         d.0 = false; // 一度きり
-        //                     }
-        //                 }
-        //                 p_hp.current = (p_hp.current - incoming).max(0);
-        //                 log.0.push(format!(
-        //                     "敵の行動: {} → {}ダメージ (プレイヤーHP {} / {})",
-        //                     step.name, incoming, p_hp.current, p_hp.max
-        //                 ));
-        //             }
-        //             ActionStepSpecificationEnum::Wait(_) => {
-        //                 log.0.push(format!("敵の行動: {} (何もしない)", step.name));
-        //             }
-        //             ActionStepSpecificationEnum::Heal(spec) => {
-        //                 // プレイヤーがこのターンに攻撃していた場合、敵の回復量は半減
-        //                 let base_heal = spec.amount;
-        //                 let heal_amount = if matches!(cmd, CommandKind::Attack | CommandKind::Skill)
-        //                 {
-        //                     base_heal / 2
-        //                 } else {
-        //                     base_heal
-        //                 };
-        //                 let before = e_hp.current;
-        //                 e_hp.current = (e_hp.current + heal_amount).min(e_hp.max);
-        //                 let healed = e_hp.current - before;
-        //                 log.0.push(format!(
-        //                     "敵の行動: {} → HPを{}回復 (敵HP {} / {})",
-        //                     step.name, healed, e_hp.current, e_hp.max
-        //                 ));
-        //             }
-        //         }
-        //         action.next();
-        //     }
-        // }
-
-        // TODO:
-        // 次ターンの敵行動を事前決定（敵が生きている場合）
-        // if e_hp.current > 0 && p_hp.current > 0 {
-        //     if planned.0.is_finished() {
-        //         // 現在の行動が完了している場合、新たに行動を決定
-
-        //         let roll: f32 = rand::random::<f32>();
-        //         // 敵HPが半分以下なら、回復とため開始を選択肢に含める
-        //         let next = if e_hp.current * 2 <= e_hp.max {
-        //             // 攻撃 / 待機 / 回復 / ため(準備)
-        //             match () {
-        //                 _ if roll < 0.1 => create_enemy_wait(),
-        //                 _ if roll < 0.2 => create_enemy_heal(),
-        //                 _ if roll < 0.3 => create_enemy_attack(),
-        //                 _ if roll < 0.5 => create_enemy_claw_combo_strong(),
-        //                 _ if roll < 0.7 => create_enemy_claw_strong(),
-        //                 _ if roll < 0.8 => create_enemy_stomp(),
-        //                 _ => create_enemy_fire_breath(),
-        //             }
-        //         } else {
-        //             match () {
-        //                 _ if roll < 0.3 => create_enemy_wait(),
-        //                 _ if roll < 0.6 => create_enemy_attack(),
-        //                 _ if roll < 0.8 => create_enemy_claw_combo(),
-        //                 _ if roll < 0.9 => create_enemy_claw_strong(),
-        //                 _ => create_enemy_stomp(),
-        //             }
-        //         };
-
-        //         // TODO: 毎回生成してるのやめる
-        //         planned.0 = ActionProcess::from(&Arc::new(next));
-        //     }
-        //     log.0.push(format!(
-        //         "次ターン敵行動予定: {}",
-        //         planned.0.current_step().unwrap().name
-        //     ));
-        // }
-
-        turn.0 += 1;
-        *phase = BattlePhase::AwaitCommand;
-    };
-
-    // 今回は1件だけ処理（各ターン1コマンドのルール）
-    resolve_command(commands_to_process[0]);
+        BattlePhase::Finished => {
+            return;
+        }
+    }
 }
 
 // ================== End Check ==================
@@ -2089,10 +1800,10 @@ fn ui_update_system(
     // eff_def_text.0 = format!("防御 消費:{}\n\n", def_cost);
     eff_def_color.0 = Color::WHITE;
 
-    let enemy_action_str = if let Some(step) = planned.0.current_step() {
-        step.name
+    let enemy_action_str = if let Some(conduct) = &planned.0 {
+        conduct.conduct.name.to_string()
     } else {
-        "不明"
+        "不明".to_string()
     };
     // 選択中コマンド表示用の文字列
     let selected_str = if pending.0.is_empty() {
@@ -2112,6 +1823,9 @@ fn ui_update_system(
             .join(", ")
     };
     let phase_str = match *phase {
+        BattlePhase::DecideEnemyConduct => {
+            format!("敵の行動決定中... 次の行動: {}", enemy_action_str)
+        }
         BattlePhase::AwaitCommand => format!(
             "コマンド入力待ち \nコマンドを選択してください(最大3つ)\n A=攻撃 S=強攻撃 H=回復 D=防御 W=待機\n Backspace=直前取り消し / Esc=全クリア\n Enter=決定\n [選択中] {selected_str}"
         ),
@@ -2494,10 +2208,10 @@ fn ui_update_enemy_system(
     //     };
     // }
     if let Ok(mut t) = next_text_q.single_mut() {
-        let enemy_action_str = if let Some(step) = planned.0.current_step() {
-            step.name
+        let enemy_action_str = if let Some(conduct) = &planned.0 {
+            conduct.conduct.name.to_string()
         } else {
-            "不明"
+            "不明".to_string()
         };
         t.0 = format!("次の行動: {}", enemy_action_str);
     }
