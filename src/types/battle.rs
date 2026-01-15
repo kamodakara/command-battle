@@ -74,9 +74,23 @@ pub struct BattleEnemyOnlyStats {
     pub max_break_turn: u32, // ブレイク最大ターン
     pub break_recovery: u32, // ブレイク回復量
 
-    pub break_damage: u32,            // 受けたブレイクダメージ
+    pub current_break: u32,           // 現在のブレイク値
     pub break_not_damaged_turns: u32, // ブレイクダメージを受けてないターン数
     pub break_turns: u32,             // 現在のブレイク経過ターン
+}
+impl BattleEnemyOnlyStats {
+    // ブレイク値に加算
+    pub fn break_add(&mut self, amount: u32) -> (u32, u32) {
+        let before = self.current_break;
+        self.current_break = (self.current_break + amount).min(self.max_break);
+        (before, self.current_break)
+    }
+    // ブレイク値に減算
+    pub fn break_subtract(&mut self, amount: u32) -> (u32, u32) {
+        let before = self.current_break;
+        self.current_break = self.current_break.saturating_sub(amount);
+        (before, self.current_break)
+    }
 }
 
 // 戦闘中の状態変化

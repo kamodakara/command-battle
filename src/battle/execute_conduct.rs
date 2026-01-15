@@ -351,7 +351,7 @@ fn conduct_effect(
                     // TODO: 死亡判定
 
                     // ブレイクダメージ処理
-                    if let BattleCharacter::Enemy(enemy) = &target {
+                    if let BattleCharacter::Enemy(enemy) = target {
                         // ブレイク中でない時
                         let mut is_break = false;
                         for se in enemy.base.status_effects.iter() {
@@ -363,11 +363,10 @@ fn conduct_effect(
                         if !is_break {
                             // 敵のブレイクダメージ処理
                             let break_power = conduct_attack.break_power;
-                            let current_break_damage = enemy.current_enemy_only_stats.break_damage;
-                            let mut next_break_damage = current_break_damage + break_power;
-                            if next_break_damage > enemy.current_enemy_only_stats.max_break {
-                                next_break_damage = enemy.current_enemy_only_stats.max_break;
+                            let (before_break, after_break) =
+                                enemy.current_enemy_only_stats.break_subtract(break_power);
 
+                            if after_break == 0 {
                                 // ブレイク状態にする
                                 // TODO: サポート技用の関数を使用していいか？
                                 let new_status_effects = support_status_effect(
@@ -384,8 +383,8 @@ fn conduct_effect(
                             stats_change_incidents.push(BattleIncidentStats::DamageBreak(
                                 BattleIncidentDamageBreak {
                                     damage: break_power,
-                                    before: current_break_damage,
-                                    after: next_break_damage,
+                                    before: before_break,
+                                    after: after_break,
                                 },
                             ));
                         }
@@ -480,7 +479,7 @@ fn conduct_effect(
                 ));
 
                 // ブレイクダメージ処理
-                if let BattleCharacter::Enemy(enemy) = &target {
+                if let BattleCharacter::Enemy(enemy) = target {
                     // ブレイク中でない時
                     let mut is_break = false;
                     for se in enemy.base.status_effects.iter() {
@@ -490,11 +489,10 @@ fn conduct_effect(
                     }
                     if !is_break {
                         // 敵のブレイクダメージ処理
-                        let current_break_damage = enemy.current_enemy_only_stats.break_damage;
-                        let mut next_break_damage = current_break_damage + break_power;
-                        if next_break_damage > enemy.current_enemy_only_stats.max_break {
-                            next_break_damage = enemy.current_enemy_only_stats.max_break;
+                        let (before_break, after_break) =
+                            enemy.current_enemy_only_stats.break_subtract(break_power);
 
+                        if after_break == 0 {
                             // ブレイク状態にする
                             let new_status_effects = support_status_effect(
                                 &vec![StatusEffect {
@@ -505,12 +503,13 @@ fn conduct_effect(
                             );
                             status_effect_incidents.extend(new_status_effects);
                         }
+
                         // ブレイクダメージインシデント追加
                         stats_change_incidents.push(BattleIncidentStats::DamageBreak(
                             BattleIncidentDamageBreak {
                                 damage: break_power,
-                                before: current_break_damage,
-                                after: next_break_damage,
+                                before: before_break,
+                                after: after_break,
                             },
                         ));
                     }
@@ -600,10 +599,10 @@ fn conduct_effect(
                 ));
 
                 // ブレイクダメージ処理
-                if let BattleCharacter::Enemy(enemy) = &target {
+                if let BattleCharacter::Enemy(enemy) = target {
                     // ブレイク中でない時
                     let mut is_break = false;
-                    for se in target.status_effects().iter() {
+                    for se in enemy.base.status_effects.iter() {
                         if let StatusEffectPotency::Break(_) = &se.potency {
                             is_break = true
                         }
@@ -611,10 +610,9 @@ fn conduct_effect(
                     if !is_break {
                         // 敵のブレイクダメージ処理
                         let break_power = sorcery.break_power;
-                        let current_break_damage = enemy.current_enemy_only_stats.break_damage;
-                        let mut next_break_damage = current_break_damage + break_power;
-                        if next_break_damage > enemy.current_enemy_only_stats.max_break {
-                            next_break_damage = enemy.current_enemy_only_stats.max_break;
+                        let (before_break, after_break) =
+                            enemy.current_enemy_only_stats.break_subtract(break_power);
+                        if after_break == 0 {
                             // ブレイク状態にする
                             let new_status_effects = support_status_effect(
                                 &vec![StatusEffect {
@@ -629,8 +627,8 @@ fn conduct_effect(
                         stats_change_incidents.push(BattleIncidentStats::DamageBreak(
                             BattleIncidentDamageBreak {
                                 damage: break_power,
-                                before: current_break_damage,
-                                after: next_break_damage,
+                                before: before_break,
+                                after: after_break,
                             },
                         ));
                     }

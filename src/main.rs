@@ -572,7 +572,7 @@ fn create_mock_battle() -> Battle {
                 max_break: 100,
                 max_break_turn: 4,
                 break_recovery: 10,
-                break_damage: 0,
+                current_break: 100,
                 break_not_damaged_turns: 0,
                 break_turns: 0,
             },
@@ -1758,15 +1758,18 @@ fn ui_update_system(
     let p_stamina = player.base.current_stats.current_stamina;
     let enemy = battle.enemies.first().unwrap();
     let e_hp = enemy.base.current_stats.current_hp;
+    let e_break = enemy.current_enemy_only_stats.current_break;
+    let e_break_max = enemy.current_enemy_only_stats.max_break;
     ui_status_text.0 = format!(
-        "プレイヤーHP: {} / {}\nスタミナ: {} / {}\n100\n\n敵HP: {} / {}\n敵ブレイク値: {} / 100\n敵状態: {}\n\n",
+        "プレイヤーHP: {} / {}\nスタミナ: {} / {}\n100\n\n敵HP: {} / {}\n敵ブレイク値: {} / {}\n敵状態: {}\n\n",
         p_hp,
         player.base.current_stats.max_hp,
         p_stamina,
         player.base.current_stats.max_stamina,
         e_hp,
         enemy.base.current_stats.max_hp,
-        enemy.current_enemy_only_stats.break_damage,
+        (e_break_max - e_break),
+        e_break_max,
         "通常" // TODO: 敵状態表示
                // if e_bstate.remaining_turns > 0 {
                //     "ブレイク中"
@@ -2186,7 +2189,8 @@ fn ui_update_enemy_system(
 
     let enemy = battle.enemies.first().unwrap();
     let e_hp = enemy.base.current_stats.current_hp;
-    let e_break = enemy.current_enemy_only_stats.break_damage;
+    let e_break = enemy.current_enemy_only_stats.current_break;
+    let e_break_max = enemy.current_enemy_only_stats.max_break;
 
     if let Ok(mut hp_node) = gauge_params.p0().single_mut() {
         let ratio = if enemy.base.current_stats.max_hp > 0 {
@@ -2197,7 +2201,7 @@ fn ui_update_enemy_system(
         hp_node.width = percent((ratio * 100.0).round());
     }
     if let Ok(mut br_node) = gauge_params.p1().single_mut() {
-        let ratio = (e_break as f32 / 100.0).clamp(0.0, 1.0);
+        let ratio = ((e_break_max - e_break) as f32 / e_break_max as f32).clamp(0.0, 1.0);
         br_node.width = percent((ratio * 100.0).round());
     }
     // TODO: ブレイク状態の表示何とかする

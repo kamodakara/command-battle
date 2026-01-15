@@ -49,7 +49,8 @@ pub fn recover_break(
             if break_turns >= break_max_turns {
                 // ブレイク状態回復
                 enemy.current_enemy_only_stats.break_turns = 0;
-                enemy.current_enemy_only_stats.break_damage = 0;
+                enemy.current_enemy_only_stats.current_break =
+                    enemy.current_enemy_only_stats.max_break;
 
                 // ステータス効果からブレイクを削除
                 let battle_status_effect =
@@ -69,24 +70,14 @@ pub fn recover_break(
         } else {
             // 2ターンブレイクダメージを受けていなければ回復
             if enemy.current_enemy_only_stats.break_not_damaged_turns >= 2 {
-                let break_before = enemy.current_enemy_only_stats.max_break
-                    - enemy.current_enemy_only_stats.break_damage;
-                if enemy.current_enemy_only_stats.break_damage
-                    < enemy.current_enemy_only_stats.break_recovery
-                {
-                    enemy.current_enemy_only_stats.break_damage = 0;
-                } else {
-                    enemy.current_enemy_only_stats.break_damage -=
-                        enemy.current_enemy_only_stats.break_recovery;
-                };
-                let break_after = enemy.current_enemy_only_stats.max_break
-                    - enemy.current_enemy_only_stats.break_damage;
-
+                let break_recovery = enemy.current_enemy_only_stats.break_recovery;
+                let (brefore_break, after_break) =
+                    enemy.current_enemy_only_stats.break_add(break_recovery);
                 stats_change_incidents.push(BattleIncidentStats::RecoverBreak(
                     BattleIncidentRecoverBreak {
-                        recover: enemy.current_enemy_only_stats.break_recovery,
-                        before: break_before,
-                        after: break_after,
+                        recover: break_recovery,
+                        before: brefore_break,
+                        after: after_break,
                     },
                 ));
             }
