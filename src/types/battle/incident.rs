@@ -38,6 +38,7 @@ pub struct BattleIncidentConductOutcomeSuccessDefender {
     pub is_evaded: bool,                                 // 回避したか
     // TODO: 回避した理由
     pub is_defended: bool, // 防御したか
+                           // pub is_dead: bool,     // 戦闘不能になったか
 }
 
 pub enum BattleIncidentStats {
@@ -128,6 +129,7 @@ pub struct BattleIncidentConductOutcomeFailureReason {
     pub insufficient_stamina: bool, // スタミナ不足
     pub insufficient_ability: bool, // 能力不足
     pub insufficient_sp: bool,      // SP不足
+    pub is_break: bool,             // ブレイク中
 }
 
 pub struct BattleIncidentAutoTrigger {

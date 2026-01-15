@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use crate::battle::{
     BattleDecideOrderRequest, BattleExecuteConductRequest, DecideEnemyConductRequest,
+    RecoverBreakRequest, RecoverStaminaRequest, UpdateStatusEffectRequest,
 };
 use crate::types::*;
 use bevy::prelude::*;
@@ -34,6 +35,7 @@ enum BattlePhase {
     AwaitCommand,       // プレイヤーコマンド入力待ち
     ConfirmQueued,      // 連続コマンドの次コマンドを実行するか確認するフェーズ
     InBattle,
+    TurnEnd,  // ターン終了処理
     Finished, // 戦闘終了
 }
 #[derive(Resource)]
@@ -543,6 +545,7 @@ fn create_mock_battle() -> Battle {
                 },
                 defense_power: def.clone(),
                 status_effects: vec![],
+                is_dead: false,
             },
         }],
         enemies: vec![BattleEnemy {
@@ -567,6 +570,7 @@ fn create_mock_battle() -> Battle {
                 },
                 defense_power: def,
                 status_effects: vec![],
+                is_dead: false,
             },
             current_enemy_only_stats: BattleEnemyOnlyStats {
                 max_break: 100,
@@ -1516,6 +1520,37 @@ fn player_input_system(
             resolve_command(command);
 
             turn.0 += 1;
+            *phase = BattlePhase::TurnEnd;
+        }
+        BattlePhase::TurnEnd => {
+            let player_character_ids = battle
+                .players
+                .iter()
+                .map(|p| p.character_id)
+                .collect::<Vec<u32>>();
+            let enemy_character_ids = battle
+                .enemies
+                .iter()
+                .map(|e| e.character_id)
+                .collect::<Vec<u32>>();
+
+            for &cid in player_character_ids.iter() {
+                battle
+                    .update_status_effect_for_turn(UpdateStatusEffectRequest { character_id: cid });
+            }
+            for &cid in enemy_character_ids.iter() {
+                battle
+                    .update_status_effect_for_turn(UpdateStatusEffectRequest { character_id: cid });
+            }
+
+            for &cid in player_character_ids.iter() {
+                battle.recover_stamina(RecoverStaminaRequest { character_id: cid });
+            }
+
+            for &cid in enemy_character_ids.iter() {
+                battle.recover_break(RecoverBreakRequest { character_id: cid });
+            }
+
             *phase = BattlePhase::DecideEnemyConduct;
         }
         BattlePhase::Finished => {
@@ -1851,6 +1886,7 @@ fn ui_update_system(
             )
         }
         BattlePhase::InBattle => "処理中".to_string(),
+        BattlePhase::TurnEnd => "ターン終了".to_string(),
         BattlePhase::Finished => "終了".to_string(),
     };
     ui_phase_text.0 = format!("フェーズ: {phase_str}\n\n");

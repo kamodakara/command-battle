@@ -58,6 +58,7 @@ pub struct BattleCharacterBase {
     pub current_stats: BattleStats,
     pub defense_power: DefensePower,
     pub status_effects: Vec<BattleStatusEffect>,
+    pub is_dead: bool, // 死亡状態
 }
 
 pub type BattleCharacterId = u32;

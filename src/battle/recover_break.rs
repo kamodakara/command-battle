@@ -56,7 +56,7 @@ pub fn recover_break(
                 let battle_status_effect =
                     enemy.base.status_effects.remove(break_status_effect_index);
 
-                // TODO: ブレイク回復インシデント
+                // ブレイク回復インシデント
                 status_effect_incidents.push(BattleIncidentStatusEffect {
                     status_effect: battle_status_effect,
                     status_effect_handling: BattleIncidentStatusEffectHandling::Removed(
@@ -68,6 +68,8 @@ pub fn recover_break(
                 enemy.current_enemy_only_stats.break_turns += 1;
             }
         } else {
+            print!("Not in break state, recovering break.");
+
             // 2ターンブレイクダメージを受けていなければ回復
             if enemy.current_enemy_only_stats.break_not_damaged_turns >= 2 {
                 let break_recovery = enemy.current_enemy_only_stats.break_recovery;
