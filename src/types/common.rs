@@ -104,6 +104,7 @@ impl AttackPowerScaling {
 }
 
 // 能力補正
+#[derive(Clone)]
 pub struct AbilityScaling {
     pub strength: f32,     // 筋力
     pub dexterity: f32,    // 技量

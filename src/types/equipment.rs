@@ -15,6 +15,7 @@ pub struct Equipment {
 }
 
 // 武器
+#[derive(Clone)]
 pub struct Weapon {
     pub kind: WeaponKind,                              // 種類
     pub weight: u32,                                   // 重量
@@ -39,6 +40,7 @@ pub enum WeaponKind {
 }
 
 // 武器必要能力
+#[derive(Clone)]
 pub struct WeaponAbilityRequirement {
     pub strength: u32,     // 筋力
     pub dexterity: u32,    // 技量
@@ -49,12 +51,14 @@ pub struct WeaponAbilityRequirement {
 }
 
 // 武器攻撃性能
+#[derive(Clone)]
 pub struct WeaponAttackPower {
     pub base: AttackPower,                                // 基礎攻撃力
     pub ability_scaling: WeaponAttackPowerAbilityScaling, // 能力補正
 }
 
 // 武器攻撃力能力補正
+#[derive(Clone)]
 pub struct WeaponAttackPowerAbilityScaling {
     pub slash: AbilityScaling,     // 斬撃
     pub strike: AbilityScaling,    // 打撃
@@ -67,18 +71,21 @@ pub struct WeaponAttackPowerAbilityScaling {
 }
 
 // 武器術力
+#[derive(Clone)]
 pub struct WeaponSorceryPower {
     pub base: u32,               // 基礎力
     pub scaling: AbilityScaling, // 能力補正
 }
 
 // 武器ブレイク力
+#[derive(Clone)]
 pub struct WeaponBreakPower {
     pub base_power: u32,         // 基礎力
     pub scaling: AbilityScaling, // 能力補正
 }
 
 // 武器防御性能
+#[derive(Clone)]
 pub struct WeaponGuard {
     pub cut_rate: GuardCutRate, // カット率
     pub guard_strength: u32,    // ガード強度
@@ -100,6 +107,7 @@ pub struct GuardCutRate {
 }
 
 // 防具
+#[derive(Clone)]
 pub struct Armor {
     pub kind: ArmorKind,
     // 種類
@@ -109,6 +117,7 @@ pub struct Armor {
 }
 
 // 防具種類
+#[derive(Clone)]
 pub enum ArmorKind {
     Helmet,     // 頭装備
     ChestArmor, // 胴装備
@@ -117,6 +126,7 @@ pub enum ArmorKind {
 }
 
 // 防具防御力
+#[derive(Clone)]
 pub struct ArmorDefense {
     pub slash: u32,     // 斬撃
     pub strike: u32,    // 打撃
@@ -128,6 +138,7 @@ pub struct ArmorDefense {
     pub chaos: u32,     // 混濁
 }
 // 防具状態異常耐性値
+#[derive(Clone)]
 pub struct ArmorResistance {
     pub immunity: u32,   // 免疫
     pub robustness: u32, // 頑健
