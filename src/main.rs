@@ -246,16 +246,6 @@ fn create_default_player_conducts() -> PlayerConducts {
     }
 }
 
-// 敵の行動種別（事前決定）
-#[derive(Clone, Copy)]
-enum EnemyAction {
-    Attack,
-    Wait,
-    Heal,
-    ChargeStart,
-    ChargeHit,
-}
-
 #[derive(Clone)]
 struct ActionProcess {
     action: Arc<Action>,
@@ -332,155 +322,12 @@ fn create_enemy_attack() -> Action {
         }],
     }
 }
-fn create_enemy_claw_strong() -> Action {
-    Action {
-        steps: vec![
-            ActionStep {
-                name: "強力な爪攻撃",
-                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
-                    power: 2.0,
-                }),
-            },
-            ActionStep {
-                name: "体勢を立て直す",
-                specification: ActionStepSpecificationEnum::Wait(ActionStepSpecificationWait {
-                    invincible: false,
-                }),
-            },
-        ],
-    }
-}
-fn create_enemy_claw_combo() -> Action {
-    Action {
-        steps: vec![
-            ActionStep {
-                name: "爪連撃(1)",
-                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
-                    power: 0.7,
-                }),
-            },
-            ActionStep {
-                name: "爪連撃(2)",
-                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
-                    power: 0.7,
-                }),
-            },
-            ActionStep {
-                name: "待機",
-                specification: ActionStepSpecificationEnum::Wait(ActionStepSpecificationWait {
-                    invincible: false,
-                }),
-            },
-        ],
-    }
-}
-fn create_enemy_claw_combo_strong() -> Action {
-    Action {
-        steps: vec![
-            ActionStep {
-                name: "爪連撃(1)",
-                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
-                    power: 0.8,
-                }),
-            },
-            ActionStep {
-                name: "爪連撃(2)",
-                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
-                    power: 0.8,
-                }),
-            },
-            ActionStep {
-                name: "噛みつき",
-                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
-                    power: 2.0,
-                }),
-            },
-            ActionStep {
-                name: "待機",
-                specification: ActionStepSpecificationEnum::Wait(ActionStepSpecificationWait {
-                    invincible: false,
-                }),
-            },
-        ],
-    }
-}
-fn create_enemy_stomp() -> Action {
-    Action {
-        steps: vec![
-            ActionStep {
-                name: "飛び上がり",
-                specification: ActionStepSpecificationEnum::Wait(ActionStepSpecificationWait {
-                    invincible: false,
-                }),
-            },
-            ActionStep {
-                name: "踏みつけ",
-                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
-                    power: 2.5,
-                }),
-            },
-        ],
-    }
-}
-// ファイアブレス
-fn create_enemy_fire_breath() -> Action {
-    Action {
-        steps: vec![
-            ActionStep {
-                name: "息を吸い込む",
-                specification: ActionStepSpecificationEnum::Wait(ActionStepSpecificationWait {
-                    invincible: false,
-                }),
-            },
-            ActionStep {
-                name: "炎を吐き始めた",
-                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
-                    power: 1.0,
-                }),
-            },
-            ActionStep {
-                name: "炎を吐き続ける",
-                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
-                    power: 2.5,
-                }),
-            },
-            ActionStep {
-                name: "炎を吐き続ける",
-                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
-                    power: 3.0,
-                }),
-            },
-            ActionStep {
-                name: "炎を吐き続ける",
-                specification: ActionStepSpecificationEnum::Attack(ActionStepSpecificationAttack {
-                    power: 0.5,
-                }),
-            },
-            ActionStep {
-                name: "息切れ",
-                specification: ActionStepSpecificationEnum::Wait(ActionStepSpecificationWait {
-                    invincible: false,
-                }),
-            },
-        ],
-    }
-}
 fn create_enemy_wait() -> Action {
     Action {
         steps: vec![ActionStep {
             name: "待機",
             specification: ActionStepSpecificationEnum::Wait(ActionStepSpecificationWait {
                 invincible: false,
-            }),
-        }],
-    }
-}
-fn create_enemy_heal() -> Action {
-    Action {
-        steps: vec![ActionStep {
-            name: "回復",
-            specification: ActionStepSpecificationEnum::Heal(ActionStepSpecificationHeal {
-                amount: 100,
             }),
         }],
     }
@@ -785,7 +632,6 @@ fn setup_battle_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Battleモジュールの戦闘データを初期化
     commands.insert_resource(BattleResource(create_mock_battle()));
 
-    const MARGIN: Val = Val::Px(12.);
     let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
 
     // 画面下のログメッセージ（白枠、最大10行）
