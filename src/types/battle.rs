@@ -21,9 +21,11 @@ pub struct BattleAbility {
 }
 
 pub struct BattleStats {
-    pub max_hp: u32,      // HP
-    pub max_sp: u32,      // SP
-    pub max_stamina: u32, // スタミナ 敵は使用しない
+    pub max_hp: u32, // HP
+    pub max_sp: u32, // SP
+    // プレイヤーのみ使用
+    pub max_stamina: u32,      // スタミナ 敵は使用しない
+    pub stamina_recovery: u32, // スタミナ回復量 敵は使用しない
 
     pub current_hp: u32,      // 現在のHP
     pub current_sp: u32,      // 現在のSP

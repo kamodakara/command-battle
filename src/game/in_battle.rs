@@ -350,6 +350,7 @@ fn create_mock_battle() -> Battle {
             hp: 100,
             sp: 30,
             stamina: 100,
+            stamina_recovery: 10,
             equip_load: 0,
         },
         equipment: Equipment {
@@ -414,6 +415,7 @@ fn create_mock_battle() -> Battle {
                     max_hp: 100,
                     max_sp: 30,
                     max_stamina: 100,
+                    stamina_recovery: 10,
                     current_hp: 100,
                     current_sp: 30,
                     current_stamina: 100,
@@ -439,6 +441,7 @@ fn create_mock_battle() -> Battle {
                     max_hp: 1500,
                     max_sp: 30,
                     max_stamina: 0,
+                    stamina_recovery: 0,
                     current_hp: 1500,
                     current_sp: 30,
                     current_stamina: 0,

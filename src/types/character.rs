@@ -45,8 +45,12 @@ pub struct PlayerAbility {
 
 // プレイヤーステータス
 pub struct PlayerStats {
-    pub hp: u32,         // HP
-    pub sp: u32,         // SP
-    pub stamina: u32,    // スタミナ
-    pub equip_load: u32, // 装備重量
+    pub hp: u32,               // HP
+    pub sp: u32,               // SP
+    pub stamina: u32,          // スタミナ
+    pub stamina_recovery: u32, // スタミナ回復量
+    pub equip_load: u32,       // 装備重量
 }
+
+// TODO: プレイヤー基礎防御力
+// TODO: プレイヤー基礎状態異常耐性
