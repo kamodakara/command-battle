@@ -452,6 +452,16 @@ mod tests {
                 stamina_recovery: 1,
                 equip_load: 0,
             },
+            base_defense_power: DefensePower {
+                slash: 0,
+                strike: 0,
+                thrust: 0,
+                impact: 0,
+                magic: 0,
+                fire: 0,
+                lightning: 0,
+                chaos: 0,
+            },
             equipment: Equipment {
                 weapon1: None,
                 weapon2: None,

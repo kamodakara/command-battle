@@ -1,5 +1,6 @@
 mod battle;
 mod game;
+mod player;
 mod types;
 
 use crate::game::*;

@@ -1,3 +1,4 @@
+use super::common::DefensePower;
 use super::equipment::Equipment;
 
 // 敵
@@ -26,9 +27,10 @@ pub struct EnemyStats {
 }
 
 pub struct Player {
-    pub ability: PlayerAbility, // 能力
-    pub stats: PlayerStats,     // ステータス
-    pub equipment: Equipment,   // 装備
+    pub ability: PlayerAbility,           // 能力
+    pub stats: PlayerStats,               // ステータス
+    pub base_defense_power: DefensePower, // 基礎防御力
+    pub equipment: Equipment,             // 装備
 }
 // プレイヤー能力
 pub struct PlayerAbility {
@@ -52,5 +54,4 @@ pub struct PlayerStats {
     pub equip_load: u32,       // 装備重量
 }
 
-// TODO: プレイヤー基礎防御力
 // TODO: プレイヤー基礎状態異常耐性

@@ -353,6 +353,16 @@ fn create_mock_battle() -> Battle {
             stamina_recovery: 10,
             equip_load: 0,
         },
+        base_defense_power: DefensePower {
+            slash: 5,
+            strike: 5,
+            thrust: 5,
+            impact: 5,
+            magic: 5,
+            fire: 5,
+            lightning: 5,
+            chaos: 5,
+        },
         equipment: Equipment {
             weapon1: None,
             weapon2: None,
