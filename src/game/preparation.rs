@@ -452,241 +452,259 @@ fn build_status_content(
     // 基礎防御力を計算
     let defense_power = create_player_defense_power(&current_ability);
 
-    // プレイヤーステータス表示
-    parent.spawn((
-        Text::new("■ プレイヤーステータス"),
-        TextFont {
-            font: font.clone(),
-            font_size: 24.0,
+    // 横並びのコンテナ（左：能力値、右：ステータスと防御力）
+    parent
+        .spawn(Node {
+            width: Val::Percent(100.0),
+            flex_direction: FlexDirection::Row,
+            column_gap: Val::Px(40.0),
             ..default()
-        },
-        TextColor(Color::srgb(0.5, 1.0, 0.8)),
-        Node {
-            margin: UiRect {
-                top: Val::Px(15.0),
-                bottom: Val::Px(10.0),
-                ..default()
-            },
-            ..default()
-        },
-    ));
-
-    let player_stats_info = [
-        ("HP", player_stats.hp),
-        ("SP", player_stats.sp),
-        ("スタミナ", player_stats.stamina),
-        ("スタミナ回復", player_stats.stamina_recovery),
-        ("装備重量", player_stats.equip_load),
-    ];
-
-    for (name, value) in player_stats_info {
-        parent.spawn((
-            Text::new(format!("  {}: {}", name, value)),
-            TextFont {
-                font: font.clone(),
-                font_size: 18.0,
-                ..default()
-            },
-            TextColor(Color::WHITE),
-            Node {
-                margin: UiRect::bottom(Val::Px(5.0)),
-                ..default()
-            },
-        ));
-    }
-
-    // 基礎防御力表示
-    parent.spawn((
-        Text::new("■ 基礎防御力"),
-        TextFont {
-            font: font.clone(),
-            font_size: 24.0,
-            ..default()
-        },
-        TextColor(Color::srgb(0.5, 1.0, 0.8)),
-        Node {
-            margin: UiRect {
-                top: Val::Px(15.0),
-                bottom: Val::Px(10.0),
-                ..default()
-            },
-            ..default()
-        },
-    ));
-
-    let defense_info = [
-        ("斬撃", defense_power.slash),
-        ("打撃", defense_power.strike),
-        ("刺突", defense_power.thrust),
-        ("衝撃", defense_power.impact),
-        ("魔力", defense_power.magic),
-        ("炎", defense_power.fire),
-        ("雷", defense_power.lightning),
-        ("混濁", defense_power.chaos),
-    ];
-
-    for (name, value) in defense_info {
-        parent.spawn((
-            Text::new(format!("  {}: {}", name, value)),
-            TextFont {
-                font: font.clone(),
-                font_size: 18.0,
-                ..default()
-            },
-            TextColor(Color::WHITE),
-            Node {
-                margin: UiRect::bottom(Val::Px(5.0)),
-                ..default()
-            },
-        ));
-    }
-
-    // 能力値セクションのヘッダー
-    parent.spawn((
-        Text::new("■ 能力値"),
-        TextFont {
-            font: font.clone(),
-            font_size: 24.0,
-            ..default()
-        },
-        TextColor(Color::srgb(0.5, 1.0, 0.8)),
-        Node {
-            margin: UiRect {
-                top: Val::Px(20.0),
-                bottom: Val::Px(10.0),
-                ..default()
-            },
-            ..default()
-        },
-    ));
-
-    // ステータス一覧
-    let stats = [
-        ("生命力", prep_state.temp_vitality, StatType::Vitality),
-        ("精神力", prep_state.temp_spirit, StatType::Spirit),
-        ("持久力", prep_state.temp_endurance, StatType::Endurance),
-        ("敏捷性", prep_state.temp_agility, StatType::Agility),
-        ("筋力", prep_state.temp_strength, StatType::Strength),
-        ("技量", prep_state.temp_dexterity, StatType::Dexterity),
-        ("知力", prep_state.temp_intelligence, StatType::Intelligence),
-        ("信仰", prep_state.temp_faith, StatType::Faith),
-        ("神秘", prep_state.temp_arcane, StatType::Arcane),
-    ];
-
-    for (name, value, stat_type) in stats {
-        parent
-            .spawn(Node {
-                width: Val::Px(500.0),
-                height: Val::Px(50.0),
-                flex_direction: FlexDirection::Row,
-                align_items: AlignItems::Center,
-                column_gap: Val::Px(20.0),
-                margin: UiRect::bottom(Val::Px(10.0)),
+        })
+        .with_children(|row| {
+            // 左側：能力値割り振り
+            row.spawn(Node {
+                flex_direction: FlexDirection::Column,
                 ..default()
             })
-            .with_children(|row| {
-                // ステータス名
-                row.spawn((
-                    Text::new(name),
-                    TextFont {
-                        font: font.clone(),
-                        font_size: 20.0,
-                        ..default()
-                    },
-                    TextColor(Color::WHITE),
-                    Node {
-                        width: Val::Px(120.0),
-                        ..default()
-                    },
-                ));
-
-                // 減少ボタン
-                row.spawn((
-                    StatButton {
-                        stat_type,
-                        is_increase: false,
-                    },
-                    Button,
-                    Node {
-                        width: Val::Px(40.0),
-                        height: Val::Px(40.0),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        border: UiRect::all(Val::Px(2.0)),
-                        ..default()
-                    },
-                    BackgroundColor(Color::from(LinearRgba {
-                        red: 0.4,
-                        green: 0.2,
-                        blue: 0.2,
-                        alpha: 1.0,
-                    })),
-                    BorderColor::all(Color::WHITE),
-                ))
-                .with_children(|btn| {
-                    btn.spawn((
-                        Text::new("-"),
-                        TextFont {
-                            font: font.clone(),
-                            font_size: 24.0,
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                    ));
-                });
-
-                // 値表示
-                row.spawn((
-                    Text::new(format!("{}", value)),
+            .with_children(|left_col| {
+                // 能力値セクションのヘッダー
+                left_col.spawn((
+                    Text::new("■ 能力値"),
                     TextFont {
                         font: font.clone(),
                         font_size: 24.0,
                         ..default()
                     },
-                    TextColor(Color::WHITE),
+                    TextColor(Color::srgb(0.5, 1.0, 0.8)),
                     Node {
-                        width: Val::Px(60.0),
-                        justify_content: JustifyContent::Center,
+                        margin: UiRect::bottom(Val::Px(10.0)),
                         ..default()
                     },
                 ));
 
-                // 増加ボタン
-                row.spawn((
-                    StatButton {
-                        stat_type,
-                        is_increase: true,
-                    },
-                    Button,
-                    Node {
-                        width: Val::Px(40.0),
-                        height: Val::Px(40.0),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        border: UiRect::all(Val::Px(2.0)),
+                // ステータス一覧
+                let stats = [
+                    ("生命力", prep_state.temp_vitality, StatType::Vitality),
+                    ("精神力", prep_state.temp_spirit, StatType::Spirit),
+                    ("持久力", prep_state.temp_endurance, StatType::Endurance),
+                    ("敏捷性", prep_state.temp_agility, StatType::Agility),
+                    ("筋力", prep_state.temp_strength, StatType::Strength),
+                    ("技量", prep_state.temp_dexterity, StatType::Dexterity),
+                    ("知力", prep_state.temp_intelligence, StatType::Intelligence),
+                    ("信仰", prep_state.temp_faith, StatType::Faith),
+                    ("神秘", prep_state.temp_arcane, StatType::Arcane),
+                ];
+
+                for (name, value, stat_type) in stats {
+                    left_col
+                        .spawn(Node {
+                            width: Val::Px(350.0),
+                            height: Val::Px(45.0),
+                            flex_direction: FlexDirection::Row,
+                            align_items: AlignItems::Center,
+                            column_gap: Val::Px(15.0),
+                            margin: UiRect::bottom(Val::Px(8.0)),
+                            ..default()
+                        })
+                        .with_children(|stat_row| {
+                            // ステータス名
+                            stat_row.spawn((
+                                Text::new(name),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 18.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                                Node {
+                                    width: Val::Px(100.0),
+                                    ..default()
+                                },
+                            ));
+
+                            // 減少ボタン
+                            stat_row
+                                .spawn((
+                                    StatButton {
+                                        stat_type,
+                                        is_increase: false,
+                                    },
+                                    Button,
+                                    Node {
+                                        width: Val::Px(35.0),
+                                        height: Val::Px(35.0),
+                                        justify_content: JustifyContent::Center,
+                                        align_items: AlignItems::Center,
+                                        border: UiRect::all(Val::Px(2.0)),
+                                        ..default()
+                                    },
+                                    BackgroundColor(Color::from(LinearRgba {
+                                        red: 0.4,
+                                        green: 0.2,
+                                        blue: 0.2,
+                                        alpha: 1.0,
+                                    })),
+                                    BorderColor::all(Color::WHITE),
+                                ))
+                                .with_children(|btn| {
+                                    btn.spawn((
+                                        Text::new("-"),
+                                        TextFont {
+                                            font: font.clone(),
+                                            font_size: 20.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::WHITE),
+                                    ));
+                                });
+
+                            // 値表示
+                            stat_row.spawn((
+                                Text::new(format!("{}", value)),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 20.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                                Node {
+                                    width: Val::Px(50.0),
+                                    justify_content: JustifyContent::Center,
+                                    ..default()
+                                },
+                            ));
+
+                            // 増加ボタン
+                            stat_row
+                                .spawn((
+                                    StatButton {
+                                        stat_type,
+                                        is_increase: true,
+                                    },
+                                    Button,
+                                    Node {
+                                        width: Val::Px(35.0),
+                                        height: Val::Px(35.0),
+                                        justify_content: JustifyContent::Center,
+                                        align_items: AlignItems::Center,
+                                        border: UiRect::all(Val::Px(2.0)),
+                                        ..default()
+                                    },
+                                    BackgroundColor(Color::from(LinearRgba {
+                                        red: 0.2,
+                                        green: 0.4,
+                                        blue: 0.2,
+                                        alpha: 1.0,
+                                    })),
+                                    BorderColor::all(Color::WHITE),
+                                ))
+                                .with_children(|btn| {
+                                    btn.spawn((
+                                        Text::new("+"),
+                                        TextFont {
+                                            font: font.clone(),
+                                            font_size: 20.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::WHITE),
+                                    ));
+                                });
+                        });
+                }
+            });
+
+            // 右側：プレイヤーステータスと基礎防御力
+            row.spawn(Node {
+                flex_direction: FlexDirection::Column,
+                ..default()
+            })
+            .with_children(|right_col| {
+                // プレイヤーステータス表示
+                right_col.spawn((
+                    Text::new("■ プレイヤーステータス"),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 22.0,
                         ..default()
                     },
-                    BackgroundColor(Color::from(LinearRgba {
-                        red: 0.2,
-                        green: 0.4,
-                        blue: 0.2,
-                        alpha: 1.0,
-                    })),
-                    BorderColor::all(Color::WHITE),
-                ))
-                .with_children(|btn| {
-                    btn.spawn((
-                        Text::new("+"),
+                    TextColor(Color::srgb(0.5, 1.0, 0.8)),
+                    Node {
+                        margin: UiRect::bottom(Val::Px(10.0)),
+                        ..default()
+                    },
+                ));
+
+                let player_stats_info = [
+                    ("HP", player_stats.hp),
+                    ("SP", player_stats.sp),
+                    ("スタミナ", player_stats.stamina),
+                    ("スタミナ回復", player_stats.stamina_recovery),
+                    ("装備重量", player_stats.equip_load),
+                ];
+
+                for (name, value) in player_stats_info {
+                    right_col.spawn((
+                        Text::new(format!("  {}: {}", name, value)),
                         TextFont {
                             font: font.clone(),
-                            font_size: 24.0,
+                            font_size: 17.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
+                        Node {
+                            margin: UiRect::bottom(Val::Px(5.0)),
+                            ..default()
+                        },
                     ));
-                });
+                }
+
+                // 基礎防御力表示
+                right_col.spawn((
+                    Text::new("■ 基礎防御力"),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 22.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.5, 1.0, 0.8)),
+                    Node {
+                        margin: UiRect {
+                            top: Val::Px(15.0),
+                            bottom: Val::Px(10.0),
+                            ..default()
+                        },
+                        ..default()
+                    },
+                ));
+
+                let defense_info = [
+                    ("斬撃", defense_power.slash),
+                    ("打撃", defense_power.strike),
+                    ("刺突", defense_power.thrust),
+                    ("衝撃", defense_power.impact),
+                    ("魔力", defense_power.magic),
+                    ("炎", defense_power.fire),
+                    ("雷", defense_power.lightning),
+                    ("混濁", defense_power.chaos),
+                ];
+
+                for (name, value) in defense_info {
+                    right_col.spawn((
+                        Text::new(format!("  {}: {}", name, value)),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 17.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                        Node {
+                            margin: UiRect::bottom(Val::Px(5.0)),
+                            ..default()
+                        },
+                    ));
+                }
             });
-    }
+        });
 }
 
 /// 装備画面のコンテンツを構築
