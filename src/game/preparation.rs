@@ -1090,195 +1090,213 @@ fn build_arts_content(
         },
     ));
 
-    // 選択中の技術スロット表示
+    // 設定中の技術と利用可能な技術を横並びで表示
     parent
         .spawn(Node {
             width: Val::Percent(100.0),
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(15.0),
-            margin: UiRect::bottom(Val::Px(30.0)),
+            flex_direction: FlexDirection::Row,
+            column_gap: Val::Px(20.0),
             ..default()
         })
-        .with_children(|slots_parent| {
-            slots_parent.spawn((
-                Text::new("■ 設定中の技術"),
-                TextFont {
-                    font: font.clone(),
-                    font_size: 24.0,
+        .with_children(|row_parent| {
+            // 左側：設定中の技術（幅30%）
+            row_parent
+                .spawn(Node {
+                    width: Val::Percent(30.0),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(15.0),
                     ..default()
-                },
-                TextColor(Color::srgb(0.5, 1.0, 0.8)),
-                Node {
-                    margin: UiRect::bottom(Val::Px(10.0)),
-                    ..default()
-                },
-            ));
-
-            // 4つのスロット
-            for slot_index in 0..4 {
-                let selected_art = prep_state
-                    .selected_arts
-                    .get(slot_index)
-                    .and_then(|&art_id| arts_db.arts.iter().find(|a| a.id == art_id));
-
-                slots_parent
-                    .spawn((
-                        ArtsSlotButton { slot_index },
-                        Button,
-                        Node {
-                            width: Val::Percent(100.0),
-                            height: Val::Px(80.0),
-                            flex_direction: FlexDirection::Column,
-                            padding: UiRect::all(Val::Px(15.0)),
-                            border: UiRect::all(Val::Px(2.0)),
-                            justify_content: JustifyContent::Center,
+                })
+                .with_children(|slots_parent| {
+                    slots_parent.spawn((
+                        Text::new("■ 設定中の技術"),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 24.0,
                             ..default()
                         },
-                        BackgroundColor(Color::from(LinearRgba {
-                            red: 0.25,
-                            green: 0.25,
-                            blue: 0.35,
-                            alpha: 1.0,
-                        })),
-                        BorderColor::all(Color::WHITE),
-                    ))
-                    .with_children(|slot| {
-                        if let Some(art) = selected_art {
-                            // 技術名
-                            slot.spawn((
-                                Text::new(format!("{}. {}", slot_index + 1, art.name)),
-                                TextFont {
-                                    font: font.clone(),
-                                    font_size: 20.0,
-                                    ..default()
-                                },
-                                TextColor(Color::WHITE),
-                            ));
+                        TextColor(Color::srgb(0.5, 1.0, 0.8)),
+                        Node {
+                            margin: UiRect::bottom(Val::Px(10.0)),
+                            ..default()
+                        },
+                    ));
 
-                            // 技術情報
-                            let info = format!(
-                                "SP: {} / スタミナ: {}",
-                                art.conduct.sp_cost, art.conduct.stamina_cost
-                            );
-                            slot.spawn((
-                                Text::new(info),
-                                TextFont {
-                                    font: font.clone(),
-                                    font_size: 16.0,
-                                    ..default()
-                                },
-                                TextColor(Color::srgb(0.7, 0.7, 0.7)),
-                            ));
-                        } else {
-                            slot.spawn((
-                                Text::new(format!("{}. [空き]", slot_index + 1)),
-                                TextFont {
-                                    font: font.clone(),
-                                    font_size: 20.0,
-                                    ..default()
-                                },
-                                TextColor(Color::srgb(0.5, 0.5, 0.5)),
-                            ));
-                        }
-                    });
-            }
-        });
+                    // 4つのスロット
+                    for slot_index in 0..4 {
+                        let selected_art = prep_state
+                            .selected_arts
+                            .get(slot_index)
+                            .and_then(|&art_id| arts_db.arts.iter().find(|a| a.id == art_id));
 
-    // 利用可能な技術一覧
-    parent
-        .spawn(Node {
-            width: Val::Percent(100.0),
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(10.0),
-            ..default()
-        })
-        .with_children(|available_parent| {
-            available_parent.spawn((
-                Text::new("■ 利用可能な技術"),
-                TextFont {
-                    font: font.clone(),
-                    font_size: 24.0,
+                        slots_parent
+                            .spawn((
+                                ArtsSlotButton { slot_index },
+                                Button,
+                                Node {
+                                    width: Val::Percent(100.0),
+                                    height: Val::Px(80.0),
+                                    flex_direction: FlexDirection::Column,
+                                    padding: UiRect::all(Val::Px(12.0)),
+                                    border: UiRect::all(Val::Px(2.0)),
+                                    justify_content: JustifyContent::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::from(LinearRgba {
+                                    red: 0.25,
+                                    green: 0.25,
+                                    blue: 0.35,
+                                    alpha: 1.0,
+                                })),
+                                BorderColor::all(Color::WHITE),
+                            ))
+                            .with_children(|slot| {
+                                if let Some(art) = selected_art {
+                                    // 技術名
+                                    slot.spawn((
+                                        Text::new(format!("{}. {}", slot_index + 1, art.name)),
+                                        TextFont {
+                                            font: font.clone(),
+                                            font_size: 18.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::WHITE),
+                                    ));
+
+                                    // 技術情報
+                                    let info = format!(
+                                        "SP:{} / ST:{}",
+                                        art.conduct.sp_cost, art.conduct.stamina_cost
+                                    );
+                                    slot.spawn((
+                                        Text::new(info),
+                                        TextFont {
+                                            font: font.clone(),
+                                            font_size: 14.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::srgb(0.7, 0.7, 0.7)),
+                                    ));
+                                } else {
+                                    slot.spawn((
+                                        Text::new(format!("{}. [空き]", slot_index + 1)),
+                                        TextFont {
+                                            font: font.clone(),
+                                            font_size: 18.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::srgb(0.5, 0.5, 0.5)),
+                                    ));
+                                }
+                            });
+                    }
+                });
+
+            // 右側：利用可能な技術（幅70%）
+            row_parent
+                .spawn(Node {
+                    width: Val::Percent(70.0),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(10.0),
                     ..default()
-                },
-                TextColor(Color::srgb(0.5, 1.0, 0.8)),
-                Node {
-                    margin: UiRect::bottom(Val::Px(10.0)),
-                    ..default()
-                },
-            ));
+                })
+                .with_children(|available_parent| {
+                    available_parent.spawn((
+                        Text::new("■ 利用可能な技術"),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 24.0,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(0.5, 1.0, 0.8)),
+                        Node {
+                            margin: UiRect::bottom(Val::Px(10.0)),
+                            ..default()
+                        },
+                    ));
 
-            // 技術一覧
-            for art_data in &arts_db.arts {
-                available_parent
-                    .spawn(Node {
-                        width: Val::Percent(100.0),
-                        flex_direction: FlexDirection::Column,
-                        padding: UiRect::all(Val::Px(12.0)),
-                        border: UiRect::all(Val::Px(1.0)),
-                        margin: UiRect::bottom(Val::Px(5.0)),
-                        ..default()
-                    })
-                    .with_children(|art_panel| {
-                        // 技術名
-                        art_panel.spawn((
-                            Text::new(&art_data.name),
-                            TextFont {
-                                font: font.clone(),
-                                font_size: 18.0,
-                                ..default()
-                            },
-                            TextColor(Color::srgb(1.0, 0.9, 0.6)),
-                        ));
-
-                        // コスト情報
-                        art_panel.spawn((
-                            Text::new(format!(
-                                "SP: {} / スタミナ: {}",
-                                art_data.conduct.sp_cost, art_data.conduct.stamina_cost
-                            )),
-                            TextFont {
-                                font: font.clone(),
-                                font_size: 14.0,
-                                ..default()
-                            },
-                            TextColor(Color::srgb(0.7, 0.7, 0.7)),
-                        ));
-
-                        // 必要能力
-                        let req = &art_data.conduct.requirement;
-                        let mut req_parts = Vec::new();
-                        if req.strength > 0 {
-                            req_parts.push(format!("筋力{}", req.strength));
-                        }
-                        if req.dexterity > 0 {
-                            req_parts.push(format!("技量{}", req.dexterity));
-                        }
-                        if req.intelligence > 0 {
-                            req_parts.push(format!("知力{}", req.intelligence));
-                        }
-                        if req.faith > 0 {
-                            req_parts.push(format!("信仰{}", req.faith));
-                        }
-                        if req.arcane > 0 {
-                            req_parts.push(format!("神秘{}", req.arcane));
-                        }
-                        if req.agility > 0 {
-                            req_parts.push(format!("敏捷{}", req.agility));
-                        }
-
-                        if !req_parts.is_empty() {
-                            art_panel.spawn((
-                                Text::new(format!("必要: {}", req_parts.join(", "))),
-                                TextFont {
-                                    font: font.clone(),
-                                    font_size: 14.0,
+                    // 技術一覧をグリッド表示（横3列）
+                    available_parent
+                        .spawn(Node {
+                            width: Val::Percent(100.0),
+                            flex_direction: FlexDirection::Row,
+                            flex_wrap: FlexWrap::Wrap,
+                            column_gap: Val::Px(10.0),
+                            row_gap: Val::Px(10.0),
+                            ..default()
+                        })
+                        .with_children(|grid| {
+                            for art_data in &arts_db.arts {
+                                grid.spawn(Node {
+                                    width: Val::Percent(32.0), // 3列表示（100% / 3 ≈ 33%、ギャップを考慮して32%）
+                                    flex_direction: FlexDirection::Column,
+                                    padding: UiRect::all(Val::Px(12.0)),
+                                    border: UiRect::all(Val::Px(1.0)),
                                     ..default()
-                                },
-                                TextColor(Color::srgb(0.6, 0.8, 1.0)),
-                            ));
-                        }
-                    });
-            }
+                                })
+                                .with_children(|art_panel| {
+                                    // 技術名
+                                    art_panel.spawn((
+                                        Text::new(&art_data.name),
+                                        TextFont {
+                                            font: font.clone(),
+                                            font_size: 18.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::srgb(1.0, 0.9, 0.6)),
+                                    ));
+
+                                    // コスト情報
+                                    art_panel.spawn((
+                                        Text::new(format!(
+                                            "SP: {} / スタミナ: {}",
+                                            art_data.conduct.sp_cost, art_data.conduct.stamina_cost
+                                        )),
+                                        TextFont {
+                                            font: font.clone(),
+                                            font_size: 14.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::srgb(0.7, 0.7, 0.7)),
+                                    ));
+
+                                    // 必要能力
+                                    let req = &art_data.conduct.requirement;
+                                    let mut req_parts = Vec::new();
+                                    if req.strength > 0 {
+                                        req_parts.push(format!("筋力{}", req.strength));
+                                    }
+                                    if req.dexterity > 0 {
+                                        req_parts.push(format!("技量{}", req.dexterity));
+                                    }
+                                    if req.intelligence > 0 {
+                                        req_parts.push(format!("知力{}", req.intelligence));
+                                    }
+                                    if req.faith > 0 {
+                                        req_parts.push(format!("信仰{}", req.faith));
+                                    }
+                                    if req.arcane > 0 {
+                                        req_parts.push(format!("神秘{}", req.arcane));
+                                    }
+                                    if req.agility > 0 {
+                                        req_parts.push(format!("敏捷{}", req.agility));
+                                    }
+
+                                    if !req_parts.is_empty() {
+                                        art_panel.spawn((
+                                            Text::new(format!("必要: {}", req_parts.join(", "))),
+                                            TextFont {
+                                                font: font.clone(),
+                                                font_size: 14.0,
+                                                ..default()
+                                            },
+                                            TextColor(Color::srgb(0.6, 0.8, 1.0)),
+                                        ));
+                                    }
+                                });
+                            }
+                        });
+                });
         });
 }
 
