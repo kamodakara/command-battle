@@ -27,6 +27,9 @@ pub struct MenuButton {
 #[derive(Component)]
 pub struct StartBattleButton;
 
+#[derive(Component)]
+pub struct ErrorMessageText;
+
 // ================== Resources ==================
 
 #[derive(Resource, Default, Clone, Copy, PartialEq)]
@@ -61,6 +64,8 @@ pub struct PreparationState {
     pub equipped_armor7: Option<usize>,
     pub equipped_armor8: Option<usize>,
     pub selecting_slot: Option<EquipmentSlot>,
+    pub error_message: Option<String>,
+    pub error_message_timer: f32,
 }
 
 // 装備データベース（仮データ）
@@ -102,6 +107,8 @@ impl Plugin for PreparationPlugin {
                     start_battle_system,
                     equipment_list_button_system,
                     close_equipment_list_system,
+                    update_error_message_system,
+                    display_error_message_system,
                 )
                     .run_if(in_state(GameState::Preparation)),
             )
@@ -1973,6 +1980,7 @@ pub fn equipment_list_button_system(
     mut prep_state: ResMut<PreparationState>,
     mut commands: Commands,
     dialog_query: Query<Entity, With<EquipmentSelectionDialog>>,
+    equipment_db: Res<EquipmentDatabase>,
 ) {
     for (interaction, list_button, mut color) in &mut interaction_query {
         match *interaction {
@@ -1985,29 +1993,140 @@ pub fn equipment_list_button_system(
                         EquipmentSlot::Weapon2 => {
                             prep_state.equipped_weapon2 = Some(list_button.equipment_id);
                         }
-                        EquipmentSlot::Armor1 => {
-                            prep_state.equipped_armor1 = Some(list_button.equipment_id);
-                        }
-                        EquipmentSlot::Armor2 => {
-                            prep_state.equipped_armor2 = Some(list_button.equipment_id);
-                        }
-                        EquipmentSlot::Armor3 => {
-                            prep_state.equipped_armor3 = Some(list_button.equipment_id);
-                        }
-                        EquipmentSlot::Armor4 => {
-                            prep_state.equipped_armor4 = Some(list_button.equipment_id);
-                        }
-                        EquipmentSlot::Armor5 => {
-                            prep_state.equipped_armor5 = Some(list_button.equipment_id);
-                        }
-                        EquipmentSlot::Armor6 => {
-                            prep_state.equipped_armor6 = Some(list_button.equipment_id);
-                        }
-                        EquipmentSlot::Armor7 => {
-                            prep_state.equipped_armor7 = Some(list_button.equipment_id);
-                        }
-                        EquipmentSlot::Armor8 => {
-                            prep_state.equipped_armor8 = Some(list_button.equipment_id);
+                        EquipmentSlot::Armor1
+                        | EquipmentSlot::Armor2
+                        | EquipmentSlot::Armor3
+                        | EquipmentSlot::Armor4
+                        | EquipmentSlot::Armor5
+                        | EquipmentSlot::Armor6
+                        | EquipmentSlot::Armor7
+                        | EquipmentSlot::Armor8 => {
+                            // 選択された防具を取得
+                            if let Some(armor_data) = equipment_db
+                                .armors
+                                .iter()
+                                .find(|a| a.id == list_button.equipment_id)
+                            {
+                                // 現在の装備状態からEquipmentを構築
+                                let current_equipment = crate::types::Equipment {
+                                    weapon1: prep_state.equipped_weapon1.and_then(|id| {
+                                        equipment_db
+                                            .weapons
+                                            .iter()
+                                            .find(|w| w.id == id)
+                                            .map(|w| w.weapon.clone())
+                                    }),
+                                    weapon2: prep_state.equipped_weapon2.and_then(|id| {
+                                        equipment_db
+                                            .weapons
+                                            .iter()
+                                            .find(|w| w.id == id)
+                                            .map(|w| w.weapon.clone())
+                                    }),
+                                    armor1: prep_state.equipped_armor1.and_then(|id| {
+                                        equipment_db
+                                            .armors
+                                            .iter()
+                                            .find(|a| a.id == id)
+                                            .map(|a| a.armor.clone())
+                                    }),
+                                    armor2: prep_state.equipped_armor2.and_then(|id| {
+                                        equipment_db
+                                            .armors
+                                            .iter()
+                                            .find(|a| a.id == id)
+                                            .map(|a| a.armor.clone())
+                                    }),
+                                    armor3: prep_state.equipped_armor3.and_then(|id| {
+                                        equipment_db
+                                            .armors
+                                            .iter()
+                                            .find(|a| a.id == id)
+                                            .map(|a| a.armor.clone())
+                                    }),
+                                    armor4: prep_state.equipped_armor4.and_then(|id| {
+                                        equipment_db
+                                            .armors
+                                            .iter()
+                                            .find(|a| a.id == id)
+                                            .map(|a| a.armor.clone())
+                                    }),
+                                    armor5: prep_state.equipped_armor5.and_then(|id| {
+                                        equipment_db
+                                            .armors
+                                            .iter()
+                                            .find(|a| a.id == id)
+                                            .map(|a| a.armor.clone())
+                                    }),
+                                    armor6: prep_state.equipped_armor6.and_then(|id| {
+                                        equipment_db
+                                            .armors
+                                            .iter()
+                                            .find(|a| a.id == id)
+                                            .map(|a| a.armor.clone())
+                                    }),
+                                    armor7: prep_state.equipped_armor7.and_then(|id| {
+                                        equipment_db
+                                            .armors
+                                            .iter()
+                                            .find(|a| a.id == id)
+                                            .map(|a| a.armor.clone())
+                                    }),
+                                    armor8: prep_state.equipped_armor8.and_then(|id| {
+                                        equipment_db
+                                            .armors
+                                            .iter()
+                                            .find(|a| a.id == id)
+                                            .map(|a| a.armor.clone())
+                                    }),
+                                };
+
+                                // 装備可能かチェック
+                                if crate::equipment::is_armor_equippable(
+                                    &armor_data.armor,
+                                    current_equipment,
+                                ) {
+                                    match slot {
+                                        EquipmentSlot::Armor1 => {
+                                            prep_state.equipped_armor1 =
+                                                Some(list_button.equipment_id);
+                                        }
+                                        EquipmentSlot::Armor2 => {
+                                            prep_state.equipped_armor2 =
+                                                Some(list_button.equipment_id);
+                                        }
+                                        EquipmentSlot::Armor3 => {
+                                            prep_state.equipped_armor3 =
+                                                Some(list_button.equipment_id);
+                                        }
+                                        EquipmentSlot::Armor4 => {
+                                            prep_state.equipped_armor4 =
+                                                Some(list_button.equipment_id);
+                                        }
+                                        EquipmentSlot::Armor5 => {
+                                            prep_state.equipped_armor5 =
+                                                Some(list_button.equipment_id);
+                                        }
+                                        EquipmentSlot::Armor6 => {
+                                            prep_state.equipped_armor6 =
+                                                Some(list_button.equipment_id);
+                                        }
+                                        EquipmentSlot::Armor7 => {
+                                            prep_state.equipped_armor7 =
+                                                Some(list_button.equipment_id);
+                                        }
+                                        EquipmentSlot::Armor8 => {
+                                            prep_state.equipped_armor8 =
+                                                Some(list_button.equipment_id);
+                                        }
+                                        _ => {}
+                                    }
+                                } else {
+                                    // 装備できない場合はエラーメッセージを表示
+                                    prep_state.error_message = Some("この防具は装備できません: すでに同じ装備箇所の防具が装備されています".to_string());
+                                    prep_state.error_message_timer = 3.0;
+                                }
+                            }
                         }
                     }
                     prep_state.selecting_slot = None;
@@ -2073,5 +2192,81 @@ pub fn close_equipment_list_system(
                 }));
             }
         }
+    }
+}
+
+// ================== エラーメッセージ表示 ==================
+
+#[derive(Component)]
+struct ErrorMessagePanel;
+
+/// エラーメッセージを更新するシステム
+fn update_error_message_system(mut prep_state: ResMut<PreparationState>, time: Res<Time>) {
+    if prep_state.error_message.is_some() {
+        prep_state.error_message_timer -= time.delta_secs();
+        if prep_state.error_message_timer <= 0.0 {
+            prep_state.error_message = None;
+            prep_state.error_message_timer = 0.0;
+        }
+    }
+}
+
+/// エラーメッセージを画面に表示するシステム
+fn display_error_message_system(
+    mut commands: Commands,
+    prep_state: Res<PreparationState>,
+    existing_panel: Query<Entity, With<ErrorMessagePanel>>,
+    asset_server: Res<AssetServer>,
+) {
+    let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
+
+    if prep_state.error_message.is_some() && !prep_state.is_changed() {
+        // メッセージが変わっていない場合は何もしない
+        return;
+    }
+
+    // 既存のパネルを削除
+    for entity in existing_panel.iter() {
+        commands.entity(entity).despawn();
+    }
+
+    // メッセージがある場合は表示
+    if let Some(ref message) = prep_state.error_message {
+        commands
+            .spawn((
+                ErrorMessagePanel,
+                Node {
+                    position_type: PositionType::Absolute,
+                    top: Val::Px(20.0),
+                    left: Val::Percent(50.0),
+                    width: Val::Px(600.0),
+                    padding: UiRect::all(Val::Px(15.0)),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    border: UiRect::all(Val::Px(2.0)),
+                    ..default()
+                },
+                BackgroundColor(Color::from(LinearRgba {
+                    red: 0.8,
+                    green: 0.2,
+                    blue: 0.2,
+                    alpha: 0.95,
+                })),
+                BorderColor::all(Color::WHITE),
+                ZIndex(200),
+                Transform::from_translation(Vec3::new(-300.0, 0.0, 0.0)),
+            ))
+            .with_children(|panel| {
+                panel.spawn((
+                    ErrorMessageText,
+                    Text::new(message.clone()),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 20.0,
+                        ..default()
+                    },
+                    TextColor(Color::WHITE),
+                ));
+            });
     }
 }
