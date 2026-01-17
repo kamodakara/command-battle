@@ -109,11 +109,11 @@ pub struct GuardCutRate {
 // 防具
 #[derive(Clone)]
 pub struct Armor {
-    pub kind: ArmorKind,
-    // 種類
+    pub kind: ArmorKind,             // 種類
     pub weight: u32,                 // 重量
     pub defense: ArmorDefense,       // 防御力
     pub resistance: ArmorResistance, // 状態異常耐性値
+    pub slots: Vec<ArmorSlot>,       // 装備箇所
 }
 
 // 防具種類
@@ -143,4 +143,13 @@ pub struct ArmorResistance {
     pub immunity: u32,   // 免疫
     pub robustness: u32, // 頑健
     pub sanity: u32,     // 正気
+}
+
+// 防具装備箇所
+#[derive(Clone, PartialEq)]
+pub enum ArmorSlot {
+    Head,  // 頭装備
+    Chest, // 胴装備
+    Arms,  // 腕装備
+    Legs,  // 脚装備
 }

@@ -3,8 +3,8 @@ use bevy::{ecs::relationship::RelatedSpawnerCommands, prelude::*};
 use super::*;
 use crate::player::{create_player_defense_power, create_player_stats};
 use crate::types::{
-    AbilityScaling, Armor, ArmorDefense, ArmorKind, ArmorResistance, AttackPower, GuardCutRate,
-    PlayerAbility, Weapon, WeaponAbilityRequirement, WeaponAttackPower,
+    AbilityScaling, Armor, ArmorDefense, ArmorKind, ArmorResistance, ArmorSlot, AttackPower,
+    GuardCutRate, PlayerAbility, Weapon, WeaponAbilityRequirement, WeaponAttackPower,
     WeaponAttackPowerAbilityScaling, WeaponBreakPower, WeaponGuard, WeaponKind, WeaponSorceryPower,
 };
 
@@ -1513,6 +1513,7 @@ fn create_iron_helmet() -> Armor {
             robustness: 12,
             sanity: 8,
         },
+        slots: vec![ArmorSlot::Head],
     }
 }
 
@@ -1535,6 +1536,7 @@ fn create_iron_armor() -> Armor {
             robustness: 25,
             sanity: 15,
         },
+        slots: vec![ArmorSlot::Chest],
     }
 }
 
@@ -1552,6 +1554,7 @@ fn create_iron_gauntlets() -> Armor {
             lightning: 7,
             chaos: 5,
         },
+        slots: vec![ArmorSlot::Arms],
         resistance: ArmorResistance {
             immunity: 7,
             robustness: 8,
@@ -1579,6 +1582,7 @@ fn create_iron_leggings() -> Armor {
             robustness: 15,
             sanity: 10,
         },
+        slots: vec![ArmorSlot::Legs],
     }
 }
 
@@ -1601,6 +1605,7 @@ fn create_leather_helmet() -> Armor {
             robustness: 7,
             sanity: 10,
         },
+        slots: vec![ArmorSlot::Head],
     }
 }
 
@@ -1623,6 +1628,7 @@ fn create_leather_armor() -> Armor {
             robustness: 12,
             sanity: 20,
         },
+        slots: vec![ArmorSlot::Chest],
     }
 }
 
@@ -1645,6 +1651,7 @@ fn create_leather_gauntlets() -> Armor {
             robustness: 4,
             sanity: 7,
         },
+        slots: vec![ArmorSlot::Arms],
     }
 }
 
@@ -1667,6 +1674,7 @@ fn create_leather_leggings() -> Armor {
             robustness: 8,
             sanity: 15,
         },
+        slots: vec![ArmorSlot::Legs],
     }
 }
 

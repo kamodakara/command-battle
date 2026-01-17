@@ -1,4 +1,5 @@
 mod battle;
+mod equipment;
 mod game;
 mod player;
 mod types;
