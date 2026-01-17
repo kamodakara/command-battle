@@ -121,7 +121,7 @@ pub fn setup_preparation_screen(
 
     // 初期化
     prep_state.current_menu = MenuType::Status;
-    prep_state.status_points = 10;
+    prep_state.status_points = 100;
     prep_state.temp_vitality = 10;
     prep_state.temp_spirit = 10;
     prep_state.temp_endurance = 10;
