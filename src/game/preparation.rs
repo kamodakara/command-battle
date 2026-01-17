@@ -728,35 +728,39 @@ fn build_equipment_content(
         },
     ));
 
-    // 装備スロット一覧
-    let equipment_slots = [
+    // 現在のプレイヤー能力値を作成
+    let current_ability = PlayerAbility {
+        vitality: prep_state.temp_vitality,
+        spirit: prep_state.temp_spirit,
+        endurance: prep_state.temp_endurance,
+        agility: prep_state.temp_agility,
+        strength: prep_state.temp_strength,
+        dexterity: prep_state.temp_dexterity,
+        intelligence: prep_state.temp_intelligence,
+        faith: prep_state.temp_faith,
+        arcane: prep_state.temp_arcane,
+    };
+
+    // 装備スロット一覧（武器の場合は武器データも保持）
+    let weapon1_data = prep_state
+        .equipped_weapon1
+        .and_then(|id| equipment_db.weapons.iter().find(|w| w.id == id));
+    let weapon2_data = prep_state
+        .equipped_weapon2
+        .and_then(|id| equipment_db.weapons.iter().find(|w| w.id == id));
+
+    let equipment_slots: Vec<(&str, EquipmentSlot, Option<String>, Option<&WeaponData>)> = vec![
         (
             "右手武器",
             EquipmentSlot::Weapon1,
-            prep_state
-                .equipped_weapon1
-                .map(|id| {
-                    equipment_db
-                        .weapons
-                        .iter()
-                        .find(|w| w.id == id)
-                        .map(|w| w.name.clone())
-                })
-                .flatten(),
+            weapon1_data.map(|w| w.name.clone()),
+            weapon1_data,
         ),
         (
             "左手武器",
             EquipmentSlot::Weapon2,
-            prep_state
-                .equipped_weapon2
-                .map(|id| {
-                    equipment_db
-                        .weapons
-                        .iter()
-                        .find(|w| w.id == id)
-                        .map(|w| w.name.clone())
-                })
-                .flatten(),
+            weapon2_data.map(|w| w.name.clone()),
+            weapon2_data,
         ),
         (
             "防具1",
@@ -771,6 +775,7 @@ fn build_equipment_content(
                         .map(|a| a.name.clone())
                 })
                 .flatten(),
+            None,
         ),
         (
             "防具2",
@@ -785,6 +790,7 @@ fn build_equipment_content(
                         .map(|a| a.name.clone())
                 })
                 .flatten(),
+            None,
         ),
         (
             "防具3",
@@ -799,6 +805,7 @@ fn build_equipment_content(
                         .map(|a| a.name.clone())
                 })
                 .flatten(),
+            None,
         ),
         (
             "防具4",
@@ -813,6 +820,7 @@ fn build_equipment_content(
                         .map(|a| a.name.clone())
                 })
                 .flatten(),
+            None,
         ),
         (
             "防具5",
@@ -827,6 +835,7 @@ fn build_equipment_content(
                         .map(|a| a.name.clone())
                 })
                 .flatten(),
+            None,
         ),
         (
             "防具6",
@@ -841,6 +850,7 @@ fn build_equipment_content(
                         .map(|a| a.name.clone())
                 })
                 .flatten(),
+            None,
         ),
         (
             "防具7",
@@ -855,6 +865,7 @@ fn build_equipment_content(
                         .map(|a| a.name.clone())
                 })
                 .flatten(),
+            None,
         ),
         (
             "防具8",
@@ -869,10 +880,11 @@ fn build_equipment_content(
                         .map(|a| a.name.clone())
                 })
                 .flatten(),
+            None,
         ),
     ];
 
-    for (name, slot, equipped_name) in equipment_slots {
+    for (name, slot, equipped_name, weapon_data) in equipment_slots {
         parent
             .spawn(Node {
                 width: Val::Px(600.0),
@@ -911,8 +923,25 @@ fn build_equipment_content(
                     ));
 
                     if let Some(eq_name) = equipped_name {
+                        // 武器の場合、使用可能かチェック
+                        let is_usable = if let Some(weapon_data) = weapon_data {
+                            crate::equipment::is_weapon_usable(
+                                &weapon_data.weapon,
+                                &current_ability,
+                            )
+                        } else {
+                            true // 防具の場合は常にtrue
+                        };
+
+                        // 武器名の表示（使用不可の場合は「×」を追加）
+                        let display_name = if is_usable {
+                            eq_name
+                        } else {
+                            format!("{} ×", eq_name)
+                        };
+
                         col.spawn((
-                            Text::new(eq_name),
+                            Text::new(display_name),
                             TextFont {
                                 font: font.clone(),
                                 font_size: 14.0,
