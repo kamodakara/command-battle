@@ -375,6 +375,7 @@ fn create_mock_battle() -> Battle {
             armor7: None,
             armor8: None,
         },
+        arts: vec![],
     });
 
     // 敵原本（仮）

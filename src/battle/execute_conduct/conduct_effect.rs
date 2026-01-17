@@ -474,6 +474,7 @@ mod tests {
                 armor7: None,
                 armor8: None,
             },
+            arts: vec![],
         })
     }
 
