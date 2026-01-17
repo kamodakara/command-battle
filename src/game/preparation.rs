@@ -1,10 +1,11 @@
 use bevy::{ecs::relationship::RelatedSpawnerCommands, prelude::*};
 
 use super::*;
+use crate::player::{create_player_defense_power, create_player_stats};
 use crate::types::{
     AbilityScaling, Armor, ArmorDefense, ArmorKind, ArmorResistance, AttackPower, GuardCutRate,
-    Weapon, WeaponAbilityRequirement, WeaponAttackPower, WeaponAttackPowerAbilityScaling,
-    WeaponBreakPower, WeaponGuard, WeaponKind, WeaponSorceryPower,
+    PlayerAbility, Weapon, WeaponAbilityRequirement, WeaponAttackPower,
+    WeaponAttackPowerAbilityScaling, WeaponBreakPower, WeaponGuard, WeaponKind, WeaponSorceryPower,
 };
 
 // ================== Components ==================
@@ -428,6 +429,133 @@ fn build_status_content(
         TextColor(Color::srgb(1.0, 1.0, 0.5)),
         Node {
             margin: UiRect::bottom(Val::Px(20.0)),
+            ..default()
+        },
+    ));
+
+    // 現在の能力値からPlayerAbilityを作成
+    let current_ability = PlayerAbility {
+        vitality: prep_state.temp_vitality,
+        spirit: prep_state.temp_spirit,
+        endurance: prep_state.temp_endurance,
+        agility: prep_state.temp_agility,
+        strength: prep_state.temp_strength,
+        dexterity: prep_state.temp_dexterity,
+        intelligence: prep_state.temp_intelligence,
+        faith: prep_state.temp_faith,
+        arcane: prep_state.temp_arcane,
+    };
+
+    // プレイヤーステータスを計算
+    let player_stats = create_player_stats(&current_ability);
+
+    // 基礎防御力を計算
+    let defense_power = create_player_defense_power(&current_ability);
+
+    // プレイヤーステータス表示
+    parent.spawn((
+        Text::new("■ プレイヤーステータス"),
+        TextFont {
+            font: font.clone(),
+            font_size: 24.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.5, 1.0, 0.8)),
+        Node {
+            margin: UiRect {
+                top: Val::Px(15.0),
+                bottom: Val::Px(10.0),
+                ..default()
+            },
+            ..default()
+        },
+    ));
+
+    let player_stats_info = [
+        ("HP", player_stats.hp),
+        ("SP", player_stats.sp),
+        ("スタミナ", player_stats.stamina),
+        ("スタミナ回復", player_stats.stamina_recovery),
+        ("装備重量", player_stats.equip_load),
+    ];
+
+    for (name, value) in player_stats_info {
+        parent.spawn((
+            Text::new(format!("  {}: {}", name, value)),
+            TextFont {
+                font: font.clone(),
+                font_size: 18.0,
+                ..default()
+            },
+            TextColor(Color::WHITE),
+            Node {
+                margin: UiRect::bottom(Val::Px(5.0)),
+                ..default()
+            },
+        ));
+    }
+
+    // 基礎防御力表示
+    parent.spawn((
+        Text::new("■ 基礎防御力"),
+        TextFont {
+            font: font.clone(),
+            font_size: 24.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.5, 1.0, 0.8)),
+        Node {
+            margin: UiRect {
+                top: Val::Px(15.0),
+                bottom: Val::Px(10.0),
+                ..default()
+            },
+            ..default()
+        },
+    ));
+
+    let defense_info = [
+        ("斬撃", defense_power.slash),
+        ("打撃", defense_power.strike),
+        ("刺突", defense_power.thrust),
+        ("衝撃", defense_power.impact),
+        ("魔力", defense_power.magic),
+        ("炎", defense_power.fire),
+        ("雷", defense_power.lightning),
+        ("混濁", defense_power.chaos),
+    ];
+
+    for (name, value) in defense_info {
+        parent.spawn((
+            Text::new(format!("  {}: {}", name, value)),
+            TextFont {
+                font: font.clone(),
+                font_size: 18.0,
+                ..default()
+            },
+            TextColor(Color::WHITE),
+            Node {
+                margin: UiRect::bottom(Val::Px(5.0)),
+                ..default()
+            },
+        ));
+    }
+
+    // 能力値セクションのヘッダー
+    parent.spawn((
+        Text::new("■ 能力値"),
+        TextFont {
+            font: font.clone(),
+            font_size: 24.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.5, 1.0, 0.8)),
+        Node {
+            margin: UiRect {
+                top: Val::Px(20.0),
+                bottom: Val::Px(10.0),
+                ..default()
+            },
             ..default()
         },
     ));
