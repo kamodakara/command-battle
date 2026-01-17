@@ -4,7 +4,10 @@ use super::*;
 use crate::player::{create_player_defense_power, create_player_stats};
 use crate::types::{
     AbilityScaling, Armor, ArmorDefense, ArmorKind, ArmorResistance, ArmorSlot, AttackPower,
-    GuardCutRate, PlayerAbility, Weapon, WeaponAbilityRequirement, WeaponAttackPower,
+    AttackPowerScaling, Conduct, ConductPerk, ConductRequirement, ConductType, ConductTypeBasic,
+    ConductTypeBasicAttack, ConductTypeSkill, ConductTypeSkillPotency,
+    ConductTypeSkillPotencyAttack, ConductTypeSorcery, ConductTypeSorceryAttack, GuardCutRate,
+    PlayerAbility, Weapon, WeaponAbilityRequirement, WeaponAttackPower,
     WeaponAttackPowerAbilityScaling, WeaponBreakPower, WeaponGuard, WeaponKind, WeaponSorceryPower,
 };
 
@@ -37,6 +40,7 @@ pub enum MenuType {
     #[default]
     Status,
     Equipment,
+    Arts,
     StartBattle,
 }
 
@@ -64,6 +68,8 @@ pub struct PreparationState {
     pub equipped_armor7: Option<usize>,
     pub equipped_armor8: Option<usize>,
     pub selecting_slot: Option<EquipmentSlot>,
+    pub selected_arts: Vec<usize>, // 選択された技術のID (最大4つ)
+    pub selecting_arts_slot: Option<usize>, // 選択中のスロット (0-3)
     pub error_message: Option<String>,
     pub error_message_timer: f32,
 }
@@ -89,6 +95,19 @@ pub struct ArmorData {
     pub armor: Armor,
 }
 
+// 技術データベース（仮データ）
+#[derive(Resource)]
+pub struct ArtsDatabase {
+    pub arts: Vec<ArtsData>,
+}
+
+#[derive(Clone)]
+pub struct ArtsData {
+    pub id: usize,
+    pub name: String,
+    pub conduct: Conduct,
+}
+
 // ================== Plugin ==================
 pub struct PreparationPlugin;
 
@@ -96,6 +115,7 @@ impl Plugin for PreparationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<PreparationState>()
             .insert_resource(create_equipment_database())
+            .insert_resource(create_arts_database())
             .add_systems(OnEnter(GameState::Preparation), setup_preparation_screen)
             .add_systems(
                 Update,
@@ -104,9 +124,12 @@ impl Plugin for PreparationPlugin {
                     update_content_panel,
                     status_allocation_system,
                     equipment_selection_system,
+                    arts_slot_button_system,
                     start_battle_system,
                     equipment_list_button_system,
+                    arts_selection_dialog_system,
                     close_equipment_list_system,
+                    close_arts_selection_dialog_system,
                     update_error_message_system,
                     display_error_message_system,
                 )
@@ -270,6 +293,40 @@ pub fn setup_preparation_screen(
                         ));
                     });
 
+                    // 技術ボタン
+                    menu.spawn((
+                        MenuButton {
+                            menu_type: MenuType::Arts,
+                        },
+                        Button,
+                        Node {
+                            width: Val::Percent(100.0),
+                            height: Val::Px(60.0),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            border: UiRect::all(Val::Px(2.0)),
+                            ..default()
+                        },
+                        BackgroundColor(Color::from(LinearRgba {
+                            red: 0.25,
+                            green: 0.25,
+                            blue: 0.35,
+                            alpha: 1.0,
+                        })),
+                        BorderColor::all(Color::WHITE),
+                    ))
+                    .with_children(|button| {
+                        button.spawn((
+                            Text::new("技術"),
+                            TextFont {
+                                font: font.clone(),
+                                font_size: 24.0,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
+                        ));
+                    });
+
                     // 戦闘開始ボタン
                     menu.spawn((
                         MenuButton {
@@ -368,6 +425,7 @@ pub fn update_content_panel(
     asset_server: Res<AssetServer>,
     prep_state: Res<PreparationState>,
     equipment_db: Res<EquipmentDatabase>,
+    arts_db: Res<ArtsDatabase>,
     panel_query: Query<Entity, With<ContentPanel>>,
     children_query: Query<&Children>,
 ) {
@@ -397,6 +455,9 @@ pub fn update_content_panel(
                 }
                 MenuType::Equipment => {
                     build_equipment_content(parent, font_clone.clone(), &prep_state, &equipment_db);
+                }
+                MenuType::Arts => {
+                    build_arts_content(parent, font_clone.clone(), &prep_state, &arts_db);
                 }
                 MenuType::StartBattle => {
                     build_start_battle_content(parent, font_clone);
@@ -994,6 +1055,233 @@ fn build_equipment_content(
     }
 }
 
+/// 技術設定画面のコンテンツを構築
+fn build_arts_content(
+    parent: &mut RelatedSpawnerCommands<ChildOf>,
+    font: Handle<Font>,
+    prep_state: &PreparationState,
+    arts_db: &ArtsDatabase,
+) {
+    parent.spawn((
+        Text::new("技術設定"),
+        TextFont {
+            font: font.clone(),
+            font_size: 36.0,
+            ..default()
+        },
+        TextColor(Color::WHITE),
+        Node {
+            margin: UiRect::bottom(Val::Px(30.0)),
+            ..default()
+        },
+    ));
+
+    parent.spawn((
+        Text::new("戦闘で使用する技術を4つまで設定できます"),
+        TextFont {
+            font: font.clone(),
+            font_size: 20.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.8, 0.8, 0.8)),
+        Node {
+            margin: UiRect::bottom(Val::Px(20.0)),
+            ..default()
+        },
+    ));
+
+    // 選択中の技術スロット表示
+    parent
+        .spawn(Node {
+            width: Val::Percent(100.0),
+            flex_direction: FlexDirection::Column,
+            row_gap: Val::Px(15.0),
+            margin: UiRect::bottom(Val::Px(30.0)),
+            ..default()
+        })
+        .with_children(|slots_parent| {
+            slots_parent.spawn((
+                Text::new("■ 設定中の技術"),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 24.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.5, 1.0, 0.8)),
+                Node {
+                    margin: UiRect::bottom(Val::Px(10.0)),
+                    ..default()
+                },
+            ));
+
+            // 4つのスロット
+            for slot_index in 0..4 {
+                let selected_art = prep_state
+                    .selected_arts
+                    .get(slot_index)
+                    .and_then(|&art_id| arts_db.arts.iter().find(|a| a.id == art_id));
+
+                slots_parent
+                    .spawn((
+                        ArtsSlotButton { slot_index },
+                        Button,
+                        Node {
+                            width: Val::Percent(100.0),
+                            height: Val::Px(80.0),
+                            flex_direction: FlexDirection::Column,
+                            padding: UiRect::all(Val::Px(15.0)),
+                            border: UiRect::all(Val::Px(2.0)),
+                            justify_content: JustifyContent::Center,
+                            ..default()
+                        },
+                        BackgroundColor(Color::from(LinearRgba {
+                            red: 0.25,
+                            green: 0.25,
+                            blue: 0.35,
+                            alpha: 1.0,
+                        })),
+                        BorderColor::all(Color::WHITE),
+                    ))
+                    .with_children(|slot| {
+                        if let Some(art) = selected_art {
+                            // 技術名
+                            slot.spawn((
+                                Text::new(format!("{}. {}", slot_index + 1, art.name)),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 20.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                            ));
+
+                            // 技術情報
+                            let info = format!(
+                                "SP: {} / スタミナ: {}",
+                                art.conduct.sp_cost, art.conduct.stamina_cost
+                            );
+                            slot.spawn((
+                                Text::new(info),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 16.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgb(0.7, 0.7, 0.7)),
+                            ));
+                        } else {
+                            slot.spawn((
+                                Text::new(format!("{}. [空き]", slot_index + 1)),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 20.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgb(0.5, 0.5, 0.5)),
+                            ));
+                        }
+                    });
+            }
+        });
+
+    // 利用可能な技術一覧
+    parent
+        .spawn(Node {
+            width: Val::Percent(100.0),
+            flex_direction: FlexDirection::Column,
+            row_gap: Val::Px(10.0),
+            ..default()
+        })
+        .with_children(|available_parent| {
+            available_parent.spawn((
+                Text::new("■ 利用可能な技術"),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 24.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.5, 1.0, 0.8)),
+                Node {
+                    margin: UiRect::bottom(Val::Px(10.0)),
+                    ..default()
+                },
+            ));
+
+            // 技術一覧
+            for art_data in &arts_db.arts {
+                available_parent
+                    .spawn(Node {
+                        width: Val::Percent(100.0),
+                        flex_direction: FlexDirection::Column,
+                        padding: UiRect::all(Val::Px(12.0)),
+                        border: UiRect::all(Val::Px(1.0)),
+                        margin: UiRect::bottom(Val::Px(5.0)),
+                        ..default()
+                    })
+                    .with_children(|art_panel| {
+                        // 技術名
+                        art_panel.spawn((
+                            Text::new(&art_data.name),
+                            TextFont {
+                                font: font.clone(),
+                                font_size: 18.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(1.0, 0.9, 0.6)),
+                        ));
+
+                        // コスト情報
+                        art_panel.spawn((
+                            Text::new(format!(
+                                "SP: {} / スタミナ: {}",
+                                art_data.conduct.sp_cost, art_data.conduct.stamina_cost
+                            )),
+                            TextFont {
+                                font: font.clone(),
+                                font_size: 14.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.7, 0.7, 0.7)),
+                        ));
+
+                        // 必要能力
+                        let req = &art_data.conduct.requirement;
+                        let mut req_parts = Vec::new();
+                        if req.strength > 0 {
+                            req_parts.push(format!("筋力{}", req.strength));
+                        }
+                        if req.dexterity > 0 {
+                            req_parts.push(format!("技量{}", req.dexterity));
+                        }
+                        if req.intelligence > 0 {
+                            req_parts.push(format!("知力{}", req.intelligence));
+                        }
+                        if req.faith > 0 {
+                            req_parts.push(format!("信仰{}", req.faith));
+                        }
+                        if req.arcane > 0 {
+                            req_parts.push(format!("神秘{}", req.arcane));
+                        }
+                        if req.agility > 0 {
+                            req_parts.push(format!("敏捷{}", req.agility));
+                        }
+
+                        if !req_parts.is_empty() {
+                            art_panel.spawn((
+                                Text::new(format!("必要: {}", req_parts.join(", "))),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 14.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgb(0.6, 0.8, 1.0)),
+                            ));
+                        }
+                    });
+            }
+        });
+}
+
 /// 戦闘開始画面のコンテンツを構築
 fn build_start_battle_content(parent: &mut RelatedSpawnerCommands<ChildOf>, font: Handle<Font>) {
     parent
@@ -1075,6 +1363,11 @@ pub enum StatType {
 #[derive(Component, Clone, Copy)]
 pub struct EquipmentButton {
     pub slot: EquipmentSlot,
+}
+
+#[derive(Component, Clone, Copy)]
+pub struct ArtsSlotButton {
+    pub slot_index: usize,
 }
 
 #[derive(Clone, Copy)]
@@ -1344,6 +1637,249 @@ fn create_equipment_database() -> EquipmentDatabase {
     ];
 
     EquipmentDatabase { weapons, armors }
+}
+
+// ================== 技術データベース生成 ==================
+
+fn create_arts_database() -> ArtsDatabase {
+    let arts = vec![
+        ArtsData {
+            id: 0,
+            name: "連続斬り".to_string(),
+            conduct: Conduct {
+                name: "連続斬り".to_string(),
+                sp_cost: 10,
+                stamina_cost: 20,
+                perks: vec![ConductPerk::Melee],
+                requirement: ConductRequirement {
+                    strength: 12,
+                    dexterity: 10,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                conduct_type: ConductType::Skill(ConductTypeSkill {
+                    usable_weapon_kinds: vec![WeaponKind::StraightSword, WeaponKind::Greatsword],
+                    potency: ConductTypeSkillPotency::Attack(ConductTypeSkillPotencyAttack {
+                        attack_power: AttackPower {
+                            slash: 150,
+                            strike: 0,
+                            thrust: 0,
+                            impact: 0,
+                            magic: 0,
+                            fire: 0,
+                            lightning: 0,
+                            chaos: 0,
+                        },
+                        attack_power_scaling: AttackPowerScaling {
+                            slash: 1.2,
+                            strike: 0.0,
+                            thrust: 0.0,
+                            impact: 0.0,
+                            magic: 0.0,
+                            fire: 0.0,
+                            lightning: 0.0,
+                            chaos: 0.0,
+                        },
+                        break_power: 30,
+                        break_power_scaling: 1.0,
+                    }),
+                }),
+            },
+        },
+        ArtsData {
+            id: 1,
+            name: "突進突き".to_string(),
+            conduct: Conduct {
+                name: "突進突き".to_string(),
+                sp_cost: 15,
+                stamina_cost: 25,
+                perks: vec![ConductPerk::Melee],
+                requirement: ConductRequirement {
+                    strength: 10,
+                    dexterity: 15,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                conduct_type: ConductType::Skill(ConductTypeSkill {
+                    usable_weapon_kinds: vec![WeaponKind::Spear, WeaponKind::StraightSword],
+                    potency: ConductTypeSkillPotency::Attack(ConductTypeSkillPotencyAttack {
+                        attack_power: AttackPower {
+                            slash: 0,
+                            strike: 0,
+                            thrust: 180,
+                            impact: 0,
+                            magic: 0,
+                            fire: 0,
+                            lightning: 0,
+                            chaos: 0,
+                        },
+                        attack_power_scaling: AttackPowerScaling {
+                            slash: 0.0,
+                            strike: 0.0,
+                            thrust: 1.5,
+                            impact: 0.0,
+                            magic: 0.0,
+                            fire: 0.0,
+                            lightning: 0.0,
+                            chaos: 0.0,
+                        },
+                        break_power: 25,
+                        break_power_scaling: 1.2,
+                    }),
+                }),
+            },
+        },
+        ArtsData {
+            id: 2,
+            name: "炎の魔法".to_string(),
+            conduct: Conduct {
+                name: "炎の魔法".to_string(),
+                sp_cost: 20,
+                stamina_cost: 10,
+                perks: vec![ConductPerk::Ranged],
+                requirement: ConductRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 15,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                conduct_type: ConductType::Sorcery(ConductTypeSorcery::Attack(
+                    ConductTypeSorceryAttack {
+                        attack_power: AttackPower {
+                            slash: 0,
+                            strike: 0,
+                            thrust: 0,
+                            impact: 0,
+                            magic: 0,
+                            fire: 200,
+                            lightning: 0,
+                            chaos: 0,
+                        },
+                        break_power: 15,
+                    },
+                )),
+            },
+        },
+        ArtsData {
+            id: 3,
+            name: "雷撃".to_string(),
+            conduct: Conduct {
+                name: "雷撃".to_string(),
+                sp_cost: 25,
+                stamina_cost: 5,
+                perks: vec![ConductPerk::Ranged],
+                requirement: ConductRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 18,
+                    arcane: 0,
+                    agility: 0,
+                },
+                conduct_type: ConductType::Sorcery(ConductTypeSorcery::Attack(
+                    ConductTypeSorceryAttack {
+                        attack_power: AttackPower {
+                            slash: 0,
+                            strike: 0,
+                            thrust: 0,
+                            impact: 0,
+                            magic: 0,
+                            fire: 0,
+                            lightning: 220,
+                            chaos: 0,
+                        },
+                        break_power: 20,
+                    },
+                )),
+            },
+        },
+        ArtsData {
+            id: 4,
+            name: "渾身の一撃".to_string(),
+            conduct: Conduct {
+                name: "渾身の一撃".to_string(),
+                sp_cost: 30,
+                stamina_cost: 40,
+                perks: vec![ConductPerk::Melee],
+                requirement: ConductRequirement {
+                    strength: 20,
+                    dexterity: 8,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                conduct_type: ConductType::Skill(ConductTypeSkill {
+                    usable_weapon_kinds: vec![WeaponKind::Greatsword, WeaponKind::Axe],
+                    potency: ConductTypeSkillPotency::Attack(ConductTypeSkillPotencyAttack {
+                        attack_power: AttackPower {
+                            slash: 250,
+                            strike: 100,
+                            thrust: 0,
+                            impact: 50,
+                            magic: 0,
+                            fire: 0,
+                            lightning: 0,
+                            chaos: 0,
+                        },
+                        attack_power_scaling: AttackPowerScaling {
+                            slash: 2.0,
+                            strike: 1.5,
+                            thrust: 0.0,
+                            impact: 1.0,
+                            magic: 0.0,
+                            fire: 0.0,
+                            lightning: 0.0,
+                            chaos: 0.0,
+                        },
+                        break_power: 50,
+                        break_power_scaling: 1.5,
+                    }),
+                }),
+            },
+        },
+        ArtsData {
+            id: 5,
+            name: "混沌の魔法".to_string(),
+            conduct: Conduct {
+                name: "混沌の魔法".to_string(),
+                sp_cost: 35,
+                stamina_cost: 15,
+                perks: vec![ConductPerk::Ranged, ConductPerk::AtFeet],
+                requirement: ConductRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 12,
+                    faith: 12,
+                    arcane: 15,
+                    agility: 0,
+                },
+                conduct_type: ConductType::Sorcery(ConductTypeSorcery::Attack(
+                    ConductTypeSorceryAttack {
+                        attack_power: AttackPower {
+                            slash: 0,
+                            strike: 0,
+                            thrust: 0,
+                            impact: 0,
+                            magic: 100,
+                            fire: 100,
+                            lightning: 0,
+                            chaos: 150,
+                        },
+                        break_power: 30,
+                    },
+                )),
+            },
+        },
+    ];
+
+    ArtsDatabase { arts }
 }
 
 // 武器生成関数（簡略化のため一部のみ実装）
@@ -2199,6 +2735,429 @@ pub fn close_equipment_list_system(
 
 #[derive(Component)]
 struct ErrorMessagePanel;
+
+// ================== 技術選択ダイアログ ==================
+
+#[derive(Component)]
+struct ArtsSelectionDialog;
+
+#[derive(Component)]
+struct ArtsListButton {
+    arts_id: usize,
+}
+
+#[derive(Component)]
+struct CloseArtsDialogButton;
+
+#[derive(Component)]
+struct RemoveArtsButton;
+
+/// 技術スロットボタンのクリック処理
+fn arts_slot_button_system(
+    mut interaction_query: Query<
+        (&Interaction, &ArtsSlotButton, &mut BackgroundColor),
+        (Changed<Interaction>, With<Button>),
+    >,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut prep_state: ResMut<PreparationState>,
+    arts_db: Res<ArtsDatabase>,
+) {
+    for (interaction, slot_button, mut color) in &mut interaction_query {
+        match *interaction {
+            Interaction::Pressed => {
+                prep_state.selecting_arts_slot = Some(slot_button.slot_index);
+
+                let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
+
+                // 技術選択ダイアログを表示
+                commands
+                    .spawn((
+                        ArtsSelectionDialog,
+                        Node {
+                            position_type: PositionType::Absolute,
+                            width: Val::Percent(100.0),
+                            height: Val::Percent(100.0),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        BackgroundColor(Color::from(LinearRgba {
+                            red: 0.0,
+                            green: 0.0,
+                            blue: 0.0,
+                            alpha: 0.7,
+                        })),
+                        ZIndex(100),
+                    ))
+                    .with_children(|overlay| {
+                        overlay
+                            .spawn((
+                                Node {
+                                    width: Val::Px(700.0),
+                                    height: Val::Px(600.0),
+                                    flex_direction: FlexDirection::Column,
+                                    padding: UiRect::all(Val::Px(20.0)),
+                                    row_gap: Val::Px(15.0),
+                                    border: UiRect::all(Val::Px(3.0)),
+                                    ..default()
+                                },
+                                BackgroundColor(Color::from(LinearRgba {
+                                    red: 0.15,
+                                    green: 0.15,
+                                    blue: 0.2,
+                                    alpha: 1.0,
+                                })),
+                                BorderColor::all(Color::WHITE),
+                            ))
+                            .with_children(|dialog| {
+                                // ヘッダー
+                                dialog
+                                    .spawn(Node {
+                                        width: Val::Percent(100.0),
+                                        justify_content: JustifyContent::SpaceBetween,
+                                        align_items: AlignItems::Center,
+                                        margin: UiRect::bottom(Val::Px(10.0)),
+                                        ..default()
+                                    })
+                                    .with_children(|header| {
+                                        header.spawn((
+                                            Text::new("技術を選択"),
+                                            TextFont {
+                                                font: font.clone(),
+                                                font_size: 28.0,
+                                                ..default()
+                                            },
+                                            TextColor(Color::WHITE),
+                                        ));
+
+                                        header
+                                            .spawn(Node {
+                                                flex_direction: FlexDirection::Row,
+                                                column_gap: Val::Px(10.0),
+                                                ..default()
+                                            })
+                                            .with_children(|buttons| {
+                                                // 削除ボタン
+                                                buttons
+                                                    .spawn((
+                                                        RemoveArtsButton,
+                                                        Button,
+                                                        Node {
+                                                            width: Val::Px(80.0),
+                                                            height: Val::Px(40.0),
+                                                            justify_content: JustifyContent::Center,
+                                                            align_items: AlignItems::Center,
+                                                            border: UiRect::all(Val::Px(2.0)),
+                                                            ..default()
+                                                        },
+                                                        BackgroundColor(Color::from(LinearRgba {
+                                                            red: 0.6,
+                                                            green: 0.3,
+                                                            blue: 0.3,
+                                                            alpha: 1.0,
+                                                        })),
+                                                        BorderColor::all(Color::WHITE),
+                                                    ))
+                                                    .with_children(|btn| {
+                                                        btn.spawn((
+                                                            Text::new("削除"),
+                                                            TextFont {
+                                                                font: font.clone(),
+                                                                font_size: 16.0,
+                                                                ..default()
+                                                            },
+                                                            TextColor(Color::WHITE),
+                                                        ));
+                                                    });
+
+                                                // 閉じるボタン
+                                                buttons
+                                                    .spawn((
+                                                        CloseArtsDialogButton,
+                                                        Button,
+                                                        Node {
+                                                            width: Val::Px(80.0),
+                                                            height: Val::Px(40.0),
+                                                            justify_content: JustifyContent::Center,
+                                                            align_items: AlignItems::Center,
+                                                            border: UiRect::all(Val::Px(2.0)),
+                                                            ..default()
+                                                        },
+                                                        BackgroundColor(Color::from(LinearRgba {
+                                                            red: 0.4,
+                                                            green: 0.4,
+                                                            blue: 0.5,
+                                                            alpha: 1.0,
+                                                        })),
+                                                        BorderColor::all(Color::WHITE),
+                                                    ))
+                                                    .with_children(|btn| {
+                                                        btn.spawn((
+                                                            Text::new("閉じる"),
+                                                            TextFont {
+                                                                font: font.clone(),
+                                                                font_size: 16.0,
+                                                                ..default()
+                                                            },
+                                                            TextColor(Color::WHITE),
+                                                        ));
+                                                    });
+                                            });
+                                    });
+
+                                // 技術リスト（スクロール可能）
+                                dialog
+                                    .spawn(Node {
+                                        width: Val::Percent(100.0),
+                                        flex_grow: 1.0,
+                                        flex_direction: FlexDirection::Column,
+                                        row_gap: Val::Px(10.0),
+                                        overflow: Overflow::clip_y(),
+                                        ..default()
+                                    })
+                                    .with_children(|list| {
+                                        for art_data in &arts_db.arts {
+                                            list.spawn((
+                                                ArtsListButton {
+                                                    arts_id: art_data.id,
+                                                },
+                                                Button,
+                                                Node {
+                                                    width: Val::Percent(100.0),
+                                                    flex_direction: FlexDirection::Column,
+                                                    padding: UiRect::all(Val::Px(15.0)),
+                                                    border: UiRect::all(Val::Px(2.0)),
+                                                    ..default()
+                                                },
+                                                BackgroundColor(Color::from(LinearRgba {
+                                                    red: 0.25,
+                                                    green: 0.25,
+                                                    blue: 0.35,
+                                                    alpha: 1.0,
+                                                })),
+                                                BorderColor::all(Color::WHITE),
+                                            ))
+                                            .with_children(|btn| {
+                                                // 技術名
+                                                btn.spawn((
+                                                    Text::new(&art_data.name),
+                                                    TextFont {
+                                                        font: font.clone(),
+                                                        font_size: 20.0,
+                                                        ..default()
+                                                    },
+                                                    TextColor(Color::srgb(1.0, 0.9, 0.6)),
+                                                ));
+
+                                                // コスト
+                                                btn.spawn((
+                                                    Text::new(format!(
+                                                        "SP: {} / スタミナ: {}",
+                                                        art_data.conduct.sp_cost,
+                                                        art_data.conduct.stamina_cost
+                                                    )),
+                                                    TextFont {
+                                                        font: font.clone(),
+                                                        font_size: 16.0,
+                                                        ..default()
+                                                    },
+                                                    TextColor(Color::srgb(0.7, 0.7, 0.7)),
+                                                ));
+
+                                                // 必要能力
+                                                let req = &art_data.conduct.requirement;
+                                                let mut req_parts = Vec::new();
+                                                if req.strength > 0 {
+                                                    req_parts.push(format!("筋力{}", req.strength));
+                                                }
+                                                if req.dexterity > 0 {
+                                                    req_parts
+                                                        .push(format!("技量{}", req.dexterity));
+                                                }
+                                                if req.intelligence > 0 {
+                                                    req_parts
+                                                        .push(format!("知力{}", req.intelligence));
+                                                }
+                                                if req.faith > 0 {
+                                                    req_parts.push(format!("信仰{}", req.faith));
+                                                }
+                                                if req.arcane > 0 {
+                                                    req_parts.push(format!("神秘{}", req.arcane));
+                                                }
+                                                if req.agility > 0 {
+                                                    req_parts.push(format!("敏捷{}", req.agility));
+                                                }
+
+                                                if !req_parts.is_empty() {
+                                                    btn.spawn((
+                                                        Text::new(format!(
+                                                            "必要: {}",
+                                                            req_parts.join(", ")
+                                                        )),
+                                                        TextFont {
+                                                            font: font.clone(),
+                                                            font_size: 14.0,
+                                                            ..default()
+                                                        },
+                                                        TextColor(Color::srgb(0.6, 0.8, 1.0)),
+                                                    ));
+                                                }
+                                            });
+                                        }
+                                    });
+                            });
+                    });
+            }
+            Interaction::Hovered => {
+                *color = BackgroundColor(Color::from(LinearRgba {
+                    red: 0.35,
+                    green: 0.35,
+                    blue: 0.45,
+                    alpha: 1.0,
+                }));
+            }
+            Interaction::None => {
+                *color = BackgroundColor(Color::from(LinearRgba {
+                    red: 0.25,
+                    green: 0.25,
+                    blue: 0.35,
+                    alpha: 1.0,
+                }));
+            }
+        }
+    }
+}
+
+/// 技術リストボタンのクリック処理
+fn arts_selection_dialog_system(
+    mut interaction_query: Query<
+        (&Interaction, &ArtsListButton, &mut BackgroundColor),
+        (Changed<Interaction>, With<Button>),
+    >,
+    mut commands: Commands,
+    dialog_query: Query<Entity, With<ArtsSelectionDialog>>,
+    mut prep_state: ResMut<PreparationState>,
+) {
+    for (interaction, list_button, mut color) in &mut interaction_query {
+        match *interaction {
+            Interaction::Pressed => {
+                if let Some(slot_index) = prep_state.selecting_arts_slot {
+                    // 選択された技術をスロットに設定
+                    if slot_index < prep_state.selected_arts.len() {
+                        prep_state.selected_arts[slot_index] = list_button.arts_id;
+                    } else {
+                        prep_state.selected_arts.push(list_button.arts_id);
+                    }
+
+                    prep_state.selecting_arts_slot = None;
+
+                    // ダイアログを閉じる
+                    for entity in dialog_query.iter() {
+                        commands.entity(entity).despawn();
+                    }
+                }
+            }
+            Interaction::Hovered => {
+                *color = BackgroundColor(Color::from(LinearRgba {
+                    red: 0.35,
+                    green: 0.35,
+                    blue: 0.45,
+                    alpha: 1.0,
+                }));
+            }
+            Interaction::None => {
+                *color = BackgroundColor(Color::from(LinearRgba {
+                    red: 0.25,
+                    green: 0.25,
+                    blue: 0.35,
+                    alpha: 1.0,
+                }));
+            }
+        }
+    }
+}
+
+/// 技術削除ボタンのクリック処理
+fn close_arts_selection_dialog_system(
+    mut interaction_query_close: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<CloseArtsDialogButton>),
+    >,
+    mut interaction_query_remove: Query<
+        (&Interaction, &mut BackgroundColor),
+        (
+            Changed<Interaction>,
+            With<RemoveArtsButton>,
+            Without<CloseArtsDialogButton>,
+        ),
+    >,
+    mut commands: Commands,
+    dialog_query: Query<Entity, With<ArtsSelectionDialog>>,
+    mut prep_state: ResMut<PreparationState>,
+) {
+    // 閉じるボタン
+    for (interaction, mut color) in &mut interaction_query_close {
+        match *interaction {
+            Interaction::Pressed => {
+                prep_state.selecting_arts_slot = None;
+                for entity in dialog_query.iter() {
+                    commands.entity(entity).despawn();
+                }
+            }
+            Interaction::Hovered => {
+                *color = BackgroundColor(Color::from(LinearRgba {
+                    red: 0.5,
+                    green: 0.5,
+                    blue: 0.6,
+                    alpha: 1.0,
+                }));
+            }
+            Interaction::None => {
+                *color = BackgroundColor(Color::from(LinearRgba {
+                    red: 0.4,
+                    green: 0.4,
+                    blue: 0.5,
+                    alpha: 1.0,
+                }));
+            }
+        }
+    }
+
+    // 削除ボタン
+    for (interaction, mut color) in &mut interaction_query_remove {
+        match *interaction {
+            Interaction::Pressed => {
+                if let Some(slot_index) = prep_state.selecting_arts_slot {
+                    // 該当スロットの技術を削除
+                    if slot_index < prep_state.selected_arts.len() {
+                        prep_state.selected_arts.remove(slot_index);
+                    }
+                }
+                prep_state.selecting_arts_slot = None;
+                for entity in dialog_query.iter() {
+                    commands.entity(entity).despawn();
+                }
+            }
+            Interaction::Hovered => {
+                *color = BackgroundColor(Color::from(LinearRgba {
+                    red: 0.7,
+                    green: 0.4,
+                    blue: 0.4,
+                    alpha: 1.0,
+                }));
+            }
+            Interaction::None => {
+                *color = BackgroundColor(Color::from(LinearRgba {
+                    red: 0.6,
+                    green: 0.3,
+                    blue: 0.3,
+                    alpha: 1.0,
+                }));
+            }
+        }
+    }
+}
 
 /// エラーメッセージを更新するシステム
 fn update_error_message_system(mut prep_state: ResMut<PreparationState>, time: Res<Time>) {

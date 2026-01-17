@@ -3,6 +3,7 @@ use super::equipment::WeaponKind;
 use super::status_ailment::StatusEffect;
 
 // 戦闘行動
+#[derive(Clone)]
 pub struct Conduct {
     pub name: String,                    // 名前
     pub sp_cost: u32,                    // SP消費
@@ -31,6 +32,7 @@ pub enum ConductTarget {
 }
 
 // 戦闘行動必要能力
+#[derive(Clone)]
 pub struct ConductRequirement {
     pub strength: u32,     // 筋力
     pub dexterity: u32,    // 技量
