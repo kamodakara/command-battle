@@ -3,7 +3,7 @@ mod decide_order;
 mod execute_conduct;
 mod recover_break;
 mod recover_stamina;
-mod update_status_effect_for_turn;
+mod update_status_condition_for_turn;
 
 use super::types::*;
 
@@ -12,14 +12,14 @@ pub use decide_order::BattleDecideOrderRequest;
 pub use execute_conduct::BattleExecuteConductRequest;
 pub use recover_break::RecoverBreakRequest;
 pub use recover_stamina::RecoverStaminaRequest;
-pub use update_status_effect_for_turn::UpdateStatusEffectRequest;
+pub use update_status_condition_for_turn::UpdateStatusConditionRequest;
 
 use decide_enemy_conduct::decide_enemy_conduct;
 use decide_order::decide_order;
 use execute_conduct::execute_conduct;
 use recover_break::recover_break;
 use recover_stamina::recover_stamina;
-use update_status_effect_for_turn::update_status_effect_for_turn;
+use update_status_condition_for_turn::update_status_condition_for_turn;
 
 impl Battle {
     // 行動順を決定する
@@ -43,10 +43,10 @@ impl Battle {
         recover_stamina(self, request)
     }
 
-    pub fn update_status_effect_for_turn(
+    pub fn update_status_condition_for_turn(
         &mut self,
-        request: UpdateStatusEffectRequest,
+        request: UpdateStatusConditionRequest,
     ) -> BattleIncidentAutoTrigger {
-        update_status_effect_for_turn(self, request)
+        update_status_condition_for_turn(self, request)
     }
 }

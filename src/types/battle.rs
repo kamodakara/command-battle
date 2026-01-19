@@ -5,7 +5,7 @@ use super::character::{Enemy, Player};
 use super::common::*;
 use super::conduct::Conduct;
 use super::equipment::Weapon;
-use super::status_ailment::StatusEffectPotency;
+use super::status_ailment::StatusConditionPotency;
 use std::sync::Arc;
 
 pub use character::*;
@@ -97,26 +97,26 @@ impl BattleEnemyOnlyStats {
 
 // 戦闘中の状態変化
 #[derive(Clone)]
-pub struct BattleStatusEffect {
-    pub potency: StatusEffectPotency,         // 状態変化効果
-    pub duration: BattleStatusEffectDuration, // 継続時間
+pub struct BattleStatusCondition {
+    pub potency: StatusConditionPotency,         // 状態変化効果
+    pub duration: BattleStatusConditionDuration, // 継続時間
 }
 #[derive(Clone)]
-pub enum BattleStatusEffectDuration {
-    Permanent,                              // 永続
-    Turn(BattleStatusEffectDurationTurn),   // ターン数
-    Count(BattleStatusEffectDurationCount), // 回数
-    UntilNextAction,                        // 次の行動まで
+pub enum BattleStatusConditionDuration {
+    Permanent,                                 // 永続
+    Turn(BattleStatusConditionDurationTurn),   // ターン数
+    Count(BattleStatusConditionDurationCount), // 回数
+    UntilNextAction,                           // 次の行動まで
 }
 #[derive(Clone)]
-pub struct BattleStatusEffectDurationTurn {
+pub struct BattleStatusConditionDurationTurn {
     // 効果ターン数
     pub turns: u32,
     // 経過ターン数
     pub elapsed_turns: u32,
 }
 #[derive(Clone)]
-pub struct BattleStatusEffectDurationCount {
+pub struct BattleStatusConditionDurationCount {
     // 効果回数
     pub count: u32,
     // 経過回数

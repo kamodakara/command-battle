@@ -1,6 +1,6 @@
 use super::common::*;
 use super::equipment::WeaponKind;
-use super::status_ailment::StatusEffect;
+use super::status_ailment::StatusCondition;
 
 // 戦闘行動
 #[derive(Clone)]
@@ -61,13 +61,13 @@ pub struct ConductTypeBasicAttack {
 }
 #[derive(Clone)]
 pub enum ConductTypeBasicSupport {
-    StatusEffect(SuportStatusEffect), // 状態変化付与
-    Recover(SupportRecover),          // HP回復量
+    StatusCondition(SupportStatusCondition), // 状態変化付与
+    Recover(SupportRecover),                 // HP回復量
 }
 
 #[derive(Clone)]
-pub struct SuportStatusEffect {
-    pub status_effects: Vec<StatusEffect>,
+pub struct SupportStatusCondition {
+    pub status_conditions: Vec<StatusCondition>,
 }
 #[derive(Clone)]
 pub struct SupportRecover {
@@ -113,8 +113,8 @@ pub struct ConductTypeSkillPotencyAttack {
 }
 #[derive(Clone)]
 pub enum ConductTypeSkillPotencySupport {
-    StatusEffect(SuportStatusEffect), // 状態変化付与
-    Recover(SupportRecover),          // HP回復量
+    StatusCondition(SupportStatusCondition), // 状態変化付与
+    Recover(SupportRecover),                 // HP回復量
 }
 
 // 術
@@ -130,6 +130,6 @@ pub struct ConductTypeSorceryAttack {
 }
 #[derive(Clone)]
 pub enum ConductTypeSorcerySupport {
-    StatusEffect(SuportStatusEffect), // 状態変化付与
-    Recover(SupportRecover),          // HP回復量
+    StatusCondition(SupportStatusCondition), // 状態変化付与
+    Recover(SupportRecover),                 // HP回復量
 }

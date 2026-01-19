@@ -25,10 +25,10 @@ impl<'a> BattleCharacter<'a> {
             BattleCharacter::Enemy(c) => &c.base.current_stats,
         }
     }
-    pub fn status_effects(&self) -> &Vec<BattleStatusEffect> {
+    pub fn status_conditions(&self) -> &Vec<BattleStatusCondition> {
         match self {
-            BattleCharacter::Player(c) => &c.base.status_effects,
-            BattleCharacter::Enemy(c) => &c.base.status_effects,
+            BattleCharacter::Player(c) => &c.base.status_conditions,
+            BattleCharacter::Enemy(c) => &c.base.status_conditions,
         }
     }
     pub fn defense_power(&self) -> &DefensePower {
@@ -44,10 +44,10 @@ impl<'a> BattleCharacter<'a> {
             BattleCharacter::Enemy(c) => &mut c.base.current_stats,
         }
     }
-    pub fn status_effects_mut(&mut self) -> &mut Vec<BattleStatusEffect> {
+    pub fn status_conditions_mut(&mut self) -> &mut Vec<BattleStatusCondition> {
         match self {
-            BattleCharacter::Player(c) => &mut c.base.status_effects,
-            BattleCharacter::Enemy(c) => &mut c.base.status_effects,
+            BattleCharacter::Player(c) => &mut c.base.status_conditions,
+            BattleCharacter::Enemy(c) => &mut c.base.status_conditions,
         }
     }
 }
@@ -57,7 +57,7 @@ pub struct BattleCharacterBase {
     pub current_ability: BattleAbility,
     pub current_stats: BattleStats,
     pub defense_power: DefensePower,
-    pub status_effects: Vec<BattleStatusEffect>,
+    pub status_conditions: Vec<BattleStatusCondition>,
     pub is_dead: bool, // 死亡状態
 }
 

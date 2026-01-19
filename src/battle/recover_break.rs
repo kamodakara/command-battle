@@ -19,7 +19,7 @@ pub fn recover_break(
         return BattleIncidentAutoTrigger {
             character_id: request.character_id,
             stats_changes: vec![],
-            status_effects: vec![],
+            status_conditions: vec![],
         };
     } else if let Some(enemy) = battle
         .enemies
@@ -30,18 +30,18 @@ pub fn recover_break(
 
         // ブレイク状態かどうか
         let mut is_break = false;
-        let mut break_status_effect_index = 0;
-        for (index, se) in enemy.base.status_effects.iter().enumerate() {
-            if let StatusEffectPotency::Break(_) = &se.potency {
+        let mut break_status_condition_index = 0;
+        for (index, se) in enemy.base.status_conditions.iter().enumerate() {
+            if let StatusConditionPotency::Break(_) = &se.potency {
                 is_break = true;
-                break_status_effect_index = index;
+                break_status_condition_index = index;
             }
         }
 
         let break_max_turns = enemy.current_enemy_only_stats.max_break_turn;
         let break_turns = enemy.current_enemy_only_stats.break_turns;
         let mut stats_change_incidents = vec![];
-        let mut status_effect_incidents = vec![];
+        let mut status_condition_incidents = vec![];
         if is_break {
             // ブレイク中
 
@@ -53,14 +53,16 @@ pub fn recover_break(
                     enemy.current_enemy_only_stats.max_break;
 
                 // ステータス効果からブレイクを削除
-                let battle_status_effect =
-                    enemy.base.status_effects.remove(break_status_effect_index);
+                let battle_status_condition = enemy
+                    .base
+                    .status_conditions
+                    .remove(break_status_condition_index);
 
                 // ブレイク回復インシデント
-                status_effect_incidents.push(BattleIncidentStatusEffect {
-                    status_effect: battle_status_effect,
-                    status_effect_handling: BattleIncidentStatusEffectHandling::Removed(
-                        BattleIncidentStatusEffectRemoved {},
+                status_condition_incidents.push(BattleIncidentStatusCondition {
+                    status_condition: battle_status_condition,
+                    status_condition_handling: BattleIncidentStatusConditionHandling::Removed(
+                        BattleIncidentStatusConditionRemoved {},
                     ),
                 });
             } else {
@@ -91,7 +93,7 @@ pub fn recover_break(
         return BattleIncidentAutoTrigger {
             character_id: request.character_id,
             stats_changes: stats_change_incidents,
-            status_effects: status_effect_incidents,
+            status_conditions: status_condition_incidents,
         };
     }
 

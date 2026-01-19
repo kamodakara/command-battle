@@ -34,8 +34,8 @@ pub struct BattleIncidentConductOutcomeSuccessAttacker {
 pub struct BattleIncidentConductOutcomeSuccessDefender {
     pub character_id: BattleCharacterId,
     pub stats_changes: Vec<BattleIncidentStats>,
-    pub status_effects: Vec<BattleIncidentStatusEffect>, // 状態変化
-    pub is_evaded: bool,                                 // 回避したか
+    pub status_conditions: Vec<BattleIncidentStatusCondition>, // 状態変化
+    pub is_evaded: bool,                                       // 回避したか
     // TODO: 回避した理由
     pub is_defended: bool, // 防御したか
                            // pub is_dead: bool,     // 戦闘不能になったか
@@ -103,20 +103,20 @@ pub struct BattleIncidentRecoverBreak {
 }
 
 // 状態変化
-pub struct BattleIncidentStatusEffect {
+pub struct BattleIncidentStatusCondition {
     // 状態変化内容
-    pub status_effect: BattleStatusEffect,
+    pub status_condition: BattleStatusCondition,
     // 発生内容
-    pub status_effect_handling: BattleIncidentStatusEffectHandling,
+    pub status_condition_handling: BattleIncidentStatusConditionHandling,
 }
-pub enum BattleIncidentStatusEffectHandling {
-    Applied(BattleIncidentStatusEffectApplied), // 付与
-    Removed(BattleIncidentStatusEffectRemoved), // 解除
+pub enum BattleIncidentStatusConditionHandling {
+    Applied(BattleIncidentStatusConditionApplied), // 付与
+    Removed(BattleIncidentStatusConditionRemoved), // 解除
 }
-pub struct BattleIncidentStatusEffectApplied {
+pub struct BattleIncidentStatusConditionApplied {
     // TODO: 付与理由
 }
-pub struct BattleIncidentStatusEffectRemoved {
+pub struct BattleIncidentStatusConditionRemoved {
     // TODO: 解除理由
 }
 
@@ -135,5 +135,5 @@ pub struct BattleIncidentConductOutcomeFailureReason {
 pub struct BattleIncidentAutoTrigger {
     pub character_id: BattleCharacterId,
     pub stats_changes: Vec<BattleIncidentStats>,
-    pub status_effects: Vec<BattleIncidentStatusEffect>, // 状態変化
+    pub status_conditions: Vec<BattleIncidentStatusCondition>, // 状態変化
 }

@@ -1,6 +1,6 @@
 use crate::battle::{
     BattleDecideOrderRequest, BattleExecuteConductRequest, DecideEnemyConductRequest,
-    RecoverBreakRequest, RecoverStaminaRequest, UpdateStatusEffectRequest,
+    RecoverBreakRequest, RecoverStaminaRequest, UpdateStatusConditionRequest,
 };
 use crate::types;
 use crate::types::*;
@@ -187,9 +187,9 @@ fn create_default_player_conducts() -> PlayerConducts {
                 agility: 0,
             },
             conduct_type: ConductType::Basic(ConductTypeBasic::Support(
-                ConductTypeBasicSupport::StatusEffect(SuportStatusEffect {
-                    status_effects: vec![StatusEffect {
-                        potency: StatusEffectPotency::Resistance(StatusEffectResistance {
+                ConductTypeBasicSupport::StatusCondition(SupportStatusCondition {
+                    status_conditions: vec![StatusCondition {
+                        potency: StatusConditionPotency::Resistance(StatusConditionResistance {
                             cut_rate: GuardCutRate {
                                 slash: 0.5,
                                 strike: 0.5,
@@ -201,7 +201,9 @@ fn create_default_player_conducts() -> PlayerConducts {
                                 chaos: 0.5,
                             },
                         }),
-                        duration: StatusEffectDuration::Turn(StatusEffectDurationTurn { turns: 1 }),
+                        duration: StatusConditionDuration::Turn(StatusConditionDurationTurn {
+                            turns: 1,
+                        }),
                     }],
                 }),
             )),
@@ -432,7 +434,7 @@ fn create_mock_battle() -> Battle {
                     current_stamina: 100,
                 },
                 defense_power: def.clone(),
-                status_effects: vec![],
+                status_conditions: vec![],
                 is_dead: false,
             },
         }],
@@ -458,7 +460,7 @@ fn create_mock_battle() -> Battle {
                     current_stamina: 0,
                 },
                 defense_power: def,
-                status_effects: vec![],
+                status_conditions: vec![],
                 is_dead: false,
             },
             current_enemy_only_stats: BattleEnemyOnlyStats {
@@ -1422,12 +1424,14 @@ fn player_input_system(
                 .collect::<Vec<u32>>();
 
             for &cid in player_character_ids.iter() {
-                battle
-                    .update_status_effect_for_turn(UpdateStatusEffectRequest { character_id: cid });
+                battle.update_status_condition_for_turn(UpdateStatusConditionRequest {
+                    character_id: cid,
+                });
             }
             for &cid in enemy_character_ids.iter() {
-                battle
-                    .update_status_effect_for_turn(UpdateStatusEffectRequest { character_id: cid });
+                battle.update_status_condition_for_turn(UpdateStatusConditionRequest {
+                    character_id: cid,
+                });
             }
 
             for &cid in player_character_ids.iter() {

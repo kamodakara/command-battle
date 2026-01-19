@@ -176,27 +176,27 @@ fn calc_damage(attack_power: &AttackPower, defender: &DefensePower) -> u32 {
 }
 
 fn support_status_effect(
-    status_effects: &Vec<StatusEffect>,
+    status_conditions: &Vec<StatusCondition>,
     target: &mut BattleCharacter,
-) -> Vec<BattleIncidentStatusEffect> {
+) -> Vec<BattleIncidentStatusCondition> {
     // 支援行動処理
-    let mut status_effect_incidents: Vec<BattleIncidentStatusEffect> = Vec::new();
-    for status_effect in status_effects {
+    let mut status_condition_incidents: Vec<BattleIncidentStatusCondition> = Vec::new();
+    for status_condition in status_conditions {
         // 状態変化付与処理
-        let battle_status_effect = create_battle_status_effect(status_effect);
+        let battle_status_condition = create_battle_status_condition(status_condition);
         // 状態変化付与
         // TODO: 状態変化の重複処理
         target
-            .status_effects_mut()
-            .push(battle_status_effect.clone());
-        status_effect_incidents.push(BattleIncidentStatusEffect {
-            status_effect: battle_status_effect,
-            status_effect_handling: BattleIncidentStatusEffectHandling::Applied(
-                BattleIncidentStatusEffectApplied {},
+            .status_conditions_mut()
+            .push(battle_status_condition.clone());
+        status_condition_incidents.push(BattleIncidentStatusCondition {
+            status_condition: battle_status_condition,
+            status_condition_handling: BattleIncidentStatusConditionHandling::Applied(
+                BattleIncidentStatusConditionApplied {},
             ),
         });
     }
-    status_effect_incidents
+    status_condition_incidents
 }
 
 fn support_recover(
@@ -252,25 +252,25 @@ fn support_recover(
     stats_change_incidents
 }
 
-fn create_battle_status_effect(status_effect: &StatusEffect) -> BattleStatusEffect {
-    let duration = match &status_effect.duration {
-        StatusEffectDuration::Permanent => BattleStatusEffectDuration::Permanent,
-        StatusEffectDuration::Turn(d) => {
-            BattleStatusEffectDuration::Turn(BattleStatusEffectDurationTurn {
+fn create_battle_status_condition(status_condition: &StatusCondition) -> BattleStatusCondition {
+    let duration = match &status_condition.duration {
+        StatusConditionDuration::Permanent => BattleStatusConditionDuration::Permanent,
+        StatusConditionDuration::Turn(d) => {
+            BattleStatusConditionDuration::Turn(BattleStatusConditionDurationTurn {
                 turns: d.turns,
                 elapsed_turns: 0,
             })
         }
-        StatusEffectDuration::Count(d) => {
-            BattleStatusEffectDuration::Count(BattleStatusEffectDurationCount {
+        StatusConditionDuration::Count(d) => {
+            BattleStatusConditionDuration::Count(BattleStatusConditionDurationCount {
                 count: d.count,
                 elapsed_count: 0,
             })
         }
-        StatusEffectDuration::UntilNextAction => BattleStatusEffectDuration::UntilNextAction,
+        StatusConditionDuration::UntilNextAction => BattleStatusConditionDuration::UntilNextAction,
     };
-    BattleStatusEffect {
-        potency: status_effect.potency.clone(),
+    BattleStatusCondition {
+        potency: status_condition.potency.clone(),
         duration,
     }
 }
@@ -301,8 +301,8 @@ fn determine_action_outcome_failure(
     };
 
     // ブレイク中行動不能
-    for se in attacker.status_effects().iter() {
-        if let StatusEffectPotency::Break(_) = &se.potency {
+    for se in attacker.status_conditions().iter() {
+        if let StatusConditionPotency::Break(_) = &se.potency {
             // ブレイク中
             return Some(BattleIncidentConductOutcomeFailureReason {
                 insufficient_stamina: false,

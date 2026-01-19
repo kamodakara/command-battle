@@ -5,52 +5,52 @@ pub fn conduct_effect(
     target: &mut BattleCharacter,
 ) -> BattleIncidentConductOutcomeSuccessDefender {
     // 回避判定
-    for se in target.status_effects().iter() {
+    for se in target.status_conditions().iter() {
         match &se.potency {
-            StatusEffectPotency::Evasion => {
+            StatusConditionPotency::Evasion => {
                 // 回避効果処理
                 return BattleIncidentConductOutcomeSuccessDefender {
                     character_id: target.character_id(),
                     stats_changes: Vec::new(),
-                    status_effects: Vec::new(),
+                    status_conditions: Vec::new(),
                     is_defended: false,
                     is_evaded: true,
                 };
             }
-            StatusEffectPotency::Airborne => {
+            StatusConditionPotency::Airborne => {
                 // 空中効果処理
                 // 遠距離攻撃でない時は回避
                 if !conduct.conduct.perks.contains(&ConductPerk::Ranged) {
                     return BattleIncidentConductOutcomeSuccessDefender {
                         character_id: target.character_id(),
                         stats_changes: Vec::new(),
-                        status_effects: Vec::new(),
+                        status_conditions: Vec::new(),
                         is_defended: false,
                         is_evaded: true,
                     };
                 }
             }
-            StatusEffectPotency::Floating => {
+            StatusConditionPotency::Floating => {
                 // 浮遊効果処理
                 // 足元攻撃は回避
                 if conduct.conduct.perks.contains(&ConductPerk::AtFeet) {
                     return BattleIncidentConductOutcomeSuccessDefender {
                         character_id: target.character_id(),
                         stats_changes: Vec::new(),
-                        status_effects: Vec::new(),
+                        status_conditions: Vec::new(),
                         is_defended: false,
                         is_evaded: true,
                     };
                 }
             }
-            StatusEffectPotency::Ranged => {
+            StatusConditionPotency::Ranged => {
                 // 遠距離効果処理
                 // 近距離の攻撃を回避
                 if !conduct.conduct.perks.contains(&ConductPerk::Ranged) {
                     return BattleIncidentConductOutcomeSuccessDefender {
                         character_id: target.character_id(),
                         stats_changes: Vec::new(),
-                        status_effects: Vec::new(),
+                        status_conditions: Vec::new(),
                         is_defended: false,
                         is_evaded: true,
                     };
@@ -67,14 +67,14 @@ pub fn conduct_effect(
             match basic {
                 ConductTypeBasic::Attack(conduct_attack) => {
                     let mut stats_change_incidents = Vec::new();
-                    let mut status_effect_incidents = Vec::new();
+                    let mut status_condition_incidents = Vec::new();
 
                     // ダメージ計算
                     let mut attak_power = conduct_attack.attack_power.clone();
                     let mut is_defended = false;
-                    for se in target.status_effects().iter() {
+                    for se in target.status_conditions().iter() {
                         match &se.potency {
-                            StatusEffectPotency::Resistance(resistance) => {
+                            StatusConditionPotency::Resistance(resistance) => {
                                 // 防御効果処理
                                 attak_power =
                                     calc_attack_power_cut_rate(&attak_power, &resistance.cut_rate);
@@ -105,8 +105,8 @@ pub fn conduct_effect(
                     if let BattleCharacter::Enemy(enemy) = target {
                         // ブレイク中でない時
                         let mut is_break = false;
-                        for se in enemy.base.status_effects.iter() {
-                            if let StatusEffectPotency::Break(_) = &se.potency {
+                        for se in enemy.base.status_conditions.iter() {
+                            if let StatusConditionPotency::Break(_) = &se.potency {
                                 is_break = true
                             }
                         }
@@ -122,13 +122,15 @@ pub fn conduct_effect(
                                 // ブレイク状態にする
                                 // TODO: サポート技用の関数を使用していいか？
                                 let new_status_effects = support_status_effect(
-                                    &vec![StatusEffect {
-                                        potency: StatusEffectPotency::Break(StatusEffectBreak {}),
-                                        duration: StatusEffectDuration::Permanent,
+                                    &vec![StatusCondition {
+                                        potency: StatusConditionPotency::Break(
+                                            StatusConditionBreak {},
+                                        ),
+                                        duration: StatusConditionDuration::Permanent,
                                     }],
                                     target,
                                 );
-                                status_effect_incidents.extend(new_status_effects);
+                                status_condition_incidents.extend(new_status_effects);
                             }
 
                             // ブレイクダメージインシデント追加
@@ -145,7 +147,7 @@ pub fn conduct_effect(
                     BattleIncidentConductOutcomeSuccessDefender {
                         character_id: target.character_id(),
                         stats_changes: stats_change_incidents,
-                        status_effects: status_effect_incidents,
+                        status_conditions: status_condition_incidents,
                         is_defended,
                         is_evaded: false,
                     }
@@ -153,14 +155,14 @@ pub fn conduct_effect(
                 ConductTypeBasic::Support(support) => {
                     // 支援行動処理
                     match &support {
-                        ConductTypeBasicSupport::StatusEffect(status_effect) => {
+                        ConductTypeBasicSupport::StatusCondition(status_condition) => {
                             let new_incidents =
-                                support_status_effect(&status_effect.status_effects, target);
+                                support_status_effect(&status_condition.status_conditions, target);
 
                             BattleIncidentConductOutcomeSuccessDefender {
                                 character_id: target.character_id(),
                                 stats_changes: Vec::new(),
-                                status_effects: new_incidents,
+                                status_conditions: new_incidents,
                                 is_defended: false,
                                 is_evaded: false,
                             }
@@ -171,7 +173,7 @@ pub fn conduct_effect(
                             BattleIncidentConductOutcomeSuccessDefender {
                                 character_id: target.character_id(),
                                 stats_changes: stats_change_incidents,
-                                status_effects: Vec::new(),
+                                status_conditions: Vec::new(),
                                 is_defended: false,
                                 is_evaded: false,
                             }
@@ -183,7 +185,7 @@ pub fn conduct_effect(
         ConductType::Skill(skill) => match &skill.potency {
             ConductTypeSkillPotency::Attack(skill) => {
                 let mut stats_change_incidents = Vec::new();
-                let mut status_effect_incidents = Vec::new();
+                let mut status_condition_incidents = Vec::new();
 
                 let weapon_attack_power = if let Some(weapon) = &conduct.weapon {
                     &weapon.attack_power
@@ -200,9 +202,9 @@ pub fn conduct_effect(
 
                 // 防御効果処理
                 let mut is_defended = false;
-                for se in target.status_effects().iter() {
+                for se in target.status_conditions().iter() {
                     match &se.potency {
-                        StatusEffectPotency::Resistance(resistance) => {
+                        StatusConditionPotency::Resistance(resistance) => {
                             // 防御効果処理
                             attack_power =
                                 calc_attack_power_cut_rate(&attack_power, &resistance.cut_rate);
@@ -234,8 +236,8 @@ pub fn conduct_effect(
                 if let BattleCharacter::Enemy(enemy) = target {
                     // ブレイク中でない時
                     let mut is_break = false;
-                    for se in enemy.base.status_effects.iter() {
-                        if let StatusEffectPotency::Break(_) = &se.potency {
+                    for se in enemy.base.status_conditions.iter() {
+                        if let StatusConditionPotency::Break(_) = &se.potency {
                             is_break = true
                         }
                     }
@@ -247,14 +249,14 @@ pub fn conduct_effect(
 
                         if after_break == 0 {
                             // ブレイク状態にする
-                            let new_status_effects = support_status_effect(
-                                &vec![StatusEffect {
-                                    potency: StatusEffectPotency::Break(StatusEffectBreak {}),
-                                    duration: StatusEffectDuration::Permanent,
+                            let new_status_conditions = support_status_effect(
+                                &vec![StatusCondition {
+                                    potency: StatusConditionPotency::Break(StatusConditionBreak {}),
+                                    duration: StatusConditionDuration::Permanent,
                                 }],
                                 target,
                             );
-                            status_effect_incidents.extend(new_status_effects);
+                            status_condition_incidents.extend(new_status_conditions);
                         }
 
                         // ブレイクダメージインシデント追加
@@ -271,7 +273,7 @@ pub fn conduct_effect(
                 BattleIncidentConductOutcomeSuccessDefender {
                     character_id: target.character_id(),
                     stats_changes: stats_change_incidents,
-                    status_effects: Vec::new(),
+                    status_conditions: Vec::new(),
                     is_defended,
                     is_evaded: false,
                 }
@@ -279,14 +281,14 @@ pub fn conduct_effect(
             ConductTypeSkillPotency::Support(support) => {
                 // 支援行動処理
                 match &support {
-                    ConductTypeSkillPotencySupport::StatusEffect(status_effect) => {
+                    ConductTypeSkillPotencySupport::StatusCondition(status_condition) => {
                         let new_incidents =
-                            support_status_effect(&status_effect.status_effects, target);
+                            support_status_effect(&status_condition.status_conditions, target);
 
                         BattleIncidentConductOutcomeSuccessDefender {
                             character_id: target.character_id(),
                             stats_changes: Vec::new(),
-                            status_effects: new_incidents,
+                            status_conditions: new_incidents,
                             is_defended: false,
                             is_evaded: false,
                         }
@@ -297,7 +299,7 @@ pub fn conduct_effect(
                         BattleIncidentConductOutcomeSuccessDefender {
                             character_id: target.character_id(),
                             stats_changes: stats_change_incidents,
-                            status_effects: Vec::new(),
+                            status_conditions: Vec::new(),
                             is_defended: false,
                             is_evaded: false,
                         }
@@ -308,7 +310,7 @@ pub fn conduct_effect(
         ConductType::Sorcery(sorcery) => match &sorcery {
             ConductTypeSorcery::Attack(sorcery) => {
                 let mut stats_change_incidents = Vec::new();
-                let mut status_effect_incidents = Vec::new();
+                let mut status_condition_incidents = Vec::new();
 
                 let mut attack_power = sorcery.attack_power.clone();
                 let sorcery_power = if let Some(weapon) = &conduct.weapon {
@@ -320,9 +322,9 @@ pub fn conduct_effect(
 
                 // 防御効果処理
                 let mut is_defended = false;
-                for se in target.status_effects().iter() {
+                for se in target.status_conditions().iter() {
                     match &se.potency {
-                        StatusEffectPotency::Resistance(resistance) => {
+                        StatusConditionPotency::Resistance(resistance) => {
                             // 防御効果処理
                             attack_power =
                                 calc_attack_power_cut_rate(&attack_power, &resistance.cut_rate);
@@ -355,8 +357,8 @@ pub fn conduct_effect(
                 if let BattleCharacter::Enemy(enemy) = target {
                     // ブレイク中でない時
                     let mut is_break = false;
-                    for se in enemy.base.status_effects.iter() {
-                        if let StatusEffectPotency::Break(_) = &se.potency {
+                    for se in enemy.base.status_conditions.iter() {
+                        if let StatusConditionPotency::Break(_) = &se.potency {
                             is_break = true
                         }
                     }
@@ -368,14 +370,14 @@ pub fn conduct_effect(
                         enemy.current_enemy_only_stats.break_not_damaged_turns = 0; // ブレイクダメージを受けたのでターン数リセット
                         if after_break == 0 {
                             // ブレイク状態にする
-                            let new_status_effects = support_status_effect(
-                                &vec![StatusEffect {
-                                    potency: StatusEffectPotency::Break(StatusEffectBreak {}),
-                                    duration: StatusEffectDuration::Permanent,
+                            let new_status_conditions = support_status_effect(
+                                &vec![StatusCondition {
+                                    potency: StatusConditionPotency::Break(StatusConditionBreak {}),
+                                    duration: StatusConditionDuration::Permanent,
                                 }],
                                 target,
                             );
-                            status_effect_incidents.extend(new_status_effects);
+                            status_condition_incidents.extend(new_status_conditions);
                         }
                         // ブレイクダメージインシデント追加
                         stats_change_incidents.push(BattleIncidentStats::DamageBreak(
@@ -391,20 +393,19 @@ pub fn conduct_effect(
                 BattleIncidentConductOutcomeSuccessDefender {
                     character_id: target.character_id(),
                     stats_changes: stats_change_incidents,
-                    status_effects: status_effect_incidents,
+                    status_conditions: status_condition_incidents,
                     is_defended,
                     is_evaded: false,
                 }
             }
             ConductTypeSorcery::Support(support) => match &support {
-                ConductTypeSorcerySupport::StatusEffect(status_effect) => {
+                ConductTypeSorcerySupport::StatusCondition(status_condition) => {
                     let new_incidents =
-                        support_status_effect(&status_effect.status_effects, target);
-
+                        support_status_effect(&status_condition.status_conditions, target);
                     BattleIncidentConductOutcomeSuccessDefender {
                         character_id: target.character_id(),
                         stats_changes: Vec::new(),
-                        status_effects: new_incidents,
+                        status_conditions: new_incidents,
                         is_defended: false,
                         is_evaded: false,
                     }
@@ -415,7 +416,7 @@ pub fn conduct_effect(
                     BattleIncidentConductOutcomeSuccessDefender {
                         character_id: target.character_id(),
                         stats_changes: stats_change_incidents,
-                        status_effects: Vec::new(),
+                        status_conditions: Vec::new(),
                         is_defended: false,
                         is_evaded: false,
                     }
@@ -523,9 +524,9 @@ mod tests {
                     current_stamina: 10,
                 },
                 defense_power: min_defense(),
-                status_effects: vec![BattleStatusEffect {
-                    potency: StatusEffectPotency::Evasion,
-                    duration: BattleStatusEffectDuration::Permanent,
+                status_conditions: vec![BattleStatusCondition {
+                    potency: StatusConditionPotency::Evasion,
+                    duration: BattleStatusConditionDuration::Permanent,
                 }],
 
                 is_dead: false,
@@ -565,7 +566,7 @@ mod tests {
         assert!(result.is_evaded);
         assert!(!result.is_defended);
         assert!(result.stats_changes.is_empty());
-        assert!(result.status_effects.is_empty());
+        assert!(result.status_conditions.is_empty());
     }
 
     // conduct_effect: 非回避ルート（基本攻撃・攻撃力0）は回避せず、HPダメージ0の適用結果を返す
@@ -594,7 +595,7 @@ mod tests {
                     current_stamina: 10,
                 },
                 defense_power: min_defense(),
-                status_effects: vec![],
+                status_conditions: vec![],
 
                 is_dead: false,
             },
@@ -634,7 +635,7 @@ mod tests {
         assert!(!result.is_evaded);
         assert!(!result.is_defended);
         // 状態変化なし
-        assert!(result.status_effects.is_empty());
+        assert!(result.status_conditions.is_empty());
         // HPダメージ0が記録されていること
         assert_eq!(result.stats_changes.len(), 1);
         match &result.stats_changes[0] {
@@ -674,7 +675,7 @@ mod tests {
                     current_stamina: 10,
                 },
                 defense_power: min_defense(),
-                status_effects: vec![],
+                status_conditions: vec![],
 
                 is_dead: false,
             },
@@ -753,7 +754,7 @@ mod tests {
                     current_stamina: 10,
                 },
                 defense_power: min_defense(),
-                status_effects: vec![],
+                status_conditions: vec![],
 
                 is_dead: false,
             },
@@ -969,7 +970,7 @@ mod tests {
                     current_stamina: 10,
                 },
                 defense_power: min_defense(),
-                status_effects: vec![],
+                status_conditions: vec![],
                 is_dead: false,
             },
         };
@@ -1042,7 +1043,7 @@ mod tests {
                     current_stamina: 10,
                 },
                 defense_power: min_defense(),
-                status_effects: vec![],
+                status_conditions: vec![],
                 is_dead: false,
             },
         };
@@ -1251,7 +1252,7 @@ mod tests {
                     current_stamina: 10,
                 },
                 defense_power: min_defense(),
-                status_effects: vec![],
+                status_conditions: vec![],
                 is_dead: false,
             },
         };

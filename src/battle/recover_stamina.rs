@@ -27,7 +27,7 @@ pub fn recover_stamina(
                     after: after_stamina,
                 },
             )],
-            status_effects: vec![],
+            status_conditions: vec![],
         };
     } else if let Some(_enemy) = battle
         .enemies
@@ -39,7 +39,7 @@ pub fn recover_stamina(
         return BattleIncidentAutoTrigger {
             character_id: request.character_id,
             stats_changes: vec![],
-            status_effects: vec![],
+            status_conditions: vec![],
         };
     }
 
