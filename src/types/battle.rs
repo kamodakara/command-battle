@@ -3,7 +3,7 @@ mod incident;
 
 use super::character::{Enemy, Player};
 use super::common::*;
-use super::conduct::Conduct;
+use super::conduct::Art;
 use super::equipment::Weapon;
 use super::status_ailment::StatusConditionPotency;
 use std::sync::Arc;
@@ -140,6 +140,6 @@ pub struct BattleWeapon {
 pub struct BattleConduct {
     pub actor_character_id: u32,
     pub target_character_id: u32,
-    pub conduct: Arc<Conduct>,
-    pub weapon: Option<BattleWeapon>,
+    pub art: Arc<Art>,                // 使用アーツ
+    pub weapon: Option<BattleWeapon>, // 使用武器
 }

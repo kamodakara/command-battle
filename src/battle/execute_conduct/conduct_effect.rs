@@ -20,7 +20,7 @@ pub fn conduct_effect(
             StatusConditionPotency::Airborne => {
                 // 空中効果処理
                 // 遠距離攻撃でない時は回避
-                if !conduct.conduct.perks.contains(&ConductPerk::Ranged) {
+                if !conduct.art.perks.contains(&ArtPerk::Ranged) {
                     return BattleIncidentConductOutcomeSuccessDefender {
                         character_id: target.character_id(),
                         stats_changes: Vec::new(),
@@ -33,7 +33,7 @@ pub fn conduct_effect(
             StatusConditionPotency::Floating => {
                 // 浮遊効果処理
                 // 足元攻撃は回避
-                if conduct.conduct.perks.contains(&ConductPerk::AtFeet) {
+                if conduct.art.perks.contains(&ArtPerk::AtFeet) {
                     return BattleIncidentConductOutcomeSuccessDefender {
                         character_id: target.character_id(),
                         stats_changes: Vec::new(),
@@ -46,7 +46,7 @@ pub fn conduct_effect(
             StatusConditionPotency::Ranged => {
                 // 遠距離効果処理
                 // 近距離の攻撃を回避
-                if !conduct.conduct.perks.contains(&ConductPerk::Ranged) {
+                if !conduct.art.perks.contains(&ArtPerk::Ranged) {
                     return BattleIncidentConductOutcomeSuccessDefender {
                         character_id: target.character_id(),
                         stats_changes: Vec::new(),
@@ -62,346 +62,113 @@ pub fn conduct_effect(
         }
     }
 
-    match &conduct.conduct.conduct_type {
-        ConductType::Basic(basic) => {
-            match basic {
-                ConductTypeBasic::Attack(conduct_attack) => {
-                    let mut stats_change_incidents = Vec::new();
-                    let mut status_condition_incidents = Vec::new();
+    //
+    let rank = &conduct.art.rank1;
+    // TODO: 魔法の場合は術力でランク判定
+    match &rank.potency {
+        ArtPotency::Attack(art_attack) => {
+            let mut stats_change_incidents = Vec::new();
+            let mut status_condition_incidents = Vec::new();
 
-                    // ダメージ計算
-                    let mut attak_power = conduct_attack.attack_power.clone();
-                    let mut is_defended = false;
-                    for se in target.status_conditions().iter() {
-                        match &se.potency {
-                            StatusConditionPotency::Resistance(resistance) => {
-                                // 防御効果処理
-                                attak_power =
-                                    calc_attack_power_cut_rate(&attak_power, &resistance.cut_rate);
-                                is_defended = true;
-                            }
-                            _ => {
-                                // その他
-                            }
-                        }
+            let (weapon_attack_power, weapon_break_power) = if let Some(weapon) = &conduct.weapon {
+                (&weapon.attack_power, weapon.break_power)
+            } else {
+                (&AttackPower::default(), 0)
+            };
+            let art_attack_power = &art_attack.attack_power;
+            let weapon_attack_power_scaling = &art_attack.weapon_attack_power_scaling;
+            let mut attack_power = calc_attack_power_modifier(
+                art_attack_power,
+                weapon_attack_power,
+                weapon_attack_power_scaling,
+            );
+
+            // TODO: 術の場合は術力補正
+
+            // 防御時のダメージカット処理
+            let mut is_defended = false;
+            for se in target.status_conditions().iter() {
+                match &se.potency {
+                    StatusConditionPotency::Resistance(resistance) => {
+                        // 防御時のダメージカット処理
+                        attack_power =
+                            calc_attack_power_cut_rate(&attack_power, &resistance.cut_rate);
+                        is_defended = true;
+                    }
+                    _ => {
+                        // その他
+                    }
+                }
+            }
+
+            // ブレイク攻撃力算出
+            let break_power = art_attack.break_power
+                + (weapon_break_power as f32 * art_attack.weapon_break_power_scaling) as u32;
+
+            // ダメージ
+            let damage = calc_damage(&attack_power, &target.defense_power());
+            let (before_hp_damage, after_hp_damage) =
+                target.current_stats_mut().hp_subtract(damage);
+            // HPダメージのインシデント
+            stats_change_incidents.push(BattleIncidentStats::DamageHp(BattleIncidentDamageHp {
+                damage,
+                before: before_hp_damage,
+                after: after_hp_damage,
+            }));
+
+            // ブレイクダメージ処理
+            if let BattleCharacter::Enemy(enemy) = target {
+                // ブレイク中でない時
+                let mut is_break = false;
+                for se in enemy.base.status_conditions.iter() {
+                    if let StatusConditionPotency::Break(_) = &se.potency {
+                        is_break = true
+                    }
+                }
+                if !is_break {
+                    // 敵のブレイクダメージ処理
+                    let (before_break, after_break) =
+                        enemy.current_enemy_only_stats.break_subtract(break_power);
+                    enemy.current_enemy_only_stats.break_not_damaged_turns = 0; // ブレイクダメージを受けたのでターン数リセット
+
+                    if after_break == 0 {
+                        // ブレイク状態にする
+                        let new_status_conditions = support_status_effect(
+                            &vec![StatusCondition {
+                                potency: StatusConditionPotency::Break(StatusConditionBreak {}),
+                                duration: StatusConditionDuration::Permanent,
+                            }],
+                            target,
+                        );
+                        status_condition_incidents.extend(new_status_conditions);
                     }
 
-                    let defense_power = &target.defense_power();
-                    let damage = calc_damage(&attak_power, defense_power);
-
-                    let (before_hp_damage, after_hp_damage) =
-                        target.current_stats_mut().hp_subtract(damage);
-                    // HPダメージのインシデント
-                    stats_change_incidents.push(BattleIncidentStats::DamageHp(
-                        BattleIncidentDamageHp {
-                            damage,
-                            before: before_hp_damage,
-                            after: after_hp_damage,
+                    // ブレイクダメージインシデント追加
+                    stats_change_incidents.push(BattleIncidentStats::DamageBreak(
+                        BattleIncidentDamageBreak {
+                            damage: break_power,
+                            before: before_break,
+                            after: after_break,
                         },
                     ));
-                    // TODO: 死亡判定
-
-                    // ブレイクダメージ処理
-                    if let BattleCharacter::Enemy(enemy) = target {
-                        // ブレイク中でない時
-                        let mut is_break = false;
-                        for se in enemy.base.status_conditions.iter() {
-                            if let StatusConditionPotency::Break(_) = &se.potency {
-                                is_break = true
-                            }
-                        }
-
-                        if !is_break {
-                            // 敵のブレイクダメージ処理
-                            let break_power = conduct_attack.break_power;
-                            let (before_break, after_break) =
-                                enemy.current_enemy_only_stats.break_subtract(break_power);
-                            enemy.current_enemy_only_stats.break_not_damaged_turns = 0; // ブレイクダメージを受けたのでターン数リセット
-
-                            if after_break == 0 {
-                                // ブレイク状態にする
-                                // TODO: サポート技用の関数を使用していいか？
-                                let new_status_effects = support_status_effect(
-                                    &vec![StatusCondition {
-                                        potency: StatusConditionPotency::Break(
-                                            StatusConditionBreak {},
-                                        ),
-                                        duration: StatusConditionDuration::Permanent,
-                                    }],
-                                    target,
-                                );
-                                status_condition_incidents.extend(new_status_effects);
-                            }
-
-                            // ブレイクダメージインシデント追加
-                            stats_change_incidents.push(BattleIncidentStats::DamageBreak(
-                                BattleIncidentDamageBreak {
-                                    damage: break_power,
-                                    before: before_break,
-                                    after: after_break,
-                                },
-                            ));
-                        }
-                    }
-
-                    BattleIncidentConductOutcomeSuccessDefender {
-                        character_id: target.character_id(),
-                        stats_changes: stats_change_incidents,
-                        status_conditions: status_condition_incidents,
-                        is_defended,
-                        is_evaded: false,
-                    }
                 }
-                ConductTypeBasic::Support(support) => {
-                    // 支援行動処理
-                    match &support {
-                        ConductTypeBasicSupport::StatusCondition(status_condition) => {
-                            let new_incidents =
-                                support_status_effect(&status_condition.status_conditions, target);
+            }
 
-                            BattleIncidentConductOutcomeSuccessDefender {
-                                character_id: target.character_id(),
-                                stats_changes: Vec::new(),
-                                status_conditions: new_incidents,
-                                is_defended: false,
-                                is_evaded: false,
-                            }
-                        }
-                        ConductTypeBasicSupport::Recover(recover) => {
-                            let stats_change_incidents = support_recover(recover, target);
-
-                            BattleIncidentConductOutcomeSuccessDefender {
-                                character_id: target.character_id(),
-                                stats_changes: stats_change_incidents,
-                                status_conditions: Vec::new(),
-                                is_defended: false,
-                                is_evaded: false,
-                            }
-                        }
-                    }
-                }
+            BattleIncidentConductOutcomeSuccessDefender {
+                character_id: target.character_id(),
+                stats_changes: stats_change_incidents,
+                status_conditions: Vec::new(),
+                is_defended,
+                is_evaded: false,
             }
         }
-        ConductType::Skill(skill) => match &skill.potency {
-            ConductTypeSkillPotency::Attack(skill) => {
-                let mut stats_change_incidents = Vec::new();
-                let mut status_condition_incidents = Vec::new();
-
-                let weapon_attack_power = if let Some(weapon) = &conduct.weapon {
-                    &weapon.attack_power
-                } else {
-                    &AttackPower::default()
-                };
-                let skill_attack_power = &skill.attack_power;
-                let skill_attack_power_scaling = &skill.attack_power_scaling;
-                let mut attack_power = calc_attack_power_modifier(
-                    skill_attack_power,
-                    weapon_attack_power,
-                    skill_attack_power_scaling,
-                );
-
-                // 防御効果処理
-                let mut is_defended = false;
-                for se in target.status_conditions().iter() {
-                    match &se.potency {
-                        StatusConditionPotency::Resistance(resistance) => {
-                            // 防御効果処理
-                            attack_power =
-                                calc_attack_power_cut_rate(&attack_power, &resistance.cut_rate);
-                            is_defended = true;
-                        }
-                        _ => {
-                            // その他
-                        }
-                    }
-                }
-
-                let break_power =
-                    calc_conduct_attack_modifier(0, skill.break_power, skill.break_power_scaling);
-
-                // ダメージ
-                let damage = calc_damage(&attack_power, &target.defense_power());
-                let (before_hp_damage, after_hp_damage) =
-                    target.current_stats_mut().hp_subtract(damage);
-                // HPダメージのインシデント
-                stats_change_incidents.push(BattleIncidentStats::DamageHp(
-                    BattleIncidentDamageHp {
-                        damage,
-                        before: before_hp_damage,
-                        after: after_hp_damage,
-                    },
-                ));
-
-                // ブレイクダメージ処理
-                if let BattleCharacter::Enemy(enemy) = target {
-                    // ブレイク中でない時
-                    let mut is_break = false;
-                    for se in enemy.base.status_conditions.iter() {
-                        if let StatusConditionPotency::Break(_) = &se.potency {
-                            is_break = true
-                        }
-                    }
-                    if !is_break {
-                        // 敵のブレイクダメージ処理
-                        let (before_break, after_break) =
-                            enemy.current_enemy_only_stats.break_subtract(break_power);
-                        enemy.current_enemy_only_stats.break_not_damaged_turns = 0; // ブレイクダメージを受けたのでターン数リセット
-
-                        if after_break == 0 {
-                            // ブレイク状態にする
-                            let new_status_conditions = support_status_effect(
-                                &vec![StatusCondition {
-                                    potency: StatusConditionPotency::Break(StatusConditionBreak {}),
-                                    duration: StatusConditionDuration::Permanent,
-                                }],
-                                target,
-                            );
-                            status_condition_incidents.extend(new_status_conditions);
-                        }
-
-                        // ブレイクダメージインシデント追加
-                        stats_change_incidents.push(BattleIncidentStats::DamageBreak(
-                            BattleIncidentDamageBreak {
-                                damage: break_power,
-                                before: before_break,
-                                after: after_break,
-                            },
-                        ));
-                    }
-                }
-
-                BattleIncidentConductOutcomeSuccessDefender {
-                    character_id: target.character_id(),
-                    stats_changes: stats_change_incidents,
-                    status_conditions: Vec::new(),
-                    is_defended,
-                    is_evaded: false,
-                }
-            }
-            ConductTypeSkillPotency::Support(support) => {
-                // 支援行動処理
-                match &support {
-                    ConductTypeSkillPotencySupport::StatusCondition(status_condition) => {
-                        let new_incidents =
-                            support_status_effect(&status_condition.status_conditions, target);
-
-                        BattleIncidentConductOutcomeSuccessDefender {
-                            character_id: target.character_id(),
-                            stats_changes: Vec::new(),
-                            status_conditions: new_incidents,
-                            is_defended: false,
-                            is_evaded: false,
-                        }
-                    }
-                    ConductTypeSkillPotencySupport::Recover(recover) => {
-                        let stats_change_incidents = support_recover(recover, target);
-
-                        BattleIncidentConductOutcomeSuccessDefender {
-                            character_id: target.character_id(),
-                            stats_changes: stats_change_incidents,
-                            status_conditions: Vec::new(),
-                            is_defended: false,
-                            is_evaded: false,
-                        }
-                    }
-                }
-            }
-        },
-        ConductType::Sorcery(sorcery) => match &sorcery {
-            ConductTypeSorcery::Attack(sorcery) => {
-                let mut stats_change_incidents = Vec::new();
-                let mut status_condition_incidents = Vec::new();
-
-                let mut attack_power = sorcery.attack_power.clone();
-                let sorcery_power = if let Some(weapon) = &conduct.weapon {
-                    weapon.sorcery_power
-                } else {
-                    1.0
-                };
-                attack_power.multiply(sorcery_power);
-
-                // 防御効果処理
-                let mut is_defended = false;
-                for se in target.status_conditions().iter() {
-                    match &se.potency {
-                        StatusConditionPotency::Resistance(resistance) => {
-                            // 防御効果処理
-                            attack_power =
-                                calc_attack_power_cut_rate(&attack_power, &resistance.cut_rate);
-                            is_defended = true;
-                        }
-                        _ => {
-                            // その他
-                        }
-                    }
-                }
-
-                // ダメージ計算
-                let damage = calc_damage(&attack_power, &target.defense_power());
-
-                // TODO: ブレイク状態のダメージ補正
-                // TODO: 防御側が敵の場合、ブレイクダメージ処理
-
-                let (before_hp_damage, after_hp_damage) =
-                    target.current_stats_mut().hp_subtract(damage);
-                // HPダメージのインシデント
-                stats_change_incidents.push(BattleIncidentStats::DamageHp(
-                    BattleIncidentDamageHp {
-                        damage,
-                        before: before_hp_damage,
-                        after: after_hp_damage,
-                    },
-                ));
-
-                // ブレイクダメージ処理
-                if let BattleCharacter::Enemy(enemy) = target {
-                    // ブレイク中でない時
-                    let mut is_break = false;
-                    for se in enemy.base.status_conditions.iter() {
-                        if let StatusConditionPotency::Break(_) = &se.potency {
-                            is_break = true
-                        }
-                    }
-                    if !is_break {
-                        // 敵のブレイクダメージ処理
-                        let break_power = sorcery.break_power;
-                        let (before_break, after_break) =
-                            enemy.current_enemy_only_stats.break_subtract(break_power);
-                        enemy.current_enemy_only_stats.break_not_damaged_turns = 0; // ブレイクダメージを受けたのでターン数リセット
-                        if after_break == 0 {
-                            // ブレイク状態にする
-                            let new_status_conditions = support_status_effect(
-                                &vec![StatusCondition {
-                                    potency: StatusConditionPotency::Break(StatusConditionBreak {}),
-                                    duration: StatusConditionDuration::Permanent,
-                                }],
-                                target,
-                            );
-                            status_condition_incidents.extend(new_status_conditions);
-                        }
-                        // ブレイクダメージインシデント追加
-                        stats_change_incidents.push(BattleIncidentStats::DamageBreak(
-                            BattleIncidentDamageBreak {
-                                damage: break_power,
-                                before: before_break,
-                                after: after_break,
-                            },
-                        ));
-                    }
-                }
-
-                BattleIncidentConductOutcomeSuccessDefender {
-                    character_id: target.character_id(),
-                    stats_changes: stats_change_incidents,
-                    status_conditions: status_condition_incidents,
-                    is_defended,
-                    is_evaded: false,
-                }
-            }
-            ConductTypeSorcery::Support(support) => match &support {
-                ConductTypeSorcerySupport::StatusCondition(status_condition) => {
+        ArtPotency::Support(support) => {
+            // 支援処理
+            match &support {
+                ArtPotencySupport::StatusCondition(status_condition) => {
                     let new_incidents =
                         support_status_effect(&status_condition.status_conditions, target);
+
                     BattleIncidentConductOutcomeSuccessDefender {
                         character_id: target.character_id(),
                         stats_changes: Vec::new(),
@@ -410,7 +177,7 @@ pub fn conduct_effect(
                         is_evaded: false,
                     }
                 }
-                ConductTypeSorcerySupport::Recover(recover) => {
+                ArtPotencySupport::Recover(recover) => {
                     let stats_change_incidents = support_recover(recover, target);
 
                     BattleIncidentConductOutcomeSuccessDefender {
@@ -421,15 +188,376 @@ pub fn conduct_effect(
                         is_evaded: false,
                     }
                 }
-            },
-        },
+            }
+        }
     }
+
+    // match &conduct.conduct.conduct_type {
+    //     ConductType::Basic(basic) => {
+    //         match basic {
+    //             ConductTypeBasic::Attack(conduct_attack) => {
+    //                 let mut stats_change_incidents = Vec::new();
+    //                 let mut status_condition_incidents = Vec::new();
+
+    //                 // ダメージ計算
+    //                 let mut attak_power = conduct_attack.attack_power.clone();
+    //                 let mut is_defended = false;
+    //                 for se in target.status_conditions().iter() {
+    //                     match &se.potency {
+    //                         StatusConditionPotency::Resistance(resistance) => {
+    //                             // 防御効果処理
+    //                             attak_power =
+    //                                 calc_attack_power_cut_rate(&attak_power, &resistance.cut_rate);
+    //                             is_defended = true;
+    //                         }
+    //                         _ => {
+    //                             // その他
+    //                         }
+    //                     }
+    //                 }
+
+    //                 let defense_power = &target.defense_power();
+    //                 let damage = calc_damage(&attak_power, defense_power);
+
+    //                 let (before_hp_damage, after_hp_damage) =
+    //                     target.current_stats_mut().hp_subtract(damage);
+    //                 // HPダメージのインシデント
+    //                 stats_change_incidents.push(BattleIncidentStats::DamageHp(
+    //                     BattleIncidentDamageHp {
+    //                         damage,
+    //                         before: before_hp_damage,
+    //                         after: after_hp_damage,
+    //                     },
+    //                 ));
+    //                 // TODO: 死亡判定
+
+    //                 // ブレイクダメージ処理
+    //                 if let BattleCharacter::Enemy(enemy) = target {
+    //                     // ブレイク中でない時
+    //                     let mut is_break = false;
+    //                     for se in enemy.base.status_conditions.iter() {
+    //                         if let StatusConditionPotency::Break(_) = &se.potency {
+    //                             is_break = true
+    //                         }
+    //                     }
+
+    //                     if !is_break {
+    //                         // 敵のブレイクダメージ処理
+    //                         let break_power = conduct_attack.break_power;
+    //                         let (before_break, after_break) =
+    //                             enemy.current_enemy_only_stats.break_subtract(break_power);
+    //                         enemy.current_enemy_only_stats.break_not_damaged_turns = 0; // ブレイクダメージを受けたのでターン数リセット
+
+    //                         if after_break == 0 {
+    //                             // ブレイク状態にする
+    //                             // TODO: サポート技用の関数を使用していいか？
+    //                             let new_status_effects = support_status_effect(
+    //                                 &vec![StatusCondition {
+    //                                     potency: StatusConditionPotency::Break(
+    //                                         StatusConditionBreak {},
+    //                                     ),
+    //                                     duration: StatusConditionDuration::Permanent,
+    //                                 }],
+    //                                 target,
+    //                             );
+    //                             status_condition_incidents.extend(new_status_effects);
+    //                         }
+
+    //                         // ブレイクダメージインシデント追加
+    //                         stats_change_incidents.push(BattleIncidentStats::DamageBreak(
+    //                             BattleIncidentDamageBreak {
+    //                                 damage: break_power,
+    //                                 before: before_break,
+    //                                 after: after_break,
+    //                             },
+    //                         ));
+    //                     }
+    //                 }
+
+    //                 BattleIncidentConductOutcomeSuccessDefender {
+    //                     character_id: target.character_id(),
+    //                     stats_changes: stats_change_incidents,
+    //                     status_conditions: status_condition_incidents,
+    //                     is_defended,
+    //                     is_evaded: false,
+    //                 }
+    //             }
+    //             ConductTypeBasic::Support(support) => {
+    //                 // 支援行動処理
+    //                 match &support {
+    //                     ConductTypeBasicSupport::StatusCondition(status_condition) => {
+    //                         let new_incidents =
+    //                             support_status_effect(&status_condition.status_conditions, target);
+
+    //                         BattleIncidentConductOutcomeSuccessDefender {
+    //                             character_id: target.character_id(),
+    //                             stats_changes: Vec::new(),
+    //                             status_conditions: new_incidents,
+    //                             is_defended: false,
+    //                             is_evaded: false,
+    //                         }
+    //                     }
+    //                     ConductTypeBasicSupport::Recover(recover) => {
+    //                         let stats_change_incidents = support_recover(recover, target);
+
+    //                         BattleIncidentConductOutcomeSuccessDefender {
+    //                             character_id: target.character_id(),
+    //                             stats_changes: stats_change_incidents,
+    //                             status_conditions: Vec::new(),
+    //                             is_defended: false,
+    //                             is_evaded: false,
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     ConductType::Skill(skill) => match &skill.potency {
+    //         ConductTypeSkillPotency::Attack(skill) => {
+    //             let mut stats_change_incidents = Vec::new();
+    //             let mut status_condition_incidents = Vec::new();
+
+    //             let weapon_attack_power = if let Some(weapon) = &conduct.weapon {
+    //                 &weapon.attack_power
+    //             } else {
+    //                 &AttackPower::default()
+    //             };
+    //             let skill_attack_power = &skill.attack_power;
+    //             let skill_attack_power_scaling = &skill.attack_power_scaling;
+    //             let mut attack_power = calc_attack_power_modifier(
+    //                 skill_attack_power,
+    //                 weapon_attack_power,
+    //                 skill_attack_power_scaling,
+    //             );
+
+    //             // 防御効果処理
+    //             let mut is_defended = false;
+    //             for se in target.status_conditions().iter() {
+    //                 match &se.potency {
+    //                     StatusConditionPotency::Resistance(resistance) => {
+    //                         // 防御効果処理
+    //                         attack_power =
+    //                             calc_attack_power_cut_rate(&attack_power, &resistance.cut_rate);
+    //                         is_defended = true;
+    //                     }
+    //                     _ => {
+    //                         // その他
+    //                     }
+    //                 }
+    //             }
+
+    //             let break_power =
+    //                 calc_conduct_attack_modifier(0, skill.break_power, skill.break_power_scaling);
+
+    //             // ダメージ
+    //             let damage = calc_damage(&attack_power, &target.defense_power());
+    //             let (before_hp_damage, after_hp_damage) =
+    //                 target.current_stats_mut().hp_subtract(damage);
+    //             // HPダメージのインシデント
+    //             stats_change_incidents.push(BattleIncidentStats::DamageHp(
+    //                 BattleIncidentDamageHp {
+    //                     damage,
+    //                     before: before_hp_damage,
+    //                     after: after_hp_damage,
+    //                 },
+    //             ));
+
+    //             // ブレイクダメージ処理
+    //             if let BattleCharacter::Enemy(enemy) = target {
+    //                 // ブレイク中でない時
+    //                 let mut is_break = false;
+    //                 for se in enemy.base.status_conditions.iter() {
+    //                     if let StatusConditionPotency::Break(_) = &se.potency {
+    //                         is_break = true
+    //                     }
+    //                 }
+    //                 if !is_break {
+    //                     // 敵のブレイクダメージ処理
+    //                     let (before_break, after_break) =
+    //                         enemy.current_enemy_only_stats.break_subtract(break_power);
+    //                     enemy.current_enemy_only_stats.break_not_damaged_turns = 0; // ブレイクダメージを受けたのでターン数リセット
+
+    //                     if after_break == 0 {
+    //                         // ブレイク状態にする
+    //                         let new_status_conditions = support_status_effect(
+    //                             &vec![StatusCondition {
+    //                                 potency: StatusConditionPotency::Break(StatusConditionBreak {}),
+    //                                 duration: StatusConditionDuration::Permanent,
+    //                             }],
+    //                             target,
+    //                         );
+    //                         status_condition_incidents.extend(new_status_conditions);
+    //                     }
+
+    //                     // ブレイクダメージインシデント追加
+    //                     stats_change_incidents.push(BattleIncidentStats::DamageBreak(
+    //                         BattleIncidentDamageBreak {
+    //                             damage: break_power,
+    //                             before: before_break,
+    //                             after: after_break,
+    //                         },
+    //                     ));
+    //                 }
+    //             }
+
+    //             BattleIncidentConductOutcomeSuccessDefender {
+    //                 character_id: target.character_id(),
+    //                 stats_changes: stats_change_incidents,
+    //                 status_conditions: Vec::new(),
+    //                 is_defended,
+    //                 is_evaded: false,
+    //             }
+    //         }
+    //         ConductTypeSkillPotency::Support(support) => {
+    //             // 支援行動処理
+    //             match &support {
+    //                 ConductTypeSkillPotencySupport::StatusCondition(status_condition) => {
+    //                     let new_incidents =
+    //                         support_status_effect(&status_condition.status_conditions, target);
+
+    //                     BattleIncidentConductOutcomeSuccessDefender {
+    //                         character_id: target.character_id(),
+    //                         stats_changes: Vec::new(),
+    //                         status_conditions: new_incidents,
+    //                         is_defended: false,
+    //                         is_evaded: false,
+    //                     }
+    //                 }
+    //                 ConductTypeSkillPotencySupport::Recover(recover) => {
+    //                     let stats_change_incidents = support_recover(recover, target);
+
+    //                     BattleIncidentConductOutcomeSuccessDefender {
+    //                         character_id: target.character_id(),
+    //                         stats_changes: stats_change_incidents,
+    //                         status_conditions: Vec::new(),
+    //                         is_defended: false,
+    //                         is_evaded: false,
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     },
+    //     ConductType::Sorcery(sorcery) => match &sorcery {
+    //         ConductTypeSorcery::Attack(sorcery) => {
+    //             let mut stats_change_incidents = Vec::new();
+    //             let mut status_condition_incidents = Vec::new();
+
+    //             let mut attack_power = sorcery.attack_power.clone();
+    //             let sorcery_power = if let Some(weapon) = &conduct.weapon {
+    //                 weapon.sorcery_power
+    //             } else {
+    //                 1.0
+    //             };
+    //             attack_power.multiply(sorcery_power);
+
+    //             // 防御効果処理
+    //             let mut is_defended = false;
+    //             for se in target.status_conditions().iter() {
+    //                 match &se.potency {
+    //                     StatusConditionPotency::Resistance(resistance) => {
+    //                         // 防御効果処理
+    //                         attack_power =
+    //                             calc_attack_power_cut_rate(&attack_power, &resistance.cut_rate);
+    //                         is_defended = true;
+    //                     }
+    //                     _ => {
+    //                         // その他
+    //                     }
+    //                 }
+    //             }
+
+    //             // ダメージ計算
+    //             let damage = calc_damage(&attack_power, &target.defense_power());
+
+    //             // TODO: ブレイク状態のダメージ補正
+    //             // TODO: 防御側が敵の場合、ブレイクダメージ処理
+
+    //             let (before_hp_damage, after_hp_damage) =
+    //                 target.current_stats_mut().hp_subtract(damage);
+    //             // HPダメージのインシデント
+    //             stats_change_incidents.push(BattleIncidentStats::DamageHp(
+    //                 BattleIncidentDamageHp {
+    //                     damage,
+    //                     before: before_hp_damage,
+    //                     after: after_hp_damage,
+    //                 },
+    //             ));
+
+    //             // ブレイクダメージ処理
+    //             if let BattleCharacter::Enemy(enemy) = target {
+    //                 // ブレイク中でない時
+    //                 let mut is_break = false;
+    //                 for se in enemy.base.status_conditions.iter() {
+    //                     if let StatusConditionPotency::Break(_) = &se.potency {
+    //                         is_break = true
+    //                     }
+    //                 }
+    //                 if !is_break {
+    //                     // 敵のブレイクダメージ処理
+    //                     let break_power = sorcery.break_power;
+    //                     let (before_break, after_break) =
+    //                         enemy.current_enemy_only_stats.break_subtract(break_power);
+    //                     enemy.current_enemy_only_stats.break_not_damaged_turns = 0; // ブレイクダメージを受けたのでターン数リセット
+    //                     if after_break == 0 {
+    //                         // ブレイク状態にする
+    //                         let new_status_conditions = support_status_effect(
+    //                             &vec![StatusCondition {
+    //                                 potency: StatusConditionPotency::Break(StatusConditionBreak {}),
+    //                                 duration: StatusConditionDuration::Permanent,
+    //                             }],
+    //                             target,
+    //                         );
+    //                         status_condition_incidents.extend(new_status_conditions);
+    //                     }
+    //                     // ブレイクダメージインシデント追加
+    //                     stats_change_incidents.push(BattleIncidentStats::DamageBreak(
+    //                         BattleIncidentDamageBreak {
+    //                             damage: break_power,
+    //                             before: before_break,
+    //                             after: after_break,
+    //                         },
+    //                     ));
+    //                 }
+    //             }
+
+    //             BattleIncidentConductOutcomeSuccessDefender {
+    //                 character_id: target.character_id(),
+    //                 stats_changes: stats_change_incidents,
+    //                 status_conditions: status_condition_incidents,
+    //                 is_defended,
+    //                 is_evaded: false,
+    //             }
+    //         }
+    //         ConductTypeSorcery::Support(support) => match &support {
+    //             ConductTypeSorcerySupport::StatusCondition(status_condition) => {
+    //                 let new_incidents =
+    //                     support_status_effect(&status_condition.status_conditions, target);
+    //                 BattleIncidentConductOutcomeSuccessDefender {
+    //                     character_id: target.character_id(),
+    //                     stats_changes: Vec::new(),
+    //                     status_conditions: new_incidents,
+    //                     is_defended: false,
+    //                     is_evaded: false,
+    //                 }
+    //             }
+    //             ConductTypeSorcerySupport::Recover(recover) => {
+    //                 let stats_change_incidents = support_recover(recover, target);
+
+    //                 BattleIncidentConductOutcomeSuccessDefender {
+    //                     character_id: target.character_id(),
+    //                     stats_changes: stats_change_incidents,
+    //                     status_conditions: Vec::new(),
+    //                     is_defended: false,
+    //                     is_evaded: false,
+    //                 }
+    //             }
+    //         },
+    //     },
+    // }
 }
 
 #[cfg(test)]
 mod tests {
-    use rand::rand_core::le;
-
     use super::*;
 
     // ヘルパー: ダミーのプレイヤー原本
@@ -538,12 +666,12 @@ mod tests {
         let conduct = BattleConduct {
             actor_character_id: 100,
             target_character_id: 1,
-            conduct: Arc::new(Conduct {
+            art: Arc::new(Art {
                 name: "Basic Attack".to_string(),
                 sp_cost: 0,
                 stamina_cost: 0,
-                perks: vec![ConductPerk::Melee],
-                requirement: ConductRequirement {
+                perks: vec![ArtPerk::Melee],
+                requirement: ArtRequirement {
                     strength: 0,
                     dexterity: 0,
                     intelligence: 0,
@@ -551,12 +679,20 @@ mod tests {
                     arcane: 0,
                     agility: 0,
                 },
-                conduct_type: ConductType::Basic(ConductTypeBasic::Attack(
-                    ConductTypeBasicAttack {
+                art_type: ArtType::Basic,
+                usable_weapon: ArtUsableWeapon::All,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Attack(ArtPotencyAttack {
                         attack_power: zero_attack(),
                         break_power: 0,
-                    },
-                )),
+                        weapon_attack_power_scaling: AttackPowerScaling::default(),
+                        weapon_break_power_scaling: 0.0,
+                    }),
+                },
+                rank2: None,
+                rank3: None,
             }),
             weapon: None,
         };
@@ -606,12 +742,12 @@ mod tests {
         let conduct = BattleConduct {
             actor_character_id: 100,
             target_character_id: 2,
-            conduct: Arc::new(Conduct {
+            art: Arc::new(Art {
                 name: "Basic Attack".to_string(),
                 sp_cost: 0,
                 stamina_cost: 0,
-                perks: vec![ConductPerk::Melee],
-                requirement: ConductRequirement {
+                perks: vec![ArtPerk::Melee],
+                requirement: ArtRequirement {
                     strength: 0,
                     dexterity: 0,
                     intelligence: 0,
@@ -619,12 +755,20 @@ mod tests {
                     arcane: 0,
                     agility: 0,
                 },
-                conduct_type: ConductType::Basic(ConductTypeBasic::Attack(
-                    ConductTypeBasicAttack {
+                art_type: ArtType::Basic,
+                usable_weapon: ArtUsableWeapon::All,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Attack(ArtPotencyAttack {
                         attack_power: zero_attack(),
                         break_power: 0,
-                    },
-                )),
+                        weapon_attack_power_scaling: AttackPowerScaling::default(),
+                        weapon_break_power_scaling: 0.0,
+                    }),
+                },
+                rank2: None,
+                rank3: None,
             }),
             weapon: None,
         };
@@ -688,12 +832,12 @@ mod tests {
         let conduct = BattleConduct {
             actor_character_id: 100,
             target_character_id: 10,
-            conduct: Arc::new(Conduct {
+            art: Arc::new(Art {
                 name: "Basic Attack".to_string(),
                 sp_cost: 0,
                 stamina_cost: 0,
-                perks: vec![ConductPerk::Melee],
-                requirement: ConductRequirement {
+                perks: vec![ArtPerk::Melee],
+                requirement: ArtRequirement {
                     strength: 0,
                     dexterity: 0,
                     intelligence: 0,
@@ -701,12 +845,20 @@ mod tests {
                     arcane: 0,
                     agility: 0,
                 },
-                conduct_type: ConductType::Basic(ConductTypeBasic::Attack(
-                    ConductTypeBasicAttack {
-                        attack_power: atk,
+                art_type: ArtType::Basic,
+                usable_weapon: ArtUsableWeapon::All,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Attack(ArtPotencyAttack {
+                        attack_power: atk.clone(),
                         break_power: 0,
-                    },
-                )),
+                        weapon_attack_power_scaling: AttackPowerScaling::default(),
+                        weapon_break_power_scaling: 0.0,
+                    }),
+                },
+                rank2: None,
+                rank3: None,
             }),
             weapon: None,
         };
@@ -904,12 +1056,12 @@ mod tests {
         let conduct = BattleConduct {
             actor_character_id: 100,
             target_character_id: 11,
-            conduct: Arc::new(Conduct {
+            art: Arc::new(Art {
                 name: "Skill Attack".to_string(),
                 sp_cost: 0,
                 stamina_cost: 0,
-                perks: vec![ConductPerk::Melee],
-                requirement: ConductRequirement {
+                perks: vec![ArtPerk::Melee],
+                requirement: ArtRequirement {
                     strength: 0,
                     dexterity: 0,
                     intelligence: 0,
@@ -917,15 +1069,20 @@ mod tests {
                     arcane: 0,
                     agility: 0,
                 },
-                conduct_type: ConductType::Skill(ConductTypeSkill {
-                    usable_weapon_kinds: vec![],
-                    potency: ConductTypeSkillPotency::Attack(ConductTypeSkillPotencyAttack {
+                art_type: ArtType::Skill,
+                usable_weapon: ArtUsableWeapon::All,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Attack(ArtPotencyAttack {
                         attack_power: skill_ap,
-                        attack_power_scaling: scaling,
+                        weapon_attack_power_scaling: scaling,
                         break_power: 0,
-                        break_power_scaling: 0.0,
+                        weapon_break_power_scaling: 0.0,
                     }),
-                }),
+                },
+                rank2: None,
+                rank3: None,
             }),
             weapon: Some(weapon),
         };
@@ -981,12 +1138,12 @@ mod tests {
         let conduct = BattleConduct {
             actor_character_id: 100,
             target_character_id: 12,
-            conduct: Arc::new(Conduct {
+            art: Arc::new(Art {
                 name: "Sorcery Attack".to_string(),
                 sp_cost: 0,
                 stamina_cost: 0,
-                perks: vec![ConductPerk::Melee],
-                requirement: ConductRequirement {
+                perks: vec![ArtPerk::Melee],
+                requirement: ArtRequirement {
                     strength: 0,
                     dexterity: 0,
                     intelligence: 0,
@@ -994,12 +1151,20 @@ mod tests {
                     arcane: 0,
                     agility: 0,
                 },
-                conduct_type: ConductType::Sorcery(ConductTypeSorcery::Attack(
-                    ConductTypeSorceryAttack {
+                art_type: ArtType::Sorcery,
+                usable_weapon: ArtUsableWeapon::All,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Attack(ArtPotencyAttack {
                         attack_power: sorc_ap,
+                        weapon_attack_power_scaling: AttackPowerScaling::default(),
                         break_power: 0,
-                    },
-                )),
+                        weapon_break_power_scaling: 0.0,
+                    }),
+                },
+                rank2: None,
+                rank3: None,
             }),
             weapon: None, // weaponなし→術力1.0
         };
@@ -1190,12 +1355,12 @@ mod tests {
         let conduct = BattleConduct {
             actor_character_id: 100,
             target_character_id: 13,
-            conduct: Arc::new(Conduct {
+            art: Arc::new(Art {
                 name: "Skill Attack Zero Scaling".to_string(),
                 sp_cost: 0,
                 stamina_cost: 0,
-                perks: vec![ConductPerk::Melee],
-                requirement: ConductRequirement {
+                perks: vec![ArtPerk::Melee],
+                requirement: ArtRequirement {
                     strength: 0,
                     dexterity: 0,
                     intelligence: 0,
@@ -1203,28 +1368,33 @@ mod tests {
                     arcane: 0,
                     agility: 0,
                 },
-                conduct_type: ConductType::Skill(ConductTypeSkill {
-                    usable_weapon_kinds: vec![],
-                    potency: ConductTypeSkillPotency::Attack(ConductTypeSkillPotencyAttack {
+                art_type: ArtType::Skill,
+                usable_weapon: ArtUsableWeapon::All,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Attack(ArtPotencyAttack {
                         attack_power: skill_ap,
-                        attack_power_scaling: scaling, // 0.0
+                        weapon_attack_power_scaling: scaling, // 0.0
                         break_power: 0,
-                        break_power_scaling: 0.0,
+                        weapon_break_power_scaling: 0.0,
                     }),
-                }),
+                },
+                rank2: None,
+                rank3: None,
             }),
             weapon: Some(weapon),
         };
 
         let result = conduct_effect(&conduct, &mut target);
         if let BattleIncidentStats::DamageHp(d) = &result.stats_changes[0] {
-            assert_eq!(d.damage, 7); // 武器のみ寄与
+            assert_eq!(d.damage, 20); // 武器のみ寄与
             assert_eq!(d.before, 100);
-            assert_eq!(d.after, 93);
+            assert_eq!(d.after, 80);
         } else {
             panic!("expected DamageHp incident");
         }
-        assert_eq!(target.current_stats().current_hp, 93);
+        assert_eq!(target.current_stats().current_hp, 80);
     }
 
     // 技: 複数属性の合算が正しく行われること
@@ -1402,12 +1572,12 @@ mod tests {
         let conduct = BattleConduct {
             actor_character_id: 100,
             target_character_id: 14,
-            conduct: Arc::new(Conduct {
+            art: Arc::new(Art {
                 name: "Skill Attack Multi Attribute".to_string(),
                 sp_cost: 0,
                 stamina_cost: 0,
-                perks: vec![ConductPerk::Melee],
-                requirement: ConductRequirement {
+                perks: vec![ArtPerk::Melee],
+                requirement: ArtRequirement {
                     strength: 0,
                     dexterity: 0,
                     intelligence: 0,
@@ -1415,15 +1585,20 @@ mod tests {
                     arcane: 0,
                     agility: 0,
                 },
-                conduct_type: ConductType::Skill(ConductTypeSkill {
-                    usable_weapon_kinds: vec![],
-                    potency: ConductTypeSkillPotency::Attack(ConductTypeSkillPotencyAttack {
+                art_type: ArtType::Skill,
+                usable_weapon: ArtUsableWeapon::All,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Attack(ArtPotencyAttack {
                         attack_power: skill_ap,
-                        attack_power_scaling: scaling, // 1.0 on slash & strike
+                        weapon_attack_power_scaling: scaling, // 1.0 on slash & strike
                         break_power: 0,
-                        break_power_scaling: 0.0,
+                        weapon_break_power_scaling: 0.0,
                     }),
-                }),
+                },
+                rank2: None,
+                rank3: None,
             }),
             weapon: Some(weapon),
         };

@@ -50,7 +50,7 @@ pub fn execute_conduct(
     let mut attacker_stats_changes = Vec::new();
 
     // SP消費
-    let sp_cost = conduct.conduct.sp_cost;
+    let sp_cost = conduct.art.sp_cost;
     let (before_sp, after_sp) = attacker.current_stats_mut().sp_subtract(sp_cost);
     // インシデント
     attacker_stats_changes.push(BattleIncidentStats::DamageSp(BattleIncidentDamageSp {
@@ -62,7 +62,7 @@ pub fn execute_conduct(
     // スタミナ消費
     if let BattleCharacter::Player(player) = attacker {
         // プレイヤーの場合のみスタミナ消費処理
-        let stamina_cost = conduct.conduct.stamina_cost;
+        let stamina_cost = conduct.art.stamina_cost;
         let (before_stamina, after_stamina) =
             player.base.current_stats.stamina_subtract(stamina_cost);
         // インシデント
@@ -111,15 +111,6 @@ pub fn execute_conduct(
     })
 }
 
-// 行動攻撃補正
-fn calc_conduct_attack_modifier(
-    base_attack_power: u32,
-    conduct_attack_power: u32,
-    conduct_attack_power_scaling: f32,
-) -> u32 {
-    conduct_attack_power + (base_attack_power as f32 * conduct_attack_power_scaling) as u32
-}
-
 // 攻撃力補正
 fn calc_attack_power_modifier(
     base_attack_power: &AttackPower,
@@ -127,22 +118,22 @@ fn calc_attack_power_modifier(
     modify_attack_power_scaling: &AttackPowerScaling,
 ) -> AttackPower {
     AttackPower {
-        slash: modify_attack_power.slash
-            + (base_attack_power.slash as f32 * modify_attack_power_scaling.slash) as u32,
-        strike: modify_attack_power.strike
-            + (base_attack_power.strike as f32 * modify_attack_power_scaling.strike) as u32,
-        thrust: modify_attack_power.thrust
-            + (base_attack_power.thrust as f32 * modify_attack_power_scaling.thrust) as u32,
-        impact: modify_attack_power.impact
-            + (base_attack_power.impact as f32 * modify_attack_power_scaling.impact) as u32,
-        magic: modify_attack_power.magic
-            + (base_attack_power.magic as f32 * modify_attack_power_scaling.magic) as u32,
-        fire: modify_attack_power.fire
-            + (base_attack_power.fire as f32 * modify_attack_power_scaling.fire) as u32,
-        lightning: modify_attack_power.lightning
-            + (base_attack_power.lightning as f32 * modify_attack_power_scaling.lightning) as u32,
-        chaos: modify_attack_power.chaos
-            + (base_attack_power.chaos as f32 * modify_attack_power_scaling.chaos) as u32,
+        slash: base_attack_power.slash
+            + (modify_attack_power.slash as f32 * modify_attack_power_scaling.slash) as u32,
+        strike: base_attack_power.strike
+            + (modify_attack_power.strike as f32 * modify_attack_power_scaling.strike) as u32,
+        thrust: base_attack_power.thrust
+            + (modify_attack_power.thrust as f32 * modify_attack_power_scaling.thrust) as u32,
+        impact: base_attack_power.impact
+            + (modify_attack_power.impact as f32 * modify_attack_power_scaling.impact) as u32,
+        magic: base_attack_power.magic
+            + (modify_attack_power.magic as f32 * modify_attack_power_scaling.magic) as u32,
+        fire: base_attack_power.fire
+            + (modify_attack_power.fire as f32 * modify_attack_power_scaling.fire) as u32,
+        lightning: base_attack_power.lightning
+            + (modify_attack_power.lightning as f32 * modify_attack_power_scaling.lightning) as u32,
+        chaos: base_attack_power.chaos
+            + (modify_attack_power.chaos as f32 * modify_attack_power_scaling.chaos) as u32,
     }
 }
 
@@ -200,7 +191,7 @@ fn support_status_effect(
 }
 
 fn support_recover(
-    recover: &SupportRecover,
+    recover: &ArtPotencySupportRecover,
     target: &mut BattleCharacter,
 ) -> Vec<BattleIncidentStats> {
     // 支援回復処理
@@ -286,7 +277,7 @@ fn determine_action_outcome_failure(
         BattleCharacter::Player(player) => {
             let current_status = &player.base.current_stats;
             // スタミナが足りないと不発
-            if current_status.current_stamina < conduct.conduct.stamina_cost {
+            if current_status.current_stamina < conduct.art.stamina_cost {
                 return Some(BattleIncidentConductOutcomeFailureReason {
                     insufficient_stamina: true,
                     insufficient_ability: false,
@@ -314,7 +305,7 @@ fn determine_action_outcome_failure(
     }
 
     // 必要能力が足りないと不発
-    let req = &conduct.conduct.requirement;
+    let req = &conduct.art.requirement;
     let abil = &attacker.current_ability();
     if abil.strength < req.strength
         || abil.dexterity < req.dexterity
@@ -332,7 +323,7 @@ fn determine_action_outcome_failure(
     }
 
     // SPが足りないと不発
-    let sp_cost = conduct.conduct.sp_cost;
+    let sp_cost = conduct.art.sp_cost;
     if attacker.current_stats().current_sp < sp_cost {
         return Some(BattleIncidentConductOutcomeFailureReason {
             insufficient_stamina: false,

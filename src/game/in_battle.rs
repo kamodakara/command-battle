@@ -89,21 +89,21 @@ struct ConsecutiveBatch {
 // プレイヤーの行動定義（リソース）
 #[derive(Resource)]
 struct PlayerConducts {
-    attack: Arc<Conduct>,
-    skill: Arc<Conduct>,
-    heal: Arc<Conduct>,
-    defend: Arc<Conduct>,
-    wait: Arc<Conduct>,
+    attack: Arc<Art>,
+    skill: Arc<Art>,
+    heal: Arc<Art>,
+    defend: Arc<Art>,
+    wait: Arc<Art>,
 }
 
 fn create_default_player_conducts() -> PlayerConducts {
     PlayerConducts {
-        attack: Arc::new(Conduct {
+        attack: Arc::new(Art {
             name: "攻撃".to_string(),
             sp_cost: 0,
             stamina_cost: 5,
-            perks: vec![ConductPerk::Melee],
-            requirement: ConductRequirement {
+            perks: vec![ArtPerk::Melee],
+            requirement: ArtRequirement {
                 strength: 0,
                 dexterity: 0,
                 intelligence: 0,
@@ -111,26 +111,36 @@ fn create_default_player_conducts() -> PlayerConducts {
                 arcane: 0,
                 agility: 0,
             },
-            conduct_type: ConductType::Basic(ConductTypeBasic::Attack(ConductTypeBasicAttack {
-                attack_power: AttackPower {
-                    slash: 25,
-                    strike: 0,
-                    thrust: 0,
-                    impact: 0,
-                    magic: 0,
-                    fire: 0,
-                    lightning: 0,
-                    chaos: 0,
-                },
-                break_power: 10,
-            })),
+            art_type: ArtType::Basic,
+            usable_weapon: ArtUsableWeapon::All,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Attack(ArtPotencyAttack {
+                    attack_power: AttackPower {
+                        slash: 25,
+                        strike: 0,
+                        thrust: 0,
+                        impact: 0,
+                        magic: 0,
+                        fire: 0,
+                        lightning: 0,
+                        chaos: 0,
+                    },
+                    weapon_attack_power_scaling: AttackPowerScaling::default(),
+                    break_power: 10,
+                    weapon_break_power_scaling: 0.0,
+                }),
+            },
+            rank2: None,
+            rank3: None,
         }),
-        skill: Arc::new(Conduct {
+        skill: Arc::new(Art {
             name: "強攻撃".to_string(),
             sp_cost: 0,
             stamina_cost: 25,
-            perks: vec![ConductPerk::Melee],
-            requirement: ConductRequirement {
+            perks: vec![ArtPerk::Melee],
+            requirement: ArtRequirement {
                 strength: 0,
                 dexterity: 0,
                 intelligence: 0,
@@ -138,26 +148,36 @@ fn create_default_player_conducts() -> PlayerConducts {
                 arcane: 0,
                 agility: 0,
             },
-            conduct_type: ConductType::Basic(ConductTypeBasic::Attack(ConductTypeBasicAttack {
-                attack_power: AttackPower {
-                    slash: 40,
-                    strike: 0,
-                    thrust: 0,
-                    impact: 0,
-                    magic: 0,
-                    fire: 0,
-                    lightning: 0,
-                    chaos: 0,
-                },
-                break_power: 20,
-            })),
+            art_type: ArtType::Basic,
+            usable_weapon: ArtUsableWeapon::All,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Attack(ArtPotencyAttack {
+                    attack_power: AttackPower {
+                        slash: 40,
+                        strike: 0,
+                        thrust: 0,
+                        impact: 0,
+                        magic: 0,
+                        fire: 0,
+                        lightning: 0,
+                        chaos: 0,
+                    },
+                    weapon_attack_power_scaling: AttackPowerScaling::default(),
+                    break_power: 20,
+                    weapon_break_power_scaling: 0.0,
+                }),
+            },
+            rank2: None,
+            rank3: None,
         }),
-        heal: Arc::new(Conduct {
+        heal: Arc::new(Art {
             name: "回復".to_string(),
             sp_cost: 0,
             stamina_cost: 25,
             perks: vec![],
-            requirement: ConductRequirement {
+            requirement: ArtRequirement {
                 strength: 0,
                 dexterity: 0,
                 intelligence: 0,
@@ -165,20 +185,28 @@ fn create_default_player_conducts() -> PlayerConducts {
                 arcane: 0,
                 agility: 0,
             },
-            conduct_type: ConductType::Basic(ConductTypeBasic::Support(
-                ConductTypeBasicSupport::Recover(SupportRecover {
-                    potencies: vec![SupportRecoverPotency::Hp(SupportRecoverPotencyHp {
-                        hp_recover: 50,
-                    })],
-                }),
-            )),
+            art_type: ArtType::Basic,
+            usable_weapon: ArtUsableWeapon::All,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Support(ArtPotencySupport::Recover(
+                    ArtPotencySupportRecover {
+                        potencies: vec![SupportRecoverPotency::Hp(SupportRecoverPotencyHp {
+                            hp_recover: 50,
+                        })],
+                    },
+                )),
+            },
+            rank2: None,
+            rank3: None,
         }),
-        defend: Arc::new(Conduct {
+        defend: Arc::new(Art {
             name: "防御".to_string(),
             sp_cost: 0,
             stamina_cost: 5,
             perks: vec![],
-            requirement: ConductRequirement {
+            requirement: ArtRequirement {
                 strength: 0,
                 dexterity: 0,
                 intelligence: 0,
@@ -186,34 +214,44 @@ fn create_default_player_conducts() -> PlayerConducts {
                 arcane: 0,
                 agility: 0,
             },
-            conduct_type: ConductType::Basic(ConductTypeBasic::Support(
-                ConductTypeBasicSupport::StatusCondition(SupportStatusCondition {
-                    status_conditions: vec![StatusCondition {
-                        potency: StatusConditionPotency::Resistance(StatusConditionResistance {
-                            cut_rate: GuardCutRate {
-                                slash: 0.5,
-                                strike: 0.5,
-                                thrust: 0.5,
-                                impact: 0.5,
-                                magic: 0.5,
-                                fire: 0.5,
-                                lightning: 0.5,
-                                chaos: 0.5,
-                            },
-                        }),
-                        duration: StatusConditionDuration::Turn(StatusConditionDurationTurn {
-                            turns: 1,
-                        }),
-                    }],
-                }),
-            )),
+            art_type: ArtType::Basic,
+            usable_weapon: ArtUsableWeapon::All,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Support(ArtPotencySupport::StatusCondition(
+                    ArtPotencySupportStatusCondition {
+                        status_conditions: vec![StatusCondition {
+                            potency: StatusConditionPotency::Resistance(
+                                StatusConditionResistance {
+                                    cut_rate: GuardCutRate {
+                                        slash: 0.5,
+                                        strike: 0.5,
+                                        thrust: 0.5,
+                                        impact: 0.5,
+                                        magic: 0.5,
+                                        fire: 0.5,
+                                        lightning: 0.5,
+                                        chaos: 0.5,
+                                    },
+                                },
+                            ),
+                            duration: StatusConditionDuration::Turn(StatusConditionDurationTurn {
+                                turns: 1,
+                            }),
+                        }],
+                    },
+                )),
+            },
+            rank2: None,
+            rank3: None,
         }),
-        wait: Arc::new(Conduct {
+        wait: Arc::new(Art {
             name: "待機".to_string(),
             sp_cost: 0,
             stamina_cost: 0,
             perks: vec![],
-            requirement: ConductRequirement {
+            requirement: ArtRequirement {
                 strength: 0,
                 dexterity: 0,
                 intelligence: 0,
@@ -221,15 +259,23 @@ fn create_default_player_conducts() -> PlayerConducts {
                 arcane: 0,
                 agility: 0,
             },
-            conduct_type: ConductType::Basic(ConductTypeBasic::Support(
-                ConductTypeBasicSupport::Recover(SupportRecover {
-                    potencies: vec![SupportRecoverPotency::Stamina(
-                        SupportRecoverPotencyStamina {
-                            stamina_recover: 60,
-                        },
-                    )],
-                }),
-            )),
+            art_type: ArtType::Basic,
+            usable_weapon: ArtUsableWeapon::All,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Support(ArtPotencySupport::Recover(
+                    ArtPotencySupportRecover {
+                        potencies: vec![SupportRecoverPotency::Stamina(
+                            SupportRecoverPotencyStamina {
+                                stamina_recover: 60,
+                            },
+                        )],
+                    },
+                )),
+            },
+            rank2: None,
+            rank3: None,
         }),
     }
 }
@@ -1272,31 +1318,31 @@ fn player_input_system(
                     CommandKind::Attack => BattleConduct {
                         actor_character_id: player_id,
                         target_character_id: enemy_id,
-                        conduct: Arc::clone(&player_conducts.attack),
+                        art: Arc::clone(&player_conducts.attack),
                         weapon: None,
                     },
                     CommandKind::Skill => BattleConduct {
                         actor_character_id: player_id,
                         target_character_id: enemy_id,
-                        conduct: Arc::clone(&player_conducts.skill),
+                        art: Arc::clone(&player_conducts.skill),
                         weapon: None,
                     },
                     CommandKind::Heal => BattleConduct {
                         actor_character_id: player_id,
                         target_character_id: player_id,
-                        conduct: Arc::clone(&player_conducts.heal),
+                        art: Arc::clone(&player_conducts.heal),
                         weapon: None,
                     },
                     CommandKind::Defend => BattleConduct {
                         actor_character_id: player_id,
                         target_character_id: player_id,
-                        conduct: Arc::clone(&player_conducts.defend),
+                        art: Arc::clone(&player_conducts.defend),
                         weapon: None,
                     },
                     CommandKind::Wait => BattleConduct {
                         actor_character_id: player_id,
                         target_character_id: player_id,
-                        conduct: Arc::clone(&player_conducts.wait),
+                        art: Arc::clone(&player_conducts.wait),
                         weapon: None,
                     },
                 };
@@ -1326,7 +1372,7 @@ fn player_input_system(
                     match incident {
                         BattleIncident::Conduct(c) => match c.outcome {
                             BattleIncidentConductOutcome::Failure(_) => {
-                                log.0.push(format!("{}は不発", c.conduct.conduct.name));
+                                log.0.push(format!("{}は不発", c.conduct.art.name));
                             }
                             BattleIncidentConductOutcome::Success(s) => {
                                 for change in s.attacker.stats_changes.iter() {
@@ -1731,7 +1777,7 @@ fn ui_update_system(
     eff_def_color.0 = Color::WHITE;
 
     let enemy_action_str = if let Some(conduct) = &planned.0 {
-        conduct.conduct.name.to_string()
+        conduct.art.name.to_string()
     } else {
         "不明".to_string()
     };
@@ -2141,7 +2187,7 @@ fn ui_update_enemy_system(
     // }
     if let Ok(mut t) = next_text_q.single_mut() {
         let enemy_action_str = if let Some(conduct) = &planned.0 {
-            conduct.conduct.name.to_string()
+            conduct.art.name.to_string()
         } else {
             "不明".to_string()
         };

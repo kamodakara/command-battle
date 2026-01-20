@@ -3,12 +3,11 @@ use bevy::{ecs::relationship::RelatedSpawnerCommands, prelude::*};
 use super::*;
 use crate::player::{create_player_defense_power, create_player_stats};
 use crate::types::{
-    AbilityScaling, Armor, ArmorDefense, ArmorKind, ArmorResistance, ArmorSlot, AttackPower,
-    AttackPowerScaling, Conduct, ConductPerk, ConductRequirement, ConductType, ConductTypeBasic,
-    ConductTypeBasicAttack, ConductTypeSkill, ConductTypeSkillPotency,
-    ConductTypeSkillPotencyAttack, ConductTypeSorcery, ConductTypeSorceryAttack, GuardCutRate,
-    PlayerAbility, Weapon, WeaponAbilityRequirement, WeaponAttackPower,
-    WeaponAttackPowerAbilityScaling, WeaponBreakPower, WeaponGuard, WeaponKind, WeaponSorceryPower,
+    AbilityScaling, Armor, ArmorDefense, ArmorKind, ArmorResistance, ArmorSlot, Art, ArtPerk,
+    ArtPotency, ArtPotencyAttack, ArtRank, ArtRequirement, ArtTarget, ArtType, ArtUsableWeapon,
+    AttackPower, AttackPowerScaling, GuardCutRate, PlayerAbility, Weapon, WeaponAbilityRequirement,
+    WeaponAttackPower, WeaponAttackPowerAbilityScaling, WeaponBreakPower, WeaponGuard, WeaponKind,
+    WeaponSorceryPower,
 };
 
 // ================== Components ==================
@@ -105,7 +104,7 @@ pub struct ArtsDatabase {
 pub struct ArtsData {
     pub id: usize,
     pub name: String,
-    pub conduct: Conduct,
+    pub art: Art,
 }
 
 // ================== Plugin ==================
@@ -1166,7 +1165,7 @@ fn build_arts_content(
                                     // 技術情報
                                     let info = format!(
                                         "SP:{} / ST:{}",
-                                        art.conduct.sp_cost, art.conduct.stamina_cost
+                                        art.art.sp_cost, art.art.stamina_cost
                                     );
                                     slot.spawn((
                                         Text::new(info),
@@ -1250,7 +1249,7 @@ fn build_arts_content(
                                     art_panel.spawn((
                                         Text::new(format!(
                                             "SP: {} / スタミナ: {}",
-                                            art_data.conduct.sp_cost, art_data.conduct.stamina_cost
+                                            art_data.art.sp_cost, art_data.art.stamina_cost
                                         )),
                                         TextFont {
                                             font: font.clone(),
@@ -1261,7 +1260,7 @@ fn build_arts_content(
                                     ));
 
                                     // 必要能力
-                                    let req = &art_data.conduct.requirement;
+                                    let req = &art_data.art.requirement;
                                     let mut req_parts = Vec::new();
                                     if req.strength > 0 {
                                         req_parts.push(format!("筋力{}", req.strength));
@@ -1664,12 +1663,12 @@ fn create_arts_database() -> ArtsDatabase {
         ArtsData {
             id: 0,
             name: "連続斬り".to_string(),
-            conduct: Conduct {
+            art: Art {
                 name: "連続斬り".to_string(),
                 sp_cost: 10,
                 stamina_cost: 20,
-                perks: vec![ConductPerk::Melee],
-                requirement: ConductRequirement {
+                perks: vec![ArtPerk::Melee],
+                requirement: ArtRequirement {
                     strength: 12,
                     dexterity: 10,
                     intelligence: 0,
@@ -1677,9 +1676,15 @@ fn create_arts_database() -> ArtsDatabase {
                     arcane: 0,
                     agility: 0,
                 },
-                conduct_type: ConductType::Skill(ConductTypeSkill {
-                    usable_weapon_kinds: vec![WeaponKind::StraightSword, WeaponKind::Greatsword],
-                    potency: ConductTypeSkillPotency::Attack(ConductTypeSkillPotencyAttack {
+                usable_weapon: ArtUsableWeapon::Specific(vec![
+                    WeaponKind::StraightSword,
+                    WeaponKind::Greatsword,
+                ]),
+                art_type: ArtType::Skill,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Attack(ArtPotencyAttack {
                         attack_power: AttackPower {
                             slash: 150,
                             strike: 0,
@@ -1690,7 +1695,7 @@ fn create_arts_database() -> ArtsDatabase {
                             lightning: 0,
                             chaos: 0,
                         },
-                        attack_power_scaling: AttackPowerScaling {
+                        weapon_attack_power_scaling: AttackPowerScaling {
                             slash: 1.2,
                             strike: 0.0,
                             thrust: 0.0,
@@ -1701,20 +1706,22 @@ fn create_arts_database() -> ArtsDatabase {
                             chaos: 0.0,
                         },
                         break_power: 30,
-                        break_power_scaling: 1.0,
+                        weapon_break_power_scaling: 1.0,
                     }),
-                }),
+                },
+                rank2: None,
+                rank3: None,
             },
         },
         ArtsData {
             id: 1,
             name: "突進突き".to_string(),
-            conduct: Conduct {
+            art: Art {
                 name: "突進突き".to_string(),
                 sp_cost: 15,
                 stamina_cost: 25,
-                perks: vec![ConductPerk::Melee],
-                requirement: ConductRequirement {
+                perks: vec![ArtPerk::Melee],
+                requirement: ArtRequirement {
                     strength: 10,
                     dexterity: 15,
                     intelligence: 0,
@@ -1722,9 +1729,15 @@ fn create_arts_database() -> ArtsDatabase {
                     arcane: 0,
                     agility: 0,
                 },
-                conduct_type: ConductType::Skill(ConductTypeSkill {
-                    usable_weapon_kinds: vec![WeaponKind::Spear, WeaponKind::StraightSword],
-                    potency: ConductTypeSkillPotency::Attack(ConductTypeSkillPotencyAttack {
+                usable_weapon: ArtUsableWeapon::Specific(vec![
+                    WeaponKind::Spear,
+                    WeaponKind::StraightSword,
+                ]),
+                art_type: ArtType::Skill,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Attack(ArtPotencyAttack {
                         attack_power: AttackPower {
                             slash: 0,
                             strike: 0,
@@ -1735,7 +1748,7 @@ fn create_arts_database() -> ArtsDatabase {
                             lightning: 0,
                             chaos: 0,
                         },
-                        attack_power_scaling: AttackPowerScaling {
+                        weapon_attack_power_scaling: AttackPowerScaling {
                             slash: 0.0,
                             strike: 0.0,
                             thrust: 1.5,
@@ -1746,20 +1759,22 @@ fn create_arts_database() -> ArtsDatabase {
                             chaos: 0.0,
                         },
                         break_power: 25,
-                        break_power_scaling: 1.2,
+                        weapon_break_power_scaling: 1.2,
                     }),
-                }),
+                },
+                rank2: None,
+                rank3: None,
             },
         },
         ArtsData {
             id: 2,
             name: "炎の魔法".to_string(),
-            conduct: Conduct {
+            art: Art {
                 name: "炎の魔法".to_string(),
                 sp_cost: 20,
                 stamina_cost: 10,
-                perks: vec![ConductPerk::Ranged],
-                requirement: ConductRequirement {
+                perks: vec![ArtPerk::Ranged],
+                requirement: ArtRequirement {
                     strength: 0,
                     dexterity: 0,
                     intelligence: 15,
@@ -1767,8 +1782,12 @@ fn create_arts_database() -> ArtsDatabase {
                     arcane: 0,
                     agility: 0,
                 },
-                conduct_type: ConductType::Sorcery(ConductTypeSorcery::Attack(
-                    ConductTypeSorceryAttack {
+                usable_weapon: ArtUsableWeapon::All,
+                art_type: ArtType::Sorcery,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Attack(ArtPotencyAttack {
                         attack_power: AttackPower {
                             slash: 0,
                             strike: 0,
@@ -1779,20 +1798,24 @@ fn create_arts_database() -> ArtsDatabase {
                             lightning: 0,
                             chaos: 0,
                         },
+                        weapon_attack_power_scaling: AttackPowerScaling::default(),
                         break_power: 15,
-                    },
-                )),
+                        weapon_break_power_scaling: 0.0,
+                    }),
+                },
+                rank2: None,
+                rank3: None,
             },
         },
         ArtsData {
             id: 3,
             name: "雷撃".to_string(),
-            conduct: Conduct {
+            art: Art {
                 name: "雷撃".to_string(),
                 sp_cost: 25,
                 stamina_cost: 5,
-                perks: vec![ConductPerk::Ranged],
-                requirement: ConductRequirement {
+                perks: vec![ArtPerk::Ranged],
+                requirement: ArtRequirement {
                     strength: 0,
                     dexterity: 0,
                     intelligence: 0,
@@ -1800,8 +1823,12 @@ fn create_arts_database() -> ArtsDatabase {
                     arcane: 0,
                     agility: 0,
                 },
-                conduct_type: ConductType::Sorcery(ConductTypeSorcery::Attack(
-                    ConductTypeSorceryAttack {
+                usable_weapon: ArtUsableWeapon::All,
+                art_type: ArtType::Sorcery,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Attack(ArtPotencyAttack {
                         attack_power: AttackPower {
                             slash: 0,
                             strike: 0,
@@ -1812,20 +1839,24 @@ fn create_arts_database() -> ArtsDatabase {
                             lightning: 220,
                             chaos: 0,
                         },
+                        weapon_attack_power_scaling: AttackPowerScaling::default(),
                         break_power: 20,
-                    },
-                )),
+                        weapon_break_power_scaling: 0.0,
+                    }),
+                },
+                rank2: None,
+                rank3: None,
             },
         },
         ArtsData {
             id: 4,
             name: "渾身の一撃".to_string(),
-            conduct: Conduct {
+            art: Art {
                 name: "渾身の一撃".to_string(),
                 sp_cost: 30,
                 stamina_cost: 40,
-                perks: vec![ConductPerk::Melee],
-                requirement: ConductRequirement {
+                perks: vec![ArtPerk::Melee],
+                requirement: ArtRequirement {
                     strength: 20,
                     dexterity: 8,
                     intelligence: 0,
@@ -1833,9 +1864,15 @@ fn create_arts_database() -> ArtsDatabase {
                     arcane: 0,
                     agility: 0,
                 },
-                conduct_type: ConductType::Skill(ConductTypeSkill {
-                    usable_weapon_kinds: vec![WeaponKind::Greatsword, WeaponKind::Axe],
-                    potency: ConductTypeSkillPotency::Attack(ConductTypeSkillPotencyAttack {
+                usable_weapon: ArtUsableWeapon::Specific(vec![
+                    WeaponKind::Greatsword,
+                    WeaponKind::Axe,
+                ]),
+                art_type: ArtType::Skill,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Attack(ArtPotencyAttack {
                         attack_power: AttackPower {
                             slash: 250,
                             strike: 100,
@@ -1846,7 +1883,7 @@ fn create_arts_database() -> ArtsDatabase {
                             lightning: 0,
                             chaos: 0,
                         },
-                        attack_power_scaling: AttackPowerScaling {
+                        weapon_attack_power_scaling: AttackPowerScaling {
                             slash: 2.0,
                             strike: 1.5,
                             thrust: 0.0,
@@ -1857,20 +1894,22 @@ fn create_arts_database() -> ArtsDatabase {
                             chaos: 0.0,
                         },
                         break_power: 50,
-                        break_power_scaling: 1.5,
+                        weapon_break_power_scaling: 1.5,
                     }),
-                }),
+                },
+                rank2: None,
+                rank3: None,
             },
         },
         ArtsData {
             id: 5,
             name: "混沌の魔法".to_string(),
-            conduct: Conduct {
+            art: Art {
                 name: "混沌の魔法".to_string(),
                 sp_cost: 35,
                 stamina_cost: 15,
-                perks: vec![ConductPerk::Ranged, ConductPerk::AtFeet],
-                requirement: ConductRequirement {
+                perks: vec![ArtPerk::Ranged, ArtPerk::AtFeet],
+                requirement: ArtRequirement {
                     strength: 0,
                     dexterity: 0,
                     intelligence: 12,
@@ -1878,21 +1917,29 @@ fn create_arts_database() -> ArtsDatabase {
                     arcane: 15,
                     agility: 0,
                 },
-                conduct_type: ConductType::Sorcery(ConductTypeSorcery::Attack(
-                    ConductTypeSorceryAttack {
+                usable_weapon: ArtUsableWeapon::All,
+                art_type: ArtType::Sorcery,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::All,
+                    potency: ArtPotency::Attack(ArtPotencyAttack {
                         attack_power: AttackPower {
                             slash: 0,
                             strike: 0,
                             thrust: 0,
                             impact: 0,
-                            magic: 100,
-                            fire: 100,
+                            magic: 150,
+                            fire: 150,
                             lightning: 0,
-                            chaos: 150,
+                            chaos: 200,
                         },
-                        break_power: 30,
-                    },
-                )),
+                        weapon_attack_power_scaling: AttackPowerScaling::default(),
+                        break_power: 25,
+                        weapon_break_power_scaling: 0.0,
+                    }),
+                },
+                rank2: None,
+                rank3: None,
             },
         },
     ];
@@ -2972,8 +3019,8 @@ fn arts_slot_button_system(
                                                 btn.spawn((
                                                     Text::new(format!(
                                                         "SP: {} / スタミナ: {}",
-                                                        art_data.conduct.sp_cost,
-                                                        art_data.conduct.stamina_cost
+                                                        art_data.art.sp_cost,
+                                                        art_data.art.stamina_cost
                                                     )),
                                                     TextFont {
                                                         font: font.clone(),
@@ -2984,7 +3031,7 @@ fn arts_slot_button_system(
                                                 ));
 
                                                 // 必要能力
-                                                let req = &art_data.conduct.requirement;
+                                                let req = &art_data.art.requirement;
                                                 let mut req_parts = Vec::new();
                                                 if req.strength > 0 {
                                                     req_parts.push(format!("筋力{}", req.strength));

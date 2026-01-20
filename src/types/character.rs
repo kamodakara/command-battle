@@ -1,5 +1,5 @@
 use super::common::DefensePower;
-use super::conduct::Conduct;
+use super::conduct::Art;
 use super::equipment::Equipment;
 
 // 敵
@@ -32,7 +32,7 @@ pub struct Player {
     pub stats: PlayerStats,               // ステータス
     pub base_defense_power: DefensePower, // 基礎防御力
     pub equipment: Equipment,             // 装備
-    pub arts: Vec<Conduct>,               // アーツ
+    pub arts: Vec<Art>,                   // アーツ
 }
 // プレイヤー能力
 pub struct PlayerAbility {
