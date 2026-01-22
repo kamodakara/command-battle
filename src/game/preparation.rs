@@ -1,11 +1,12 @@
 use bevy::{ecs::relationship::RelatedSpawnerCommands, prelude::*};
 
 use super::*;
+use crate::equipment;
 use crate::player::{create_player_defense_power, create_player_stats};
 use crate::types::{
-    AbilityScaling, Armor, ArmorDefense, ArmorKind, ArmorResistance, ArmorSlot, Art, ArtPerk,
+    Ability, AbilityScaling, Armor, ArmorKind, ArmorResistance, ArmorSlot, Art, ArtPerk,
     ArtPotency, ArtPotencyAttack, ArtRank, ArtRequirement, ArtTarget, ArtType, ArtUsableWeapon,
-    AttackPower, AttackPowerScaling, GuardCutRate, PlayerAbility, Weapon, WeaponAbilityRequirement,
+    AttackPower, AttackPowerScaling, DefensePower, GuardCutRate, Weapon, WeaponAbilityRequirement,
     WeaponAttackPower, WeaponAttackPowerAbilityScaling, WeaponBreakPower, WeaponGuard, WeaponKind,
     WeaponSorceryPower,
 };
@@ -501,7 +502,7 @@ fn build_status_content(
     ));
 
     // 現在の能力値からPlayerAbilityを作成
-    let current_ability = PlayerAbility {
+    let current_ability = Ability {
         vitality: prep_state.temp_vitality,
         spirit: prep_state.temp_spirit,
         endurance: prep_state.temp_endurance,
@@ -796,7 +797,7 @@ fn build_equipment_content(
     ));
 
     // 現在のプレイヤー能力値を作成
-    let current_ability = PlayerAbility {
+    let current_ability = Ability {
         vitality: prep_state.temp_vitality,
         spirit: prep_state.temp_spirit,
         endurance: prep_state.temp_endurance,
@@ -992,10 +993,9 @@ fn build_equipment_content(
                     if let Some(eq_name) = equipped_name {
                         // 武器の場合、使用可能かチェック
                         let is_usable = if let Some(weapon_data) = weapon_data {
-                            crate::equipment::is_weapon_usable(
-                                &weapon_data.weapon,
-                                &current_ability,
-                            )
+                            let not_enough_abilities =
+                                weapon_data.weapon.not_enough_abilities(&current_ability);
+                            not_enough_abilities.is_empty()
                         } else {
                             true // 防具の場合は常にtrue
                         };
@@ -2135,7 +2135,7 @@ fn create_iron_helmet() -> Armor {
     Armor {
         kind: ArmorKind::Helmet,
         weight: 8,
-        defense: ArmorDefense {
+        defense: DefensePower {
             slash: 15,
             strike: 15,
             thrust: 15,
@@ -2158,7 +2158,7 @@ fn create_iron_armor() -> Armor {
     Armor {
         kind: ArmorKind::ChestArmor,
         weight: 20,
-        defense: ArmorDefense {
+        defense: DefensePower {
             slash: 30,
             strike: 30,
             thrust: 30,
@@ -2181,7 +2181,7 @@ fn create_iron_gauntlets() -> Armor {
     Armor {
         kind: ArmorKind::Gauntlets,
         weight: 6,
-        defense: ArmorDefense {
+        defense: DefensePower {
             slash: 10,
             strike: 10,
             thrust: 10,
@@ -2204,7 +2204,7 @@ fn create_iron_leggings() -> Armor {
     Armor {
         kind: ArmorKind::LegArmor,
         weight: 12,
-        defense: ArmorDefense {
+        defense: DefensePower {
             slash: 18,
             strike: 18,
             thrust: 18,
@@ -2227,7 +2227,7 @@ fn create_leather_helmet() -> Armor {
     Armor {
         kind: ArmorKind::Helmet,
         weight: 3,
-        defense: ArmorDefense {
+        defense: DefensePower {
             slash: 8,
             strike: 7,
             thrust: 8,
@@ -2250,7 +2250,7 @@ fn create_leather_armor() -> Armor {
     Armor {
         kind: ArmorKind::ChestArmor,
         weight: 8,
-        defense: ArmorDefense {
+        defense: DefensePower {
             slash: 15,
             strike: 12,
             thrust: 15,
@@ -2273,7 +2273,7 @@ fn create_leather_gauntlets() -> Armor {
     Armor {
         kind: ArmorKind::Gauntlets,
         weight: 2,
-        defense: ArmorDefense {
+        defense: DefensePower {
             slash: 5,
             strike: 4,
             thrust: 5,
@@ -2296,7 +2296,7 @@ fn create_leather_leggings() -> Armor {
     Armor {
         kind: ArmorKind::LegArmor,
         weight: 5,
-        defense: ArmorDefense {
+        defense: DefensePower {
             slash: 10,
             strike: 8,
             thrust: 10,

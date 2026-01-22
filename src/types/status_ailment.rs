@@ -48,7 +48,8 @@ pub enum StatusConditionPotency {
 // 戦闘中の状態変化 防御状態
 #[derive(Clone)]
 pub struct StatusConditionResistance {
-    pub cut_rate: GuardCutRate,
+    pub cut_rate: GuardCutRate, // カット率
+                                // pub guard_strength: u32,    // ガード強度
 }
 // 戦闘中の状態変化 ブレイク状態
 #[derive(Clone)]

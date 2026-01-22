@@ -39,7 +39,7 @@ pub struct ArtRequirement {
 }
 
 // 戦闘行動内容
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum ArtType {
     Basic,   // 基本
     Skill,   // 技

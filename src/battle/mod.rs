@@ -1,10 +1,13 @@
 mod decide_enemy_conduct;
 mod decide_order;
 mod execute_conduct;
+mod partial;
 mod recover_break;
 mod recover_stamina;
 mod update_status_condition_for_turn;
 
+use super::equipment;
+use super::player::create_player_defense_power;
 use super::types::*;
 
 pub use decide_enemy_conduct::DecideEnemyConductRequest;

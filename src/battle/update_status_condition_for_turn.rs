@@ -17,13 +17,13 @@ pub fn update_status_condition_for_turn(
         .iter_mut()
         .find(|c| c.character_id == character_id)
     {
-        &mut player.base.status_conditions
+        &mut player.status_conditions
     } else if let Some(enemy) = battle
         .enemies
         .iter_mut()
         .find(|c| c.character_id == character_id)
     {
-        &mut enemy.base.status_conditions
+        &mut enemy.status_conditions
     } else {
         panic!("Character not found");
     };

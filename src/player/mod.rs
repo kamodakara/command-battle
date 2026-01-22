@@ -1,8 +1,8 @@
 // TODO: ステータス算出する関数
 
-use super::types::{DefensePower, PlayerAbility, PlayerStats};
+use super::types::{Ability, DefensePower, PlayerStats};
 
-pub fn create_player_stats(ability: &PlayerAbility) -> PlayerStats {
+pub fn create_player_stats(ability: &Ability) -> PlayerStats {
     PlayerStats {
         hp: 50 + ability.vitality * 2,
         sp: 10 + (ability.spirit as f32 * 1.5) as u32,
@@ -13,7 +13,7 @@ pub fn create_player_stats(ability: &PlayerAbility) -> PlayerStats {
     }
 }
 
-pub fn create_player_defense_power(ability: &PlayerAbility) -> DefensePower {
+pub fn create_player_defense_power(ability: &Ability) -> DefensePower {
     DefensePower {
         slash: calc_def_from_ability(ability, [1.2, 0.5, 1.0, 1.0, 1.5, 1.0, 0.5, 0.5, 0.5]),
         strike: calc_def_from_ability(ability, [1.2, 0.5, 1.0, 1.0, 1.0, 1.5, 0.5, 0.5, 0.5]),
@@ -26,7 +26,7 @@ pub fn create_player_defense_power(ability: &PlayerAbility) -> DefensePower {
     }
 }
 
-fn calc_def_from_ability(ability: &PlayerAbility, coef: [f64; 9]) -> u32 {
+fn calc_def_from_ability(ability: &Ability, coef: [f64; 9]) -> u32 {
     (ability.vitality as f64 * coef[0]
         + ability.spirit as f64 * coef[1]
         + ability.endurance as f64 * coef[2]

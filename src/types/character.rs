@@ -4,19 +4,9 @@ use super::equipment::Equipment;
 
 // 敵
 pub struct Enemy {
-    pub ability: EnemyAbility, // 能力
-    pub stats: EnemyStats,     // ステータス
-    pub equipment: Equipment,  // 装備
-}
-
-// 敵能力
-pub struct EnemyAbility {
-    pub agility: u32,      // 敏捷性
-    pub strength: u32,     // 筋力
-    pub dexterity: u32,    // 技量
-    pub intelligence: u32, // 知力
-    pub faith: u32,        // 信仰
-    pub arcane: u32,       // 神秘
+    pub ability: Ability,     // 能力
+    pub stats: EnemyStats,    // ステータス
+    pub equipment: Equipment, // 装備
 }
 
 pub struct EnemyStats {
@@ -28,14 +18,15 @@ pub struct EnemyStats {
 }
 
 pub struct Player {
-    pub ability: PlayerAbility,           // 能力
+    pub ability: Ability,                 // 能力
     pub stats: PlayerStats,               // ステータス
     pub base_defense_power: DefensePower, // 基礎防御力
     pub equipment: Equipment,             // 装備
     pub arts: Vec<Art>,                   // アーツ
 }
 // プレイヤー能力
-pub struct PlayerAbility {
+#[derive(Clone)]
+pub struct Ability {
     pub vitality: u32,     // 生命力
     pub spirit: u32,       // 精神力
     pub endurance: u32,    // 持久力
@@ -45,6 +36,18 @@ pub struct PlayerAbility {
     pub intelligence: u32, // 知力
     pub faith: u32,        // 信仰
     pub arcane: u32,       // 神秘
+}
+
+pub enum AbilityType {
+    Vitality,
+    Spirit,
+    Endurance,
+    Agility,
+    Strength,
+    Dexterity,
+    Intelligence,
+    Faith,
+    Arcane,
 }
 
 // プレイヤーステータス

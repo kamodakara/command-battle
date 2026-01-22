@@ -383,7 +383,7 @@ fn create_mock_battle() -> Battle {
 
     // プレイヤー原本（仮）
     let player_original = Arc::new(types::Player {
-        ability: PlayerAbility {
+        ability: Ability {
             vitality: 10,
             spirit: 10,
             endurance: 10,
@@ -428,7 +428,10 @@ fn create_mock_battle() -> Battle {
 
     // 敵原本（仮）
     let enemy_original = Arc::new(types::Enemy {
-        ability: EnemyAbility {
+        ability: Ability {
+            vitality: 10,
+            spirit: 10,
+            endurance: 10,
             agility: 10,
             strength: 10,
             dexterity: 10,
@@ -458,65 +461,75 @@ fn create_mock_battle() -> Battle {
     });
 
     Battle {
-        players: vec![BattlePlayer {
+        players: vec![BattleCharacter {
             character_id: 1,
-            original: player_original,
-            base: BattleCharacterBase {
-                current_ability: BattleAbility {
-                    agility: 15,
-                    strength: 10,
-                    dexterity: 10,
-                    intelligence: 10,
-                    faith: 10,
-                    arcane: 10,
-                },
-                current_stats: BattleStats {
-                    max_hp: 100,
-                    max_sp: 30,
-                    max_stamina: 100,
-                    stamina_recovery: 10,
-                    current_hp: 100,
-                    current_sp: 30,
-                    current_stamina: 100,
-                },
-                defense_power: def.clone(),
-                status_conditions: vec![],
-                is_dead: false,
+            raw_ability: player_original.ability.clone(),
+            raw_base_defense_power: def.clone(),
+            raw_equipment: player_original.equipment.clone(),
+            character_type: BattleCharacterType::Player,
+            hp: BattleCharacterHP {
+                max_hp: player_original.stats.hp,
+                current_hp: player_original.stats.hp,
             },
-        }],
-        enemies: vec![BattleEnemy {
-            character_id: 2,
-            original: enemy_original,
-            base: BattleCharacterBase {
-                current_ability: BattleAbility {
-                    agility: 20,
-                    strength: 10,
-                    dexterity: 10,
-                    intelligence: 10,
-                    faith: 10,
-                    arcane: 10,
-                },
-                current_stats: BattleStats {
-                    max_hp: 1500,
-                    max_sp: 30,
-                    max_stamina: 0,
-                    stamina_recovery: 0,
-                    current_hp: 1500,
-                    current_sp: 30,
-                    current_stamina: 0,
-                },
-                defense_power: def,
-                status_conditions: vec![],
-                is_dead: false,
+            sp: BattleCharacterSP {
+                max_sp: player_original.stats.sp,
+                current_sp: player_original.stats.sp,
             },
-            current_enemy_only_stats: BattleEnemyOnlyStats {
-                max_break: 100,
-                max_break_turn: 4,
-                break_recovery: 10,
-                current_break: 100,
+            stamina: BattleCharacterStamina {
+                max_stamina: player_original.stats.stamina,
+                current_stamina: player_original.stats.stamina,
+                stamina_recovery: player_original.stats.stamina_recovery,
+            },
+            break_resistance: BattleCharacterBreak {
+                max_break: 0,
+                current_break: 0,
+                break_recovery: 0,
                 break_not_damaged_turns: 0,
-                break_turns: 0,
+
+                is_breaking: false,
+                max_breaking_turns: 0,
+                remaining_breaking_turns: 0,
             },
+            weapons: vec![
+                // TODO: 装備武器情報生成
+            ],
+            is_dead: false,
+            status_conditions: vec![],
+        }],
+        enemies: vec![BattleCharacter {
+            character_id: 2,
+            raw_ability: enemy_original.ability.clone(),
+            raw_base_defense_power: def.clone(),
+            raw_equipment: enemy_original.equipment.clone(),
+            character_type: BattleCharacterType::Enemy,
+            hp: BattleCharacterHP {
+                max_hp: enemy_original.stats.hp,
+                current_hp: enemy_original.stats.hp,
+            },
+            sp: BattleCharacterSP {
+                max_sp: enemy_original.stats.sp,
+                current_sp: enemy_original.stats.sp,
+            },
+            stamina: BattleCharacterStamina {
+                max_stamina: 0,
+                current_stamina: 0,
+                stamina_recovery: 0,
+            },
+            break_resistance: BattleCharacterBreak {
+                max_break: enemy_original.stats.break_max,
+                current_break: enemy_original.stats.break_max,
+                break_recovery: enemy_original.stats.break_recovery,
+                break_not_damaged_turns: 0,
+
+                is_breaking: false,
+                max_breaking_turns: enemy_original.stats.break_turn,
+                remaining_breaking_turns: 0,
+            },
+            weapons: vec![
+                // TODO: 装備武器情報生成
+            ],
+            is_dead: false,
+            status_conditions: vec![],
         }],
     }
 }
@@ -1319,31 +1332,31 @@ fn player_input_system(
                         actor_character_id: player_id,
                         target_character_id: enemy_id,
                         art: Arc::clone(&player_conducts.attack),
-                        weapon: None,
+                        battle_weapon_id: None,
                     },
                     CommandKind::Skill => BattleConduct {
                         actor_character_id: player_id,
                         target_character_id: enemy_id,
                         art: Arc::clone(&player_conducts.skill),
-                        weapon: None,
+                        battle_weapon_id: None,
                     },
                     CommandKind::Heal => BattleConduct {
                         actor_character_id: player_id,
                         target_character_id: player_id,
                         art: Arc::clone(&player_conducts.heal),
-                        weapon: None,
+                        battle_weapon_id: None,
                     },
                     CommandKind::Defend => BattleConduct {
                         actor_character_id: player_id,
                         target_character_id: player_id,
                         art: Arc::clone(&player_conducts.defend),
-                        weapon: None,
+                        battle_weapon_id: None,
                     },
                     CommandKind::Wait => BattleConduct {
                         actor_character_id: player_id,
                         target_character_id: player_id,
                         art: Arc::clone(&player_conducts.wait),
-                        weapon: None,
+                        battle_weapon_id: None,
                     },
                 };
 
@@ -1520,9 +1533,9 @@ fn battle_end_check_system(
     let battle = &mut battle_resource.0;
     // TODO: 仮
     let player = battle.players.first().unwrap();
-    let player_hp = player.base.current_stats.current_hp;
+    let player_hp = player.hp.current_hp;
     let enemy = battle.enemies.first().unwrap();
-    let enemy_hp = enemy.base.current_stats.current_hp;
+    let enemy_hp = enemy.hp.current_hp;
 
     if enemy_hp == 0 {
         *phase = BattlePhase::Finished;
@@ -1726,20 +1739,20 @@ fn ui_update_system(
     let battle = &battle_resource.0;
 
     let player = battle.players.first().unwrap();
-    let p_hp = player.base.current_stats.current_hp;
-    let p_stamina = player.base.current_stats.current_stamina;
+    let p_hp = player.hp.current_hp;
+    let p_stamina = player.stamina.current_stamina;
     let enemy = battle.enemies.first().unwrap();
-    let e_hp = enemy.base.current_stats.current_hp;
-    let e_break = enemy.current_enemy_only_stats.current_break;
-    let e_break_max = enemy.current_enemy_only_stats.max_break;
+    let e_hp = enemy.hp.current_hp;
+    let e_break = enemy.break_resistance.current_break;
+    let e_break_max = enemy.break_resistance.max_break;
     ui_status_text.0 = format!(
         "プレイヤーHP: {} / {}\nスタミナ: {} / {}\n100\n\n敵HP: {} / {}\n敵ブレイク値: {} / {}\n敵状態: {}\n\n",
         p_hp,
-        player.base.current_stats.max_hp,
+        player.hp.max_hp,
         p_stamina,
-        player.base.current_stats.max_stamina,
+        player.stamina.max_stamina,
         e_hp,
-        enemy.base.current_stats.max_hp,
+        enemy.hp.max_hp,
         (e_break_max - e_break),
         e_break_max,
         "通常" // TODO: 敵状態表示
@@ -1954,18 +1967,15 @@ fn ui_update_player_status_system(
     let battle = &battle_resource.0;
 
     let player = battle.players.first().unwrap();
-    let p_hp = player.base.current_stats.current_hp;
-    let p_sta = player.base.current_stats.current_stamina;
+    let p_hp = player.hp.current_hp;
+    let p_sta = player.stamina.current_stamina;
 
     // コンテナ内の最初のTextを簡潔表示用に更新
     if let Ok(mut hp_text) = hp_text_q.single_mut() {
-        hp_text.0 = format!("HP: {} / {}", p_hp, player.base.current_stats.max_hp);
+        hp_text.0 = format!("HP: {} / {}", p_hp, player.hp.max_hp);
     }
     if let Ok(mut sta_text) = sta_text_q.single_mut() {
-        sta_text.0 = format!(
-            "スタミナ: {} / {}",
-            p_sta, player.base.current_stats.max_stamina
-        );
+        sta_text.0 = format!("スタミナ: {} / {}", p_sta, player.stamina.max_stamina);
     }
     if let Ok(mut buffs_text) = buffs_text_q.single_mut() {
         // 表示: 強化中のものと残りターン。未強化は「なし」。
@@ -1979,16 +1989,16 @@ fn ui_update_player_status_system(
 
     // ゲージ幅更新
     if let Ok(mut hp_node) = gauge_params.p0().single_mut() {
-        let ratio = if player.base.current_stats.max_hp > 0 {
-            (p_hp as f32 / player.base.current_stats.max_hp as f32).clamp(0.0, 1.0)
+        let ratio = if player.hp.max_hp > 0 {
+            (p_hp as f32 / player.hp.max_hp as f32).clamp(0.0, 1.0)
         } else {
             0.0
         };
         hp_node.width = percent((ratio * 100.0).round());
     }
     if let Ok(mut sta_node) = gauge_params.p1().single_mut() {
-        let ratio = if player.base.current_stats.max_stamina > 0 {
-            (p_sta as f32 / player.base.current_stats.max_stamina as f32).clamp(0.0, 1.0)
+        let ratio = if player.stamina.max_stamina > 0 {
+            (p_sta as f32 / player.stamina.max_stamina as f32).clamp(0.0, 1.0)
         } else {
             0.0
         };
@@ -2161,13 +2171,13 @@ fn ui_update_enemy_system(
     let battle = &battle_resource.0;
 
     let enemy = battle.enemies.first().unwrap();
-    let e_hp = enemy.base.current_stats.current_hp;
-    let e_break = enemy.current_enemy_only_stats.current_break;
-    let e_break_max = enemy.current_enemy_only_stats.max_break;
+    let e_hp = enemy.hp.current_hp;
+    let e_break = enemy.break_resistance.current_break;
+    let e_break_max = enemy.break_resistance.max_break;
 
     if let Ok(mut hp_node) = gauge_params.p0().single_mut() {
-        let ratio = if enemy.base.current_stats.max_hp > 0 {
-            (e_hp as f32 / enemy.base.current_stats.max_hp as f32).clamp(0.0, 1.0)
+        let ratio = if enemy.hp.max_hp > 0 {
+            (e_hp as f32 / enemy.hp.max_hp as f32).clamp(0.0, 1.0)
         } else {
             0.0
         };

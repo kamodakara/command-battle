@@ -1,6 +1,8 @@
+use super::character::AbilityType;
 use super::common::*;
 
 // 装備
+#[derive(Clone)]
 pub struct Equipment {
     pub weapon1: Option<Weapon>, // 右手
     pub weapon2: Option<Weapon>, // 左手
@@ -106,12 +108,116 @@ pub struct GuardCutRate {
     pub chaos: f32,     // 混濁
 }
 
+// 使用した際の武器性能
+pub struct WeaponPerformance {
+    pub attack_power: AttackPower,                 // 攻撃性能
+    pub ability_attack_power: AttackPower,         // 攻撃性能、能力補正分
+    pub sorcery_power: u32,                        // 術力
+    pub ability_sorcery_power: u32,                // 術力、能力補正分
+    pub break_power: u32,                          // ブレイク力
+    pub ability_break_power: u32,                  // ブレイク力、能力補正分
+    pub guard_strength: u32,                       // ガード強度
+    pub penalty: Option<WeaponPerformancePenalty>, // ペナルティ情報、存在する場合ペナルティがかかっている
+}
+pub struct WeaponPerformancePenalty {
+    pub not_enough_abilities: Vec<AbilityType>, // 足りてない能力一覧
+    pub penalty_attack_power: AttackPower,      // 攻撃性能、ペナルティ分
+    pub penalty_sorcery_power: u32,             // 術力、ペナルティ分
+    pub penalty_break_power: u32,               // ブレイク力、ペナルティ分
+    pub penalty_guard_strength: u32,            // ガード強度、ペナルティ分
+}
+impl WeaponPerformance {
+    // 最終的な攻撃性能を取得する
+    pub fn final_attack_power(&self) -> AttackPower {
+        let mut attack_power = self.attack_power.clone();
+
+        // 能力補正分を加算
+        attack_power.slash += self.ability_attack_power.slash;
+        attack_power.strike += self.ability_attack_power.strike;
+        attack_power.thrust += self.ability_attack_power.thrust;
+        attack_power.impact += self.ability_attack_power.impact;
+        attack_power.magic += self.ability_attack_power.magic;
+        attack_power.fire += self.ability_attack_power.fire;
+        attack_power.lightning += self.ability_attack_power.lightning;
+        attack_power.chaos += self.ability_attack_power.chaos;
+
+        // ペナルティ分を減算
+        if let Some(penalty) = &self.penalty {
+            attack_power.slash = attack_power
+                .slash
+                .saturating_sub(penalty.penalty_attack_power.slash);
+            attack_power.strike = attack_power
+                .strike
+                .saturating_sub(penalty.penalty_attack_power.strike);
+            attack_power.thrust = attack_power
+                .thrust
+                .saturating_sub(penalty.penalty_attack_power.thrust);
+            attack_power.impact = attack_power
+                .impact
+                .saturating_sub(penalty.penalty_attack_power.impact);
+            attack_power.magic = attack_power
+                .magic
+                .saturating_sub(penalty.penalty_attack_power.magic);
+            attack_power.fire = attack_power
+                .fire
+                .saturating_sub(penalty.penalty_attack_power.fire);
+            attack_power.lightning = attack_power
+                .lightning
+                .saturating_sub(penalty.penalty_attack_power.lightning);
+            attack_power.chaos = attack_power
+                .chaos
+                .saturating_sub(penalty.penalty_attack_power.chaos);
+        }
+
+        attack_power
+    }
+
+    pub fn final_sorcery_power(&self) -> u32 {
+        let mut sorcery_power = self.sorcery_power;
+
+        // 能力補正分を加算
+        sorcery_power += self.ability_sorcery_power;
+
+        // ペナルティ分を減算
+        if let Some(penalty) = &self.penalty {
+            sorcery_power = sorcery_power.saturating_sub(penalty.penalty_sorcery_power);
+        }
+
+        sorcery_power
+    }
+
+    pub fn final_break_power(&self) -> u32 {
+        let mut break_power = self.break_power;
+
+        // 能力補正分を加算
+        break_power += self.ability_break_power;
+
+        // ペナルティ分を減算
+        if let Some(penalty) = &self.penalty {
+            break_power = break_power.saturating_sub(penalty.penalty_break_power);
+        }
+
+        break_power
+    }
+
+    pub fn final_guard_strength(&self) -> u32 {
+        let mut guard_strength = self.guard_strength;
+
+        // ペナルティ分を減算
+        if let Some(penalty) = &self.penalty {
+            guard_strength = guard_strength.saturating_sub(penalty.penalty_guard_strength);
+        }
+
+        guard_strength
+    }
+}
+
 // 防具
 #[derive(Clone)]
 pub struct Armor {
     pub kind: ArmorKind,             // 種類
     pub weight: u32,                 // 重量
-    pub defense: ArmorDefense,       // 防御力
+    pub defense: DefensePower,       // 防御力
     pub resistance: ArmorResistance, // 状態異常耐性値
     pub slots: Vec<ArmorSlot>,       // 装備箇所
 }
@@ -125,18 +231,6 @@ pub enum ArmorKind {
     LegArmor,   // 脚装備
 }
 
-// 防具防御力
-#[derive(Clone)]
-pub struct ArmorDefense {
-    pub slash: u32,     // 斬撃
-    pub strike: u32,    // 打撃
-    pub thrust: u32,    // 刺突
-    pub impact: u32,    // 衝撃
-    pub magic: u32,     // 魔力
-    pub fire: u32,      // 炎
-    pub lightning: u32, // 雷
-    pub chaos: u32,     // 混濁
-}
 // 防具状態異常耐性値
 #[derive(Clone)]
 pub struct ArmorResistance {

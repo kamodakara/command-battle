@@ -1,99 +1,15 @@
 mod character;
 mod incident;
 
-use super::character::{Enemy, Player};
+use super::character::AbilityType;
 use super::common::*;
 use super::conduct::Art;
-use super::equipment::Weapon;
+use super::equipment::{Equipment, Weapon};
 use super::status_ailment::StatusConditionPotency;
 use std::sync::Arc;
 
 pub use character::*;
 pub use incident::*;
-
-pub struct BattleAbility {
-    pub agility: u32,      // 敏捷性
-    pub strength: u32,     // 筋力
-    pub dexterity: u32,    // 技量
-    pub intelligence: u32, // 知力
-    pub faith: u32,        // 信仰
-    pub arcane: u32,       // 神秘
-}
-
-pub struct BattleStats {
-    pub max_hp: u32, // HP
-    pub max_sp: u32, // SP
-    // プレイヤーのみ使用
-    pub max_stamina: u32,      // スタミナ 敵は使用しない
-    pub stamina_recovery: u32, // スタミナ回復量 敵は使用しない
-
-    pub current_hp: u32,      // 現在のHP
-    pub current_sp: u32,      // 現在のSP
-    pub current_stamina: u32, // 現在のスタミナ 敵は使用しない
-}
-impl BattleStats {
-    // HPに加算
-    pub fn hp_add(&mut self, amount: u32) -> (u32, u32) {
-        let before = self.current_hp;
-        self.current_hp = (self.current_hp + amount).min(self.max_hp);
-
-        (before, self.current_hp)
-    }
-    // SPに加算
-    pub fn sp_add(&mut self, amount: u32) -> (u32, u32) {
-        let before = self.current_sp;
-        self.current_sp = (self.current_sp + amount).min(self.max_sp);
-        (before, self.current_sp)
-    }
-    // スタミナに加算
-    pub fn stamina_add(&mut self, amount: u32) -> (u32, u32) {
-        let before = self.current_stamina;
-        self.current_stamina = (self.current_stamina + amount).min(self.max_stamina);
-        (before, self.current_stamina)
-    }
-    // HPに減算
-    pub fn hp_subtract(&mut self, amount: u32) -> (u32, u32) {
-        let before = self.current_hp;
-        self.current_hp = self.current_hp.saturating_sub(amount);
-        (before, self.current_hp)
-    }
-    // SPに減算
-    pub fn sp_subtract(&mut self, amount: u32) -> (u32, u32) {
-        let before = self.current_sp;
-        self.current_sp = self.current_sp.saturating_sub(amount);
-        (before, self.current_sp)
-    }
-    // スタミナに減算
-    pub fn stamina_subtract(&mut self, amount: u32) -> (u32, u32) {
-        let before = self.current_stamina;
-        self.current_stamina = self.current_stamina.saturating_sub(amount);
-        (before, self.current_stamina)
-    }
-}
-
-pub struct BattleEnemyOnlyStats {
-    pub max_break: u32,      // ブレイク最大値
-    pub max_break_turn: u32, // ブレイク最大ターン
-    pub break_recovery: u32, // ブレイク回復量
-
-    pub current_break: u32,           // 現在のブレイク値
-    pub break_not_damaged_turns: u32, // ブレイクダメージを受けてないターン数
-    pub break_turns: u32,             // 現在のブレイク経過ターン
-}
-impl BattleEnemyOnlyStats {
-    // ブレイク値に加算
-    pub fn break_add(&mut self, amount: u32) -> (u32, u32) {
-        let before = self.current_break;
-        self.current_break = (self.current_break + amount).min(self.max_break);
-        (before, self.current_break)
-    }
-    // ブレイク値に減算
-    pub fn break_subtract(&mut self, amount: u32) -> (u32, u32) {
-        let before = self.current_break;
-        self.current_break = self.current_break.saturating_sub(amount);
-        (before, self.current_break)
-    }
-}
 
 // 戦闘中の状態変化
 #[derive(Clone)]
@@ -124,22 +40,23 @@ pub struct BattleStatusConditionDurationCount {
 }
 
 pub struct Battle {
-    pub players: Vec<BattlePlayer>,
-    pub enemies: Vec<BattleEnemy>,
+    pub players: Vec<BattleCharacter>,
+    pub enemies: Vec<BattleCharacter>,
 }
 
 #[derive(Clone)]
 pub struct BattleWeapon {
-    pub original: Arc<Weapon>,
-    pub attack_power: AttackPower, // 攻撃性能
-    pub sorcery_power: f32,        // 術力
-    pub break_power: u32,          // ブレイク力
+    pub id: BattleWeaponId, // 武器ID
+    pub weapon: Weapon,     // 武器情報
 }
+// 武器ID
+#[derive(Clone, PartialEq)]
+pub struct BattleWeaponId(u32);
 
 #[derive(Clone)]
 pub struct BattleConduct {
     pub actor_character_id: u32,
     pub target_character_id: u32,
-    pub art: Arc<Art>,                // 使用アーツ
-    pub weapon: Option<BattleWeapon>, // 使用武器
+    pub art: Arc<Art>,                            // 使用アーツ
+    pub battle_weapon_id: Option<BattleWeaponId>, // 使用武器ID
 }

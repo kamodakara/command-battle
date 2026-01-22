@@ -21,17 +21,17 @@ pub fn execute_conduct(
         .iter_mut()
         .find(|p| p.character_id == conduct.actor_character_id)
     {
-        BattleCharacter::Player(player)
+        player
     } else if let Some(enemy) = battle
         .enemies
         .iter_mut()
         .find(|e| e.character_id == conduct.actor_character_id)
     {
-        BattleCharacter::Enemy(enemy)
+        enemy
     } else {
         panic!("Attacker not found");
     };
-    let attacker_id = attacker.character_id();
+    let attacker_id = attacker.character_id;
 
     // 行動成否判定
     if let Some(failure_reason) = determine_action_outcome_failure(&conduct, &attacker) {
@@ -51,7 +51,7 @@ pub fn execute_conduct(
 
     // SP消費
     let sp_cost = conduct.art.sp_cost;
-    let (before_sp, after_sp) = attacker.current_stats_mut().sp_subtract(sp_cost);
+    let (before_sp, after_sp) = attacker.sp.damage(sp_cost);
     // インシデント
     attacker_stats_changes.push(BattleIncidentStats::DamageSp(BattleIncidentDamageSp {
         damage: sp_cost,
@@ -60,11 +60,10 @@ pub fn execute_conduct(
     }));
 
     // スタミナ消費
-    if let BattleCharacter::Player(player) = attacker {
+    if attacker.character_type == BattleCharacterType::Player {
         // プレイヤーの場合のみスタミナ消費処理
         let stamina_cost = conduct.art.stamina_cost;
-        let (before_stamina, after_stamina) =
-            player.base.current_stats.stamina_subtract(stamina_cost);
+        let (before_stamina, after_stamina) = attacker.stamina.damage(stamina_cost);
         // インシデント
         attacker_stats_changes.push(BattleIncidentStats::DamageStamina(
             BattleIncidentDamageStamina {
@@ -87,22 +86,25 @@ pub fn execute_conduct(
         .iter_mut()
         .find(|p| p.character_id == conduct.target_character_id)
     {
-        BattleCharacter::Player(player)
+        player
     } else if let Some(enemy) = battle
         .enemies
         .iter_mut()
         .find(|e| e.character_id == conduct.target_character_id)
     {
-        BattleCharacter::Enemy(enemy)
+        enemy
     } else {
         panic!("Defender not found");
     };
+    let target_id = target.character_id;
+
     // TODO: 複数ターゲットが存在した時のターゲットごとに効果処理
-    let defender_incident = conduct_effect(&conduct, &mut target);
+
+    let defender_incident = conduct_effect(battle, &conduct, &attacker_id, &target_id);
 
     BattleIncident::Conduct(BattleIncidentConduct {
         attacker_id,
-        defender_id: target.character_id(),
+        defender_id: target_id,
         conduct,
         outcome: BattleIncidentConductOutcome::Success(BattleIncidentConductOutcomeSuccess {
             attacker: attacker_incident,
@@ -178,7 +180,7 @@ fn support_status_effect(
         // 状態変化付与
         // TODO: 状態変化の重複処理
         target
-            .status_conditions_mut()
+            .status_conditions
             .push(battle_status_condition.clone());
         status_condition_incidents.push(BattleIncidentStatusCondition {
             status_condition: battle_status_condition,
@@ -200,7 +202,7 @@ fn support_recover(
         match potency {
             SupportRecoverPotency::Hp(hp_recover) => {
                 let hp_rcv = hp_recover.hp_recover;
-                let (before_hp, after_hp) = target.current_stats_mut().hp_add(hp_rcv);
+                let (before_hp, after_hp) = target.hp.recover(hp_rcv);
                 // HP回復のインシデント
                 stats_change_incidents.push(BattleIncidentStats::RecoverHp(
                     BattleIncidentRecoverHp {
@@ -212,7 +214,7 @@ fn support_recover(
             }
             SupportRecoverPotency::Sp(sp_recover) => {
                 let sp_rcv = sp_recover.sp_recover;
-                let (before_sp, after_sp) = target.current_stats_mut().sp_add(sp_rcv);
+                let (before_sp, after_sp) = target.sp.recover(sp_rcv);
                 // SP回復のインシデント
                 stats_change_incidents.push(BattleIncidentStats::RecoverSp(
                     BattleIncidentRecoverSp {
@@ -224,10 +226,9 @@ fn support_recover(
             }
             SupportRecoverPotency::Stamina(stamina_recover) => {
                 // スタミナ回復処理はプレイヤーキャラクターのみ
-                if let BattleCharacter::Player(player) = target {
+                if target.character_type == BattleCharacterType::Player {
                     let stamina_rcv = stamina_recover.stamina_recover;
-                    let (before_stamina, after_stamina) =
-                        player.base.current_stats.stamina_add(stamina_rcv);
+                    let (before_stamina, after_stamina) = target.stamina.recover(stamina_rcv);
                     // スタミナ回復のインシデント
                     stats_change_incidents.push(BattleIncidentStats::RecoverStamina(
                         BattleIncidentRecoverStamina {
@@ -273,26 +274,22 @@ fn determine_action_outcome_failure(
     conduct: &BattleConduct,
     attacker: &BattleCharacter,
 ) -> Option<BattleIncidentConductOutcomeFailureReason> {
-    match &attacker {
-        BattleCharacter::Player(player) => {
-            let current_status = &player.base.current_stats;
-            // スタミナが足りないと不発
-            if current_status.current_stamina < conduct.art.stamina_cost {
-                return Some(BattleIncidentConductOutcomeFailureReason {
-                    insufficient_stamina: true,
-                    insufficient_ability: false,
-                    insufficient_sp: false,
-                    is_break: false,
-                });
-            }
+    if attacker.character_type == BattleCharacterType::Player {
+        // プレイヤーキャラクターの場合のみスタミナチェック
+
+        // スタミナが足りないと不発
+        if attacker.stamina.current_stamina < conduct.art.stamina_cost {
+            return Some(BattleIncidentConductOutcomeFailureReason {
+                insufficient_stamina: true,
+                insufficient_ability: false,
+                insufficient_sp: false,
+                is_break: false,
+            });
         }
-        BattleCharacter::Enemy(_) => {
-            // 敵のスタミナ管理は省略
-        }
-    };
+    }
 
     // ブレイク中行動不能
-    for se in attacker.status_conditions().iter() {
+    for se in attacker.status_conditions.iter() {
         if let StatusConditionPotency::Break(_) = &se.potency {
             // ブレイク中
             return Some(BattleIncidentConductOutcomeFailureReason {
@@ -324,7 +321,7 @@ fn determine_action_outcome_failure(
 
     // SPが足りないと不発
     let sp_cost = conduct.art.sp_cost;
-    if attacker.current_stats().current_sp < sp_cost {
+    if attacker.sp.current_sp < sp_cost {
         return Some(BattleIncidentConductOutcomeFailureReason {
             insufficient_stamina: false,
             insufficient_ability: false,

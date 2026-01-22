@@ -15,9 +15,8 @@ pub fn recover_stamina(
         .find(|c| c.character_id == request.character_id)
     {
         // スタミナ回復
-        let stamina_recovery = player.base.current_stats.stamina_recovery;
-        let (before_stamina, after_stamina) =
-            player.base.current_stats.stamina_add(stamina_recovery);
+        let stamina_recovery = player.stamina.stamina_recovery;
+        let (before_stamina, after_stamina) = player.stamina.recover(stamina_recovery);
         return BattleIncidentAutoTrigger {
             character_id: request.character_id,
             stats_changes: vec![BattleIncidentStats::RecoverStamina(

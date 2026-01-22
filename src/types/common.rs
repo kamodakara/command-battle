@@ -1,3 +1,5 @@
+use super::Ability;
+
 // 属性
 pub enum Attribute {
     Slash,     // 斬撃
@@ -113,6 +115,27 @@ pub struct AbilityScaling {
     pub arcane: f32,       // 神秘
     pub agility: f32,      // 敏捷性
 }
+impl AbilityScaling {
+    pub fn default() -> Self {
+        AbilityScaling {
+            strength: 0.0,
+            dexterity: 0.0,
+            intelligence: 0.0,
+            faith: 0.0,
+            arcane: 0.0,
+            agility: 0.0,
+        }
+    }
+
+    pub fn scale_value(&self, ability: &Ability) -> u32 {
+        (self.strength * ability.strength as f32
+            + self.dexterity * ability.dexterity as f32
+            + self.intelligence * ability.intelligence as f32
+            + self.faith * ability.faith as f32
+            + self.arcane * ability.arcane as f32
+            + self.agility * ability.agility as f32) as u32
+    }
+}
 
 #[derive(Clone)]
 pub struct DefensePower {
@@ -124,4 +147,29 @@ pub struct DefensePower {
     pub fire: u32,      // 炎
     pub lightning: u32, // 雷
     pub chaos: u32,     // 混濁
+}
+impl DefensePower {
+    pub fn default() -> Self {
+        DefensePower {
+            slash: 0,
+            strike: 0,
+            thrust: 0,
+            impact: 0,
+            magic: 0,
+            fire: 0,
+            lightning: 0,
+            chaos: 0,
+        }
+    }
+
+    pub fn add(&mut self, other: &DefensePower) {
+        self.slash += other.slash;
+        self.strike += other.strike;
+        self.thrust += other.thrust;
+        self.impact += other.impact;
+        self.magic += other.magic;
+        self.fire += other.fire;
+        self.lightning += other.lightning;
+        self.chaos += other.chaos;
+    }
 }

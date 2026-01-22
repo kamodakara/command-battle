@@ -9,9 +9,9 @@ pub fn decide_order(battle: &Battle, request: BattleDecideOrderRequest) -> Vec<u
     let mut order: Vec<(u32, u32)> = Vec::new();
     for id in request.character_ids {
         if let Some(character) = battle.players.iter().find(|c| c.character_id == id) {
-            order.push((id, character.base.current_ability.agility));
+            order.push((id, character.current_ability().agility));
         } else if let Some(character) = battle.enemies.iter().find(|c| c.character_id == id) {
-            order.push((id, character.base.current_ability.agility));
+            order.push((id, character.current_ability().agility));
         }
     }
 

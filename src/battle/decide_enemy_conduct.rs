@@ -54,6 +54,6 @@ pub fn decide_enemy_conduct(battle: &Battle, request: DecideEnemyConductRequest)
             rank2: None,
             rank3: None,
         }),
-        weapon: None,
+        battle_weapon_id: None,
     }
 }

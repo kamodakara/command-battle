@@ -31,32 +31,26 @@ pub fn recover_break(
         // ブレイク状態かどうか
         let mut is_break = false;
         let mut break_status_condition_index = 0;
-        for (index, se) in enemy.base.status_conditions.iter().enumerate() {
+        for (index, se) in enemy.status_conditions.iter().enumerate() {
             if let StatusConditionPotency::Break(_) = &se.potency {
                 is_break = true;
                 break_status_condition_index = index;
             }
         }
 
-        let break_max_turns = enemy.current_enemy_only_stats.max_break_turn;
-        let break_turns = enemy.current_enemy_only_stats.break_turns;
         let mut stats_change_incidents = vec![];
         let mut status_condition_incidents = vec![];
         if is_break {
             // ブレイク中
 
             // ブレイク回復処理
-            if break_turns >= break_max_turns {
-                // ブレイク状態回復
-                enemy.current_enemy_only_stats.break_turns = 0;
-                enemy.current_enemy_only_stats.current_break =
-                    enemy.current_enemy_only_stats.max_break;
+            if enemy.break_resistance.remaining_breaking_turns == 0 {
+                // ブレイク中解除
+                enemy.break_resistance.clear_breaking();
 
                 // ステータス効果からブレイクを削除
-                let battle_status_condition = enemy
-                    .base
-                    .status_conditions
-                    .remove(break_status_condition_index);
+                let battle_status_condition =
+                    enemy.status_conditions.remove(break_status_condition_index);
 
                 // ブレイク回復インシデント
                 status_condition_incidents.push(BattleIncidentStatusCondition {
@@ -66,17 +60,17 @@ pub fn recover_break(
                     ),
                 });
             } else {
-                // ブレイクターンを進める
-                enemy.current_enemy_only_stats.break_turns += 1;
+                // ブレイク中ターン経過
+                let (_before_breaking_turns, _after_breaking_turns) =
+                    enemy.break_resistance.elapse_breaking_turn();
             }
         } else {
             print!("Not in break state, recovering break.");
 
             // 2ターンブレイクダメージを受けていなければ回復
-            if enemy.current_enemy_only_stats.break_not_damaged_turns >= 2 {
-                let break_recovery = enemy.current_enemy_only_stats.break_recovery;
-                let (brefore_break, after_break) =
-                    enemy.current_enemy_only_stats.break_add(break_recovery);
+            if enemy.break_resistance.break_not_damaged_turns >= 2 {
+                let break_recovery = enemy.break_resistance.break_recovery;
+                let (brefore_break, after_break) = enemy.break_resistance.recover(break_recovery);
                 stats_change_incidents.push(BattleIncidentStats::RecoverBreak(
                     BattleIncidentRecoverBreak {
                         recover: break_recovery,
@@ -87,7 +81,7 @@ pub fn recover_break(
             }
 
             // ブレイクを受けていないターン数を増やす
-            enemy.current_enemy_only_stats.break_not_damaged_turns += 1;
+            enemy.break_resistance.break_not_damaged_turns += 1;
         }
 
         return BattleIncidentAutoTrigger {
