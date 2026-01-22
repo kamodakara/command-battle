@@ -16,18 +16,8 @@ pub fn execute_conduct(
     let conduct = request.conduct;
 
     // 行動者の決定
-    let mut attacker = if let Some(player) = battle
-        .players
-        .iter_mut()
-        .find(|p| p.character_id == conduct.actor_character_id)
-    {
-        player
-    } else if let Some(enemy) = battle
-        .enemies
-        .iter_mut()
-        .find(|e| e.character_id == conduct.actor_character_id)
-    {
-        enemy
+    let attacker = if let Some(character) = battle.character_mut(&conduct.actor_character_id) {
+        character
     } else {
         panic!("Attacker not found");
     };
@@ -81,18 +71,8 @@ pub fn execute_conduct(
     };
 
     // ターゲットの決定
-    let mut target = if let Some(player) = battle
-        .players
-        .iter_mut()
-        .find(|p| p.character_id == conduct.target_character_id)
-    {
-        player
-    } else if let Some(enemy) = battle
-        .enemies
-        .iter_mut()
-        .find(|e| e.character_id == conduct.target_character_id)
-    {
-        enemy
+    let target = if let Some(character) = battle.character_mut(&conduct.target_character_id) {
+        character
     } else {
         panic!("Defender not found");
     };
@@ -113,59 +93,17 @@ pub fn execute_conduct(
     })
 }
 
-// 攻撃力補正
-fn calc_attack_power_modifier(
-    base_attack_power: &AttackPower,
-    modify_attack_power: &AttackPower,
-    modify_attack_power_scaling: &AttackPowerScaling,
-) -> AttackPower {
-    AttackPower {
-        slash: base_attack_power.slash
-            + (modify_attack_power.slash as f32 * modify_attack_power_scaling.slash) as u32,
-        strike: base_attack_power.strike
-            + (modify_attack_power.strike as f32 * modify_attack_power_scaling.strike) as u32,
-        thrust: base_attack_power.thrust
-            + (modify_attack_power.thrust as f32 * modify_attack_power_scaling.thrust) as u32,
-        impact: base_attack_power.impact
-            + (modify_attack_power.impact as f32 * modify_attack_power_scaling.impact) as u32,
-        magic: base_attack_power.magic
-            + (modify_attack_power.magic as f32 * modify_attack_power_scaling.magic) as u32,
-        fire: base_attack_power.fire
-            + (modify_attack_power.fire as f32 * modify_attack_power_scaling.fire) as u32,
-        lightning: base_attack_power.lightning
-            + (modify_attack_power.lightning as f32 * modify_attack_power_scaling.lightning) as u32,
-        chaos: base_attack_power.chaos
-            + (modify_attack_power.chaos as f32 * modify_attack_power_scaling.chaos) as u32,
-    }
-}
-
-fn calc_attack_power_cut_rate(
-    attack_power: &AttackPower,
-    guard_cut_rate: &GuardCutRate,
-) -> AttackPower {
-    AttackPower {
-        slash: (attack_power.slash as f32 * guard_cut_rate.slash) as u32,
-        strike: (attack_power.strike as f32 * guard_cut_rate.strike) as u32,
-        thrust: (attack_power.thrust as f32 * guard_cut_rate.thrust) as u32,
-        impact: (attack_power.impact as f32 * guard_cut_rate.impact) as u32,
-        magic: (attack_power.magic as f32 * guard_cut_rate.magic) as u32,
-        fire: (attack_power.fire as f32 * guard_cut_rate.fire) as u32,
-        lightning: (attack_power.lightning as f32 * guard_cut_rate.lightning) as u32,
-        chaos: (attack_power.chaos as f32 * guard_cut_rate.chaos) as u32,
-    }
-}
-
 // ダメージ計算
 fn calc_damage(attack_power: &AttackPower, defender: &DefensePower) -> u32 {
-    let damage = (attack_power.slash / defender.slash)
-        + (attack_power.strike / defender.strike)
-        + (attack_power.thrust / defender.thrust)
-        + (attack_power.impact / defender.impact)
-        + (attack_power.magic / defender.magic)
-        + (attack_power.fire / defender.fire)
-        + (attack_power.lightning / defender.lightning)
-        + (attack_power.chaos / defender.chaos);
-    damage
+    let damage = (attack_power.slash as f32 / defender.slash as f32)
+        + (attack_power.strike as f32 / defender.strike as f32)
+        + (attack_power.thrust as f32 / defender.thrust as f32)
+        + (attack_power.impact as f32 / defender.impact as f32)
+        + (attack_power.magic as f32 / defender.magic as f32)
+        + (attack_power.fire as f32 / defender.fire as f32)
+        + (attack_power.lightning as f32 / defender.lightning as f32)
+        + (attack_power.chaos as f32 / defender.chaos as f32);
+    damage as u32
 }
 
 fn support_status_effect(

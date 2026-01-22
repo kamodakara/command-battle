@@ -116,16 +116,14 @@ pub fn conduct_effect(
             let mut stats_change_incidents = Vec::new();
             let mut status_condition_incidents = Vec::new();
 
-            let weapon_attack_power = &attacker_weapon_performance.attack_power;
-            let weapon_break_power = attacker_weapon_performance.break_power;
-            let art_attack_power = &art_attack.attack_power;
-            let weapon_attack_power_scaling = &art_attack.weapon_attack_power_scaling;
-            let mut attack_power = calc_attack_power_modifier(
-                art_attack_power,
-                weapon_attack_power,
-                weapon_attack_power_scaling,
-            );
+            // 武器性能取得
+            let weapon_attack_power = &attacker_weapon_performance.final_attack_power();
+            let weapon_break_power = attacker_weapon_performance.final_break_power();
 
+            // アーツ攻撃力算出
+            let mut attack_power = art_attack.final_attack_power(weapon_attack_power);
+
+            // 術力補正
             if conduct.art.art_type == ArtType::Sorcery {
                 // 魔法タイプの場合、術力補正をかける
                 let sorcery_attack_power_rate = 1.0 + (sorcery_power as f32 / 100.0);
@@ -138,8 +136,7 @@ pub fn conduct_effect(
                 match &se.potency {
                     StatusConditionPotency::Resistance(resistance) => {
                         // 防御時の攻撃力カット処理
-                        attack_power =
-                            calc_attack_power_cut_rate(&attack_power, &resistance.cut_rate);
+                        attack_power = resistance.cut_rate.apply_guard_cut(&attack_power);
                         is_defended = true;
                     }
                     _ => {
@@ -148,9 +145,8 @@ pub fn conduct_effect(
                 }
             }
 
-            // ブレイク攻撃力算出
-            let break_power = art_attack.break_power
-                + (weapon_break_power as f32 * art_attack.weapon_break_power_scaling) as u32;
+            // ブレイク力算出
+            let break_power = art_attack.final_break_power(weapon_break_power);
 
             // ダメージ
             let damage = calc_damage(&attack_power, &target.defense_power());
@@ -164,7 +160,7 @@ pub fn conduct_effect(
 
             // 防御時のスタミナダメージ
             if is_defended {
-                let stamina_damage = damage / 4; // TODO: 固定値ではなく防御力依存にする
+                let stamina_damage = break_power / 4; // TODO: 固定値ではなくガード強度
                 let (before_stamina, after_stamina) = target.stamina.damage(stamina_damage);
 
                 // スタミナダメージのインシデント

@@ -38,6 +38,17 @@ impl AttackPower {
         }
     }
 
+    pub fn add(&mut self, other: &AttackPower) {
+        self.slash += other.slash;
+        self.strike += other.strike;
+        self.thrust += other.thrust;
+        self.impact += other.impact;
+        self.magic += other.magic;
+        self.fire += other.fire;
+        self.lightning += other.lightning;
+        self.chaos += other.chaos;
+    }
+
     // 1つの属性に加算
     pub fn add_attribute(&mut self, attribute: &Attribute, value: u32) {
         match attribute {
