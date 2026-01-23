@@ -298,7 +298,7 @@ pub fn execute_conduct(
 
                         if after_break == 0 {
                             // ブレイク状態にする
-                            let new_status_conditions = support_status_effect(
+                            support_status_effect(
                                 &vec![StatusCondition {
                                     potency: StatusConditionPotency::Break(StatusConditionBreak {}),
                                     duration: StatusConditionDuration::Permanent,
@@ -374,16 +374,6 @@ pub fn execute_conduct(
             defenders: target_incidents,
         }),
     }
-    // let defender_incident = conduct_effect(battle, &conduct, &attacker_id, &target_id);
-    // BattleIncident::Conduct(BattleIncidentConduct {
-    //     attacker_id,
-    //     defender_id: target_id,
-    //     conduct,
-    //     outcome: BattleIncidentConductOutcome::Success(BattleIncidentConductOutcomeSuccess {
-    //         attacker: attacker_incident,
-    //         defenders: vec![defender_incident],
-    //     }),
-    // })
 }
 
 // 素手の攻撃性能取得
