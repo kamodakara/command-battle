@@ -30,7 +30,10 @@ impl Battle {
         decide_order(self, request)
     }
 
-    pub fn execute_conduct(&mut self, request: BattleExecuteConductRequest) -> BattleIncident {
+    pub fn execute_conduct(
+        &mut self,
+        request: BattleExecuteConductRequest,
+    ) -> BattleIncidentConduct {
         execute_conduct(self, request)
     }
 
@@ -38,18 +41,18 @@ impl Battle {
         decide_enemy_conduct(self, request)
     }
 
-    pub fn recover_break(&mut self, request: RecoverBreakRequest) -> BattleIncidentAutoTrigger {
+    pub fn recover_break(&mut self, request: RecoverBreakRequest) -> BattleIncidentCharacter {
         recover_break(self, request)
     }
 
-    pub fn recover_stamina(&mut self, request: RecoverStaminaRequest) -> BattleIncidentAutoTrigger {
+    pub fn recover_stamina(&mut self, request: RecoverStaminaRequest) -> BattleIncidentCharacter {
         recover_stamina(self, request)
     }
 
     pub fn update_status_condition_for_turn(
         &mut self,
         request: UpdateStatusConditionRequest,
-    ) -> BattleIncidentAutoTrigger {
+    ) -> BattleIncidentCharacter {
         update_status_condition_for_turn(self, request)
     }
 }

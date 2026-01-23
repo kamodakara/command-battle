@@ -1,5 +1,3 @@
-use std::panic;
-
 use super::*;
 
 impl BattleCharacter {

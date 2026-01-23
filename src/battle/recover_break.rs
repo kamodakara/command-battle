@@ -5,10 +5,7 @@ pub struct RecoverBreakRequest {
 }
 
 // ブレイク回復処理
-pub fn recover_break(
-    battle: &mut Battle,
-    request: RecoverBreakRequest,
-) -> BattleIncidentAutoTrigger {
+pub fn recover_break(battle: &mut Battle, request: RecoverBreakRequest) -> BattleIncidentCharacter {
     if let Some(_player) = battle
         .players
         .iter_mut()
@@ -16,10 +13,9 @@ pub fn recover_break(
     {
         // プレイヤーキャラクターの場合は何もしない
 
-        return BattleIncidentAutoTrigger {
+        return BattleIncidentCharacter {
             character_id: request.character_id,
-            stats_changes: vec![],
-            status_conditions: vec![],
+            incidents: vec![],
         };
     } else if let Some(enemy) = battle
         .enemies
@@ -38,8 +34,8 @@ pub fn recover_break(
             }
         }
 
-        let mut stats_change_incidents = vec![];
-        let mut status_condition_incidents = vec![];
+        let mut incident =
+            BattleCharacterIncident::new(BattleCharacterIncidentReason::TurnEndRecovery);
         if is_break {
             // ブレイク中
 
@@ -52,13 +48,12 @@ pub fn recover_break(
                 let battle_status_condition =
                     enemy.status_conditions.remove(break_status_condition_index);
 
-                // ブレイク回復インシデント
-                status_condition_incidents.push(BattleIncidentStatusCondition {
-                    status_condition: battle_status_condition,
-                    status_condition_handling: BattleIncidentStatusConditionHandling::Removed(
-                        BattleIncidentStatusConditionRemoved {},
-                    ),
-                });
+                // ブレイク状態回復インシデント
+                incident.add_concrete(BattleCharacterIncidentConcrete::StatusConditionRemoved(
+                    BattleIncidentStatusConditionRemoved {
+                        status_condition: battle_status_condition,
+                    },
+                ));
             } else {
                 // ブレイク中ターン経過
                 let (_before_breaking_turns, _after_breaking_turns) =
@@ -71,12 +66,10 @@ pub fn recover_break(
             if enemy.break_resistance.break_not_damaged_turns >= 2 {
                 let break_recovery = enemy.break_resistance.break_recovery;
                 let (brefore_break, after_break) = enemy.break_resistance.recover(break_recovery);
-                stats_change_incidents.push(BattleIncidentStats::RecoverBreak(
-                    BattleIncidentRecoverBreak {
-                        recover: break_recovery,
-                        before: brefore_break,
-                        after: after_break,
-                    },
+
+                // ブレイク値回復インシデント
+                incident.add_concrete(BattleCharacterIncidentConcrete::RecoverBreak(
+                    BattleIncidentRecoverBreak::new(break_recovery, brefore_break, after_break),
                 ));
             }
 
@@ -84,10 +77,9 @@ pub fn recover_break(
             enemy.break_resistance.break_not_damaged_turns += 1;
         }
 
-        return BattleIncidentAutoTrigger {
+        return BattleIncidentCharacter {
             character_id: request.character_id,
-            stats_changes: stats_change_incidents,
-            status_conditions: status_condition_incidents,
+            incidents: vec![incident],
         };
     }
 

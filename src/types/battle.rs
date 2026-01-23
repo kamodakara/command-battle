@@ -56,7 +56,15 @@ pub struct BattleWeaponId(u32);
 #[derive(Clone)]
 pub struct BattleConduct {
     pub actor_character_id: u32,
-    pub target_character_id: u32,
+    pub target: BattleConductTargetType,
     pub art: Arc<Art>,                            // 使用アーツ
     pub battle_weapon_id: Option<BattleWeaponId>, // 使用武器ID
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum BattleConductTargetType {
+    PlayerSingle(BattleCharacterId), // プレイヤー側単体
+    EnemySingle(BattleCharacterId),  // 敵側単体
+    PlayerAll,                       // プレイヤー側全体
+    EnemyAll,                        // 敵側全体
 }

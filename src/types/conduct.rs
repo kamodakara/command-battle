@@ -61,11 +61,10 @@ pub struct ArtRank {
 }
 
 // 技能対象
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum ArtTarget {
-    Single,     // 単体
-    All,        // 全体
-    SelfTarget, // 自身
+    Single, // 単体
+    All,    // 全体
 }
 
 // 技能効果

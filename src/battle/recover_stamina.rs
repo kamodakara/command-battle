@@ -8,7 +8,7 @@ pub struct RecoverStaminaRequest {
 pub fn recover_stamina(
     battle: &mut Battle,
     request: RecoverStaminaRequest,
-) -> BattleIncidentAutoTrigger {
+) -> BattleIncidentCharacter {
     if let Some(player) = battle
         .players
         .iter_mut()
@@ -17,16 +17,15 @@ pub fn recover_stamina(
         // スタミナ回復
         let stamina_recovery = player.stamina.stamina_recovery;
         let (before_stamina, after_stamina) = player.stamina.recover(stamina_recovery);
-        return BattleIncidentAutoTrigger {
+
+        let mut incident =
+            BattleCharacterIncident::new(BattleCharacterIncidentReason::TurnEndRecovery);
+        incident.add_concrete(BattleCharacterIncidentConcrete::RecoverStamina(
+            BattleIncidentRecoverStamina::new(stamina_recovery, before_stamina, after_stamina),
+        ));
+        return BattleIncidentCharacter {
             character_id: request.character_id,
-            stats_changes: vec![BattleIncidentStats::RecoverStamina(
-                BattleIncidentRecoverStamina {
-                    recover: stamina_recovery,
-                    before: before_stamina,
-                    after: after_stamina,
-                },
-            )],
-            status_conditions: vec![],
+            incidents: vec![incident],
         };
     } else if let Some(_enemy) = battle
         .enemies
@@ -35,10 +34,9 @@ pub fn recover_stamina(
     {
         // 敵キャラクターの場合は何もしない
 
-        return BattleIncidentAutoTrigger {
+        return BattleIncidentCharacter {
             character_id: request.character_id,
-            stats_changes: vec![],
-            status_conditions: vec![],
+            incidents: vec![],
         };
     }
 

@@ -16,7 +16,7 @@ pub fn decide_enemy_conduct(battle: &Battle, request: DecideEnemyConductRequest)
     let target = battle.players.first().unwrap();
     BattleConduct {
         actor_character_id: request.enemy_character_id,
-        target_character_id: target.character_id,
+        target: BattleConductTargetType::PlayerSingle(target.character_id),
         art: Arc::new(Art {
             name: "敵の攻撃".to_string(),
             sp_cost: 0,

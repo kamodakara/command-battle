@@ -1330,31 +1330,31 @@ fn player_input_system(
                 let player_conduct = match cmd {
                     CommandKind::Attack => BattleConduct {
                         actor_character_id: player_id,
-                        target_character_id: enemy_id,
+                        target: BattleConductTargetType::EnemySingle(enemy_id),
                         art: Arc::clone(&player_conducts.attack),
                         battle_weapon_id: None,
                     },
                     CommandKind::Skill => BattleConduct {
                         actor_character_id: player_id,
-                        target_character_id: enemy_id,
+                        target: BattleConductTargetType::EnemySingle(enemy_id),
                         art: Arc::clone(&player_conducts.skill),
                         battle_weapon_id: None,
                     },
                     CommandKind::Heal => BattleConduct {
                         actor_character_id: player_id,
-                        target_character_id: player_id,
+                        target: BattleConductTargetType::PlayerSingle(player_id),
                         art: Arc::clone(&player_conducts.heal),
                         battle_weapon_id: None,
                     },
                     CommandKind::Defend => BattleConduct {
                         actor_character_id: player_id,
-                        target_character_id: player_id,
+                        target: BattleConductTargetType::PlayerSingle(player_id),
                         art: Arc::clone(&player_conducts.defend),
                         battle_weapon_id: None,
                     },
                     CommandKind::Wait => BattleConduct {
                         actor_character_id: player_id,
-                        target_character_id: player_id,
+                        target: BattleConductTargetType::PlayerSingle(player_id),
                         art: Arc::clone(&player_conducts.wait),
                         battle_weapon_id: None,
                     },
@@ -1382,19 +1382,21 @@ fn player_input_system(
                         conduct: conduct_to_execute,
                     });
 
-                    match incident {
-                        BattleIncident::Conduct(c) => match c.outcome {
-                            BattleIncidentConductOutcome::Failure(_) => {
-                                log.0.push(format!("{}は不発", c.conduct.art.name));
-                            }
-                            BattleIncidentConductOutcome::Success(s) => {
-                                for change in s.attacker.stats_changes.iter() {
-                                    match change {
-                                        BattleIncidentStats::DamageSp(d) => log.0.push(format!(
-                                            "SP -{} ({} → {})",
-                                            d.damage, d.before, d.after
-                                        )),
-                                        BattleIncidentStats::DamageStamina(d) => {
+                    match incident.outcome {
+                        BattleIncidentConductOutcome::Failure(failure) => {
+                            log.0.push(format!("{}は不発", incident.conduct.art.name));
+                        }
+                        BattleIncidentConductOutcome::Success(s) => {
+                            for character_incident in s.attacker.incidents.iter() {
+                                for incident_concrete in character_incident.concretes.iter() {
+                                    match incident_concrete {
+                                        BattleCharacterIncidentConcrete::DamageSp(d) => {
+                                            log.0.push(format!(
+                                                "SP -{} ({} → {})",
+                                                d.damage, d.before, d.after
+                                            ))
+                                        }
+                                        BattleCharacterIncidentConcrete::DamageStamina(d) => {
                                             log.0.push(format!(
                                                 "Stamina -{} ({} → {})",
                                                 d.damage, d.before, d.after
@@ -1403,16 +1405,25 @@ fn player_input_system(
                                         _ => {}
                                     }
                                 }
-                                for def in s.defenders.iter() {
-                                    for change in def.stats_changes.iter() {
-                                        match change {
-                                            BattleIncidentStats::DamageHp(d) => {
-                                                if c.attacker_id == player_id {
+                            }
+                            for def in s.defenders.iter() {
+                                if def.is_evaded {
+                                    log.0.push("回避した".to_string());
+                                }
+                                if def.is_defended {
+                                    log.0.push("防御した".to_string());
+                                }
+
+                                for character_incident in def.character.incidents.iter() {
+                                    for incident_concrete in character_incident.concretes.iter() {
+                                        match incident_concrete {
+                                            BattleCharacterIncidentConcrete::DamageHp(d) => {
+                                                if def.character.character_id == player_id {
                                                     player_dealt_damage_hp = d.damage;
                                                 }
                                                 log.0.push(format!(
                                                     "{} に{}ダメージ (HP {} → {})",
-                                                    if def.character_id == enemy_id {
+                                                    if def.character.character_id == enemy_id {
                                                         "敵"
                                                     } else {
                                                         "プレイヤー"
@@ -1422,10 +1433,10 @@ fn player_input_system(
                                                     d.after
                                                 ));
                                             }
-                                            BattleIncidentStats::RecoverHp(r) => {
+                                            BattleCharacterIncidentConcrete::RecoverHp(r) => {
                                                 log.0.push(format!(
                                                     "{} のHPを{}回復 ({} → {})",
-                                                    if def.character_id == player_id {
+                                                    if def.character.character_id == player_id {
                                                         "プレイヤー"
                                                     } else {
                                                         "敵"
@@ -1435,13 +1446,13 @@ fn player_input_system(
                                                     r.after
                                                 ))
                                             }
-                                            BattleIncidentStats::DamageBreak(d) => log
+                                            BattleCharacterIncidentConcrete::DamageBreak(d) => log
                                                 .0
                                                 .push(format!("敵にブレイクダメージ {}", d.damage)),
-                                            BattleIncidentStats::RecoverBreak(r) => log
+                                            BattleCharacterIncidentConcrete::RecoverBreak(r) => log
                                                 .0
                                                 .push(format!("敵のブレイク回復 {}", r.recover)),
-                                            BattleIncidentStats::RecoverStamina(r) => {
+                                            BattleCharacterIncidentConcrete::RecoverStamina(r) => {
                                                 log.0.push(format!(
                                                     "Stamina +{} ({} → {})",
                                                     r.recover, r.before, r.after
@@ -1450,16 +1461,9 @@ fn player_input_system(
                                             _ => {}
                                         }
                                     }
-                                    if def.is_evaded {
-                                        log.0.push("回避した".to_string());
-                                    }
-                                    if def.is_defended {
-                                        log.0.push("防御した".to_string());
-                                    }
                                 }
                             }
-                        },
-                        BattleIncident::AutoTrigger(_) => {}
+                        }
                     }
                 }
             };

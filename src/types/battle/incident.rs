@@ -1,19 +1,18 @@
 use super::*;
 
 // 戦闘出来事
-// TODO: これいらないかも
-pub enum BattleIncident {
-    Conduct(BattleIncidentConduct),         // 行動
-    AutoTrigger(BattleIncidentAutoTrigger), // 自動発動
-}
+
+// 行動起点での出来事
 pub struct BattleIncidentConduct {
-    pub attacker_id: BattleCharacterId,
-    pub defender_id: BattleCharacterId,
+    pub actor_character_id: BattleCharacterId,
+    pub target: BattleConductTargetType,
     pub conduct: BattleConduct,
+
     // 成否
     pub outcome: BattleIncidentConductOutcome,
     // TODO: その他必要な情報
 }
+
 // 攻撃の成否
 pub enum BattleIncidentConductOutcome {
     Success(BattleIncidentConductOutcomeSuccess), // 発動
@@ -22,34 +21,51 @@ pub enum BattleIncidentConductOutcome {
 // 行動成功
 pub struct BattleIncidentConductOutcomeSuccess {
     // 行動者
-    pub attacker: BattleIncidentConductOutcomeSuccessAttacker,
+    pub attacker: BattleIncidentCharacter,
     // 被行動者
     pub defenders: Vec<BattleIncidentConductOutcomeSuccessDefender>,
 }
 
 pub struct BattleIncidentConductOutcomeSuccessAttacker {
     pub character_id: BattleCharacterId,
-    pub stats_changes: Vec<BattleIncidentStats>,
+    pub character_incidents: Vec<BattleCharacterIncident>,
 }
 pub struct BattleIncidentConductOutcomeSuccessDefender {
-    pub character_id: BattleCharacterId,
-    pub stats_changes: Vec<BattleIncidentStats>,
-    pub status_conditions: Vec<BattleIncidentStatusCondition>, // 状態変化
-    pub is_evaded: bool,                                       // 回避したか
-    // TODO: 回避した理由
+    pub character: BattleIncidentCharacter,
+    pub is_evaded: bool,   // 回避したか TODO: 回避した理由
     pub is_defended: bool, // 防御したか
-                           // pub is_dead: bool,     // 戦闘不能になったか
+    pub is_dead: bool,     // 戦闘不能になったか
 }
 
-pub enum BattleIncidentStats {
-    DamageHp(BattleIncidentDamageHp),
-    DamageSp(BattleIncidentDamageSp),
-    DamageStamina(BattleIncidentDamageStamina),
-    DamageBreak(BattleIncidentDamageBreak),
-    RecoverHp(BattleIncidentRecoverHp),
-    RecoverSp(BattleIncidentRecoverSp),
-    RecoverStamina(BattleIncidentRecoverStamina),
-    RecoverBreak(BattleIncidentRecoverBreak),
+// 戦闘者
+pub struct BattleIncidentCharacter {
+    pub character_id: BattleCharacterId,
+    pub incidents: Vec<BattleCharacterIncident>,
+}
+
+// 戦闘者の出来事
+pub struct BattleCharacterIncident {
+    pub reason: BattleCharacterIncidentReason,
+    pub concretes: Vec<BattleCharacterIncidentConcrete>,
+}
+pub enum BattleCharacterIncidentReason {
+    ConductConsumption, // 行動時の消費(SP、スタミナなど)
+    ConductEffect,      // 行動の効果を受けた(攻撃を受けた、回復を受けたなど)
+    TurnEndRecovery,    // ターン終了時の回復
+}
+
+// 戦闘者発生した具体的な出来事
+pub enum BattleCharacterIncidentConcrete {
+    DamageHp(BattleIncidentDamageHp),             // HPダメージ
+    DamageSp(BattleIncidentDamageSp),             // SPダメージ
+    DamageStamina(BattleIncidentDamageStamina),   // スタミナダメージ
+    DamageBreak(BattleIncidentDamageBreak),       // ブレイクダメージ
+    RecoverHp(BattleIncidentRecoverHp),           // HP回復
+    RecoverSp(BattleIncidentRecoverSp),           // SP回復
+    RecoverStamina(BattleIncidentRecoverStamina), // スタミナ回復
+    RecoverBreak(BattleIncidentRecoverBreak),     // ブレイク回復
+    StatusConditionApplied(BattleIncidentStatusConditionApplied), // 状態変化付与
+    StatusConditionRemoved(BattleIncidentStatusConditionRemoved), // 状態変化解除
 }
 
 // HPダメージ
@@ -102,38 +118,44 @@ pub struct BattleIncidentRecoverBreak {
     pub after: u32,  // 回復後ブレイク
 }
 
-// 状態変化
-pub struct BattleIncidentStatusCondition {
-    // 状態変化内容
-    pub status_condition: BattleStatusCondition,
-    // 発生内容
-    pub status_condition_handling: BattleIncidentStatusConditionHandling,
-}
-pub enum BattleIncidentStatusConditionHandling {
-    Applied(BattleIncidentStatusConditionApplied), // 付与
-    Removed(BattleIncidentStatusConditionRemoved), // 解除
-}
 pub struct BattleIncidentStatusConditionApplied {
-    // TODO: 付与理由
+    pub status_condition: BattleStatusCondition,
 }
 pub struct BattleIncidentStatusConditionRemoved {
-    // TODO: 解除理由
+    pub status_condition: BattleStatusCondition,
 }
 
 // 行動失敗
 pub struct BattleIncidentConductOutcomeFailure {
     pub reason: BattleIncidentConductOutcomeFailureReason,
 }
-pub struct BattleIncidentConductOutcomeFailureReason {
-    // TODO: 詳細な理由分解
-    pub insufficient_stamina: bool, // スタミナ不足
-    pub insufficient_ability: bool, // 能力不足
-    pub insufficient_sp: bool,      // SP不足
-    pub is_break: bool,             // ブレイク中
+pub enum BattleIncidentConductOutcomeFailureReason {
+    InsufficientStamina, // スタミナ不足
+    InsufficientAbility, // 能力不足
+    InsufficientSp,      // SP不足
+    IsBreak,             // ブレイク状態
 }
 
-pub struct BattleIncidentAutoTrigger {
-    pub character_id: BattleCharacterId,
-    pub stats_changes: Vec<BattleIncidentStats>,
-    pub status_conditions: Vec<BattleIncidentStatusCondition>, // 状態変化
-}
+// // ----------
+// pub enum BattleIncidentStats {
+//     DamageHp(BattleIncidentDamageHp),
+//     DamageSp(BattleIncidentDamageSp),
+//     DamageStamina(BattleIncidentDamageStamina),
+//     DamageBreak(BattleIncidentDamageBreak),
+//     RecoverHp(BattleIncidentRecoverHp),
+//     RecoverSp(BattleIncidentRecoverSp),
+//     RecoverStamina(BattleIncidentRecoverStamina),
+//     RecoverBreak(BattleIncidentRecoverBreak),
+// }
+
+// // 状態変化
+// pub struct BattleIncidentStatusCondition {
+//     // 状態変化内容
+//     pub status_condition: BattleStatusCondition,
+//     // 発生内容
+//     pub status_condition_handling: BattleIncidentStatusConditionHandling,
+// }
+// pub enum BattleIncidentStatusConditionHandling {
+//     Applied(BattleIncidentStatusConditionApplied), // 付与
+//     Removed(BattleIncidentStatusConditionRemoved), // 解除
+// }

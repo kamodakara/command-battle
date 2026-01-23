@@ -1,252 +1,253 @@
-use super::*;
+// use super::*;
 
-pub fn conduct_effect(
-    battle: &mut Battle,
-    conduct: &BattleConduct,
-    attcker_character_id: &BattleCharacterId,
-    target_charackter_id: &BattleCharacterId,
-) -> BattleIncidentConductOutcomeSuccessDefender {
-    let attacker = if let Some(c) = battle.character(&conduct.actor_character_id) {
-        c
-    } else {
-        // TODO: エラー処理
-        panic!("Attacker character not found");
-    };
+// pub fn conduct_effect(
+//     battle: &mut Battle,
+//     conduct: &BattleConduct,
+//     attcker_character_id: &BattleCharacterId,
+//     target_charackter_id: &BattleCharacterId,
+// ) -> BattleIncidentConductOutcomeSuccessDefender {
+//     let attacker = if let Some(c) = battle.character(&conduct.actor_character_id) {
+//         c
+//     } else {
+//         // TODO: エラー処理
+//         panic!("Attacker character not found");
+//     };
 
-    // 能力補正済みの武器性能取得
-    let attacker_weapon_performance = if let Some(battle_weapon_id) = &conduct.battle_weapon_id {
-        if let Some(performance) = attacker.weapon_performance(&battle_weapon_id) {
-            performance
-        } else {
-            // TODO: エラー処理
-            panic!("Attacker weapon performance not found");
-        }
-    } else {
-        // 武器なし
-        // TODO: 素手攻撃の性能を返すようにする
-        panic!("not implemented");
-        // BattleWeaponPerformance::default()
-    };
+//     // 能力補正済みの武器性能取得
+//     let attacker_weapon_performance = if let Some(battle_weapon_id) = &conduct.battle_weapon_id {
+//         if let Some(performance) = attacker.weapon_performance(&battle_weapon_id) {
+//             performance
+//         } else {
+//             // TODO: エラー処理
+//             panic!("Attacker weapon performance not found");
+//         }
+//     } else {
+//         // 武器なし
+//         // TODO: 素手攻撃の性能を返すようにする
+//         panic!("not implemented");
+//         // BattleWeaponPerformance::default()
+//     };
 
-    let target = if let Some(c) = battle.character_mut(target_charackter_id) {
-        c
-    } else {
-        // TODO: エラー処理
-        panic!("Target character not found");
-    };
+//     let target = if let Some(c) = battle.character_mut(target_charackter_id) {
+//         c
+//     } else {
+//         // TODO: エラー処理
+//         panic!("Target character not found");
+//     };
 
-    // 回避判定
-    for se in target.status_conditions.iter() {
-        match &se.potency {
-            StatusConditionPotency::Evasion => {
-                // 回避効果処理
-                return BattleIncidentConductOutcomeSuccessDefender {
-                    character_id: target.character_id,
-                    stats_changes: Vec::new(),
-                    status_conditions: Vec::new(),
-                    is_defended: false,
-                    is_evaded: true,
-                };
-            }
-            StatusConditionPotency::Airborne => {
-                // 空中効果処理
-                // 遠距離攻撃でない時は回避
-                if !conduct.art.perks.contains(&ArtPerk::Ranged) {
-                    return BattleIncidentConductOutcomeSuccessDefender {
-                        character_id: target.character_id,
-                        stats_changes: Vec::new(),
-                        status_conditions: Vec::new(),
-                        is_defended: false,
-                        is_evaded: true,
-                    };
-                }
-            }
-            StatusConditionPotency::Floating => {
-                // 浮遊効果処理
-                // 足元攻撃は回避
-                if conduct.art.perks.contains(&ArtPerk::AtFeet) {
-                    return BattleIncidentConductOutcomeSuccessDefender {
-                        character_id: target.character_id,
-                        stats_changes: Vec::new(),
-                        status_conditions: Vec::new(),
-                        is_defended: false,
-                        is_evaded: true,
-                    };
-                }
-            }
-            StatusConditionPotency::Ranged => {
-                // 遠距離効果処理
-                // 近距離の攻撃を回避
-                if !conduct.art.perks.contains(&ArtPerk::Ranged) {
-                    return BattleIncidentConductOutcomeSuccessDefender {
-                        character_id: target.character_id,
-                        stats_changes: Vec::new(),
-                        status_conditions: Vec::new(),
-                        is_defended: false,
-                        is_evaded: true,
-                    };
-                }
-            }
-            _ => {
-                // その他
-            }
-        }
-    }
+//     // 回避判定
+//     for se in target.status_conditions.iter() {
+//         match &se.potency {
+//             StatusConditionPotency::Evasion => {
+//                 // 回避効果処理
+//                 return BattleIncidentConductOutcomeSuccessDefender {
+//                     character_id: target.character_id,
+//                     stats_changes: Vec::new(),
+//                     status_conditions: Vec::new(),
+//                     is_defended: false,
+//                     is_evaded: true,
+//                 };
+//             }
+//             StatusConditionPotency::Airborne => {
+//                 // 空中効果処理
+//                 // 遠距離攻撃でない時は回避
+//                 if !conduct.art.perks.contains(&ArtPerk::Ranged) {
+//                     return BattleIncidentConductOutcomeSuccessDefender {
+//                         character_id: target.character_id,
+//                         stats_changes: Vec::new(),
+//                         status_conditions: Vec::new(),
+//                         is_defended: false,
+//                         is_evaded: true,
+//                     };
+//                 }
+//             }
+//             StatusConditionPotency::Floating => {
+//                 // 浮遊効果処理
+//                 // 足元攻撃は回避
+//                 if conduct.art.perks.contains(&ArtPerk::AtFeet) {
+//                     return BattleIncidentConductOutcomeSuccessDefender {
+//                         character_id: target.character_id,
+//                         stats_changes: Vec::new(),
+//                         status_conditions: Vec::new(),
+//                         is_defended: false,
+//                         is_evaded: true,
+//                     };
+//                 }
+//             }
+//             StatusConditionPotency::Ranged => {
+//                 // 遠距離効果処理
+//                 // 近距離の攻撃を回避
+//                 if !conduct.art.perks.contains(&ArtPerk::Ranged) {
+//                     return BattleIncidentConductOutcomeSuccessDefender {
+//                         character_id: target.character_id,
+//                         stats_changes: Vec::new(),
+//                         status_conditions: Vec::new(),
+//                         is_defended: false,
+//                         is_evaded: true,
+//                     };
+//                 }
+//             }
+//             _ => {
+//                 // その他
+//             }
+//         }
+//     }
 
-    let sorcery_power = attacker_weapon_performance.final_sorcery_power();
-    // 効果ランク判定
-    // 術力のみの想定なので術力でランク判定
-    let rank = if let Some(rank3) = &conduct.art.rank3
-        && sorcery_power >= rank3.threshold
-    {
-        // ランク3適用
-        rank3
-    } else if let Some(rank2) = &conduct.art.rank2
-        && sorcery_power >= rank2.threshold
-    {
-        // ランク2適用
-        rank2
-    } else {
-        // ランク1適用
-        &conduct.art.rank1
-    };
+//     let sorcery_power = attacker_weapon_performance.final_sorcery_power();
+//     // 効果ランク判定
+//     // 術力のみの想定なので術力でランク判定
+//     let rank = if let Some(rank3) = &conduct.art.rank3
+//         && sorcery_power >= rank3.threshold
+//     {
+//         // ランク3適用
+//         rank3
+//     } else if let Some(rank2) = &conduct.art.rank2
+//         && sorcery_power >= rank2.threshold
+//     {
+//         // ランク2適用
+//         rank2
+//     } else {
+//         // ランク1適用
+//         &conduct.art.rank1
+//     };
 
-    match &rank.potency {
-        ArtPotency::Attack(art_attack) => {
-            let mut stats_change_incidents = Vec::new();
-            let mut status_condition_incidents = Vec::new();
+//     match &rank.potency {
+//         ArtPotency::Attack(art_attack) => {
+//             let mut stats_change_incidents = Vec::new();
+//             let mut status_condition_incidents = Vec::new();
 
-            // 武器性能取得
-            let weapon_attack_power = &attacker_weapon_performance.final_attack_power();
-            let weapon_break_power = attacker_weapon_performance.final_break_power();
+//             // 武器性能取得
+//             let weapon_attack_power = &attacker_weapon_performance.final_attack_power();
+//             let weapon_break_power = attacker_weapon_performance.final_break_power();
 
-            // アーツ攻撃力算出
-            let mut attack_power = art_attack.final_attack_power(weapon_attack_power);
+//             // アーツ攻撃力算出
+//             let mut attack_power = art_attack.final_attack_power(weapon_attack_power);
 
-            // 術力補正
-            if conduct.art.art_type == ArtType::Sorcery {
-                // 魔法タイプの場合、術力補正をかける
-                let sorcery_attack_power_rate = 1.0 + (sorcery_power as f32 / 100.0);
-                attack_power.multiply(sorcery_attack_power_rate);
-            }
+//             // 術力補正
+//             if conduct.art.art_type == ArtType::Sorcery {
+//                 // 魔法タイプの場合、術力補正をかける
+//                 let sorcery_attack_power_rate = 1.0 + (sorcery_power as f32 / 100.0);
+//                 attack_power.multiply(sorcery_attack_power_rate);
+//             }
 
-            // 防御時の攻撃力カット処理
-            let mut is_defended = false;
-            for se in target.status_conditions.iter() {
-                match &se.potency {
-                    StatusConditionPotency::Resistance(resistance) => {
-                        // 防御時の攻撃力カット処理
-                        attack_power = resistance.cut_rate.apply_guard_cut(&attack_power);
-                        is_defended = true;
-                    }
-                    _ => {
-                        // その他
-                    }
-                }
-            }
+//             // 防御時の攻撃力カット処理
+//             let mut is_defended = false;
+//             for se in target.status_conditions.iter() {
+//                 match &se.potency {
+//                     StatusConditionPotency::Resistance(resistance) => {
+//                         // 防御時の攻撃力カット処理
+//                         attack_power = resistance.cut_rate.apply_guard_cut(&attack_power);
+//                         is_defended = true;
+//                     }
+//                     _ => {
+//                         // その他
+//                     }
+//                 }
+//             }
 
-            // ブレイク力算出
-            let break_power = art_attack.final_break_power(weapon_break_power);
+//             // ブレイク力算出
+//             let break_power = art_attack.final_break_power(weapon_break_power);
 
-            // ダメージ
-            let damage = calc_damage(&attack_power, &target.defense_power());
-            let (before_hp_damage, after_hp_damage) = target.hp.damage(damage);
-            // HPダメージのインシデント
-            stats_change_incidents.push(BattleIncidentStats::DamageHp(BattleIncidentDamageHp {
-                damage,
-                before: before_hp_damage,
-                after: after_hp_damage,
-            }));
+//             // ダメージ
+//             let damage = calc_damage(&attack_power, &target.defense_power());
+//             let (before_hp_damage, after_hp_damage) = target.hp.damage(damage);
+//             // HPダメージのインシデント
+//             stats_change_incidents.push(BattleIncidentStats::DamageHp(BattleIncidentDamageHp {
+//                 damage,
+//                 before: before_hp_damage,
+//                 after: after_hp_damage,
+//             }));
 
-            // 防御時のスタミナダメージ
-            if is_defended {
-                let stamina_damage = break_power / 4; // TODO: 固定値ではなくガード強度
-                let (before_stamina, after_stamina) = target.stamina.damage(stamina_damage);
+//             // 防御時のスタミナダメージ
+//             if is_defended {
+//                 let stamina_damage = break_power / 4; // TODO: 固定値ではなくガード強度
+//                 let (before_stamina, after_stamina) = target.stamina.damage(stamina_damage);
 
-                // スタミナダメージのインシデント
-                stats_change_incidents.push(BattleIncidentStats::DamageStamina(
-                    BattleIncidentDamageStamina {
-                        damage: stamina_damage,
-                        before: before_stamina,
-                        after: after_stamina,
-                    },
-                ));
-            }
+//                 // スタミナダメージのインシデント
+//                 stats_change_incidents.push(BattleIncidentStats::DamageStamina(
+//                     BattleIncidentDamageStamina {
+//                         damage: stamina_damage,
+//                         before: before_stamina,
+//                         after: after_stamina,
+//                     },
+//                 ));
+//             }
 
-            // ブレイクダメージ処理
-            if target.character_type == BattleCharacterType::Enemy {
-                // ブレイク中でない時
-                let mut is_break = false;
-                for se in target.status_conditions.iter() {
-                    if let StatusConditionPotency::Break(_) = &se.potency {
-                        is_break = true
-                    }
-                }
-                if !is_break {
-                    // 敵のブレイクダメージ処理
-                    let (before_break, after_break) = target.break_resistance.damage(break_power);
+//             // ブレイクダメージ処理
+//             if target.character_type == BattleCharacterType::Enemy {
+//                 // ブレイク中でない時
+//                 let mut is_break = false;
+//                 for se in target.status_conditions.iter() {
+//                     if let StatusConditionPotency::Break(_) = &se.potency {
+//                         is_break = true
+//                     }
+//                 }
+//                 if !is_break {
+//                     // 敵のブレイクダメージ処理
+//                     let (before_break, after_break) = target.break_resistance.damage(break_power);
 
-                    if after_break == 0 {
-                        // ブレイク状態にする
-                        let new_status_conditions = support_status_effect(
-                            &vec![StatusCondition {
-                                potency: StatusConditionPotency::Break(StatusConditionBreak {}),
-                                duration: StatusConditionDuration::Permanent,
-                            }],
-                            target,
-                        );
-                        status_condition_incidents.extend(new_status_conditions);
-                    }
+//                     if after_break == 0 {
+//                         // ブレイク状態にする
+//                         let new_status_conditions = support_status_effect(
+//                             &vec![StatusCondition {
+//                                 potency: StatusConditionPotency::Break(StatusConditionBreak {}),
+//                                 duration: StatusConditionDuration::Permanent,
+//                             }],
+//                             target,
+//                             &mut target_character_incident,
+//                         );
+//                         status_condition_incidents.extend(new_status_conditions);
+//                     }
 
-                    // ブレイクダメージインシデント追加
-                    stats_change_incidents.push(BattleIncidentStats::DamageBreak(
-                        BattleIncidentDamageBreak {
-                            damage: break_power,
-                            before: before_break,
-                            after: after_break,
-                        },
-                    ));
-                }
-            }
+//                     // ブレイクダメージインシデント追加
+//                     stats_change_incidents.push(BattleIncidentStats::DamageBreak(
+//                         BattleIncidentDamageBreak {
+//                             damage: break_power,
+//                             before: before_break,
+//                             after: after_break,
+//                         },
+//                     ));
+//                 }
+//             }
 
-            BattleIncidentConductOutcomeSuccessDefender {
-                character_id: target.character_id,
-                stats_changes: stats_change_incidents,
-                status_conditions: Vec::new(),
-                is_defended,
-                is_evaded: false,
-            }
-        }
-        ArtPotency::Support(support) => {
-            // 支援処理
-            match &support {
-                ArtPotencySupport::StatusCondition(status_condition) => {
-                    let new_incidents =
-                        support_status_effect(&status_condition.status_conditions, target);
+//             BattleIncidentConductOutcomeSuccessDefender {
+//                 character_id: target.character_id,
+//                 stats_changes: stats_change_incidents,
+//                 status_conditions: Vec::new(),
+//                 is_defended,
+//                 is_evaded: false,
+//             }
+//         }
+//         ArtPotency::Support(support) => {
+//             // 支援処理
+//             match &support {
+//                 ArtPotencySupport::StatusCondition(status_condition) => {
+//                     let new_incidents =
+//                         support_status_effect(&status_condition.status_conditions, target);
 
-                    BattleIncidentConductOutcomeSuccessDefender {
-                        character_id: target.character_id,
-                        stats_changes: Vec::new(),
-                        status_conditions: new_incidents,
-                        is_defended: false,
-                        is_evaded: false,
-                    }
-                }
-                ArtPotencySupport::Recover(recover) => {
-                    let stats_change_incidents = support_recover(recover, target);
+//                     BattleIncidentConductOutcomeSuccessDefender {
+//                         character_id: target.character_id,
+//                         stats_changes: Vec::new(),
+//                         status_conditions: new_incidents,
+//                         is_defended: false,
+//                         is_evaded: false,
+//                     }
+//                 }
+//                 ArtPotencySupport::Recover(recover) => {
+//                     let stats_change_incidents = support_recover(recover, target);
 
-                    BattleIncidentConductOutcomeSuccessDefender {
-                        character_id: target.character_id,
-                        stats_changes: stats_change_incidents,
-                        status_conditions: Vec::new(),
-                        is_defended: false,
-                        is_evaded: false,
-                    }
-                }
-            }
-        }
-    }
-}
+//                     BattleIncidentConductOutcomeSuccessDefender {
+//                         character_id: target.character_id,
+//                         stats_changes: stats_change_incidents,
+//                         status_conditions: Vec::new(),
+//                         is_defended: false,
+//                         is_evaded: false,
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }
 
 // #[cfg(test)]
 // mod tests {
