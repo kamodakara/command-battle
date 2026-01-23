@@ -37,7 +37,7 @@ pub fn decide_enemy_conduct(battle: &Battle, request: DecideEnemyConductRequest)
                 target: ArtTarget::Single,
                 potency: ArtPotency::Attack(ArtPotencyAttack {
                     attack_power: AttackPower {
-                        slash: 10,
+                        slash: 900,
                         strike: 0,
                         thrust: 0,
                         impact: 0,
