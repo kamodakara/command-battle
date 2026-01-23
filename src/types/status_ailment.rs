@@ -1,8 +1,17 @@
 use super::equipment::GuardCutRate;
 
 // 状態異常
-pub struct StatusAilment {
-    // TODO
+pub enum StatusAilment {
+    Poison, // 毒
+    Sleep,  // 眠気
+    Chill,  // 寒気
+
+    Bleed,     // 出血
+    Burn,      // 火傷
+    Paralysis, // 麻痺
+
+    Fear, // 恐怖
+    Rage, // 激昂
 }
 
 // =================== 状態変化 ================= //

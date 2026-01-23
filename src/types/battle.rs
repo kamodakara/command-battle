@@ -1,15 +1,46 @@
 mod character;
 mod incident;
+mod karma;
+
+use crate::types::StatusAilment;
 
 use super::character::AbilityType;
 use super::common::*;
 use super::conduct::Art;
 use super::equipment::{Equipment, Weapon};
+use super::karma::*;
 use super::status_ailment::StatusConditionPotency;
 use std::sync::Arc;
 
 pub use character::*;
 pub use incident::*;
+
+// 戦闘中の状態異常
+pub struct BattleStatusAilment {
+    pub poison: BattleStatusAilmentStatus,    // 毒
+    pub sleep: BattleStatusAilmentStatus,     // 眠気
+    pub chill: BattleStatusAilmentStatus,     // 寒気
+    pub bleed: BattleStatusAilmentStatus,     // 出血
+    pub burn: BattleStatusAilmentStatus,      // 火傷
+    pub paralysis: BattleStatusAilmentStatus, // 麻痺
+    pub fear: BattleStatusAilmentStatus,      // 恐怖
+    pub rage: BattleStatusAilmentStatus,      // 激昂
+}
+// 戦闘中の状態異常ステータス
+pub struct BattleStatusAilmentStatus {
+    // 蓄積量
+    pub accumulation: u32,
+    // 状態異常になってるか
+    pub is_ailment: bool,
+}
+impl BattleStatusAilmentStatus {
+    pub fn new() -> Self {
+        Self {
+            accumulation: 0,
+            is_ailment: false,
+        }
+    }
+}
 
 // 戦闘中の状態変化
 #[derive(Clone)]

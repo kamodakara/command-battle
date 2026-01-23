@@ -424,6 +424,16 @@ fn create_mock_battle() -> Battle {
             armor8: None,
         },
         arts: vec![],
+        base_status_ailment_resistance: StatusAilmentResistance {
+            poison: 0,
+            sleep: 0,
+            chill: 0,     // 寒気耐性
+            bleed: 0,     // 出血耐性
+            burn: 0,      // 火傷耐性
+            paralysis: 0, // 麻痺耐性
+            fear: 0,      // 恐怖耐性
+            rage: 0,      // 激昂耐性
+        },
     });
 
     // 敵原本（仮）
@@ -495,6 +505,16 @@ fn create_mock_battle() -> Battle {
             ],
             is_dead: false,
             status_conditions: vec![],
+            status_ailment: BattleStatusAilment {
+                poison: BattleStatusAilmentStatus::new(),
+                sleep: BattleStatusAilmentStatus::new(),
+                chill: BattleStatusAilmentStatus::new(),
+                bleed: BattleStatusAilmentStatus::new(),
+                burn: BattleStatusAilmentStatus::new(),
+                paralysis: BattleStatusAilmentStatus::new(),
+                fear: BattleStatusAilmentStatus::new(),
+                rage: BattleStatusAilmentStatus::new(),
+            },
         }],
         enemies: vec![BattleCharacter {
             character_id: 2,
@@ -530,6 +550,16 @@ fn create_mock_battle() -> Battle {
             ],
             is_dead: false,
             status_conditions: vec![],
+            status_ailment: BattleStatusAilment {
+                poison: BattleStatusAilmentStatus::new(),
+                sleep: BattleStatusAilmentStatus::new(),
+                chill: BattleStatusAilmentStatus::new(),
+                bleed: BattleStatusAilmentStatus::new(),
+                burn: BattleStatusAilmentStatus::new(),
+                paralysis: BattleStatusAilmentStatus::new(),
+                fear: BattleStatusAilmentStatus::new(),
+                rage: BattleStatusAilmentStatus::new(),
+            },
         }],
     }
 }

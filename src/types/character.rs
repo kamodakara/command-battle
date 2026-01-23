@@ -18,12 +18,14 @@ pub struct EnemyStats {
 }
 
 pub struct Player {
-    pub ability: Ability,                 // 能力
-    pub stats: PlayerStats,               // ステータス
-    pub base_defense_power: DefensePower, // 基礎防御力
-    pub equipment: Equipment,             // 装備
-    pub arts: Vec<Art>,                   // アーツ
+    pub ability: Ability,                                        // 能力
+    pub stats: PlayerStats,                                      // ステータス
+    pub base_defense_power: DefensePower,                        // 基礎防御力
+    pub equipment: Equipment,                                    // 装備
+    pub arts: Vec<Art>,                                          // アーツ
+    pub base_status_ailment_resistance: StatusAilmentResistance, // 基礎状態異常耐性
 }
+
 // プレイヤー能力
 #[derive(Clone)]
 pub struct Ability {
@@ -59,4 +61,14 @@ pub struct PlayerStats {
     pub equip_load: u32,       // 装備重量
 }
 
-// TODO: プレイヤー基礎状態異常耐性
+// 状態異常耐性
+pub struct StatusAilmentResistance {
+    pub poison: u32,    // 毒耐性
+    pub sleep: u32,     // 眠気耐性
+    pub chill: u32,     // 寒気耐性
+    pub bleed: u32,     // 出血耐性
+    pub burn: u32,      // 火傷耐性
+    pub paralysis: u32, // 麻痺耐性
+    pub fear: u32,      // 恐怖耐性
+    pub rage: u32,      // 激昂耐性
+}
