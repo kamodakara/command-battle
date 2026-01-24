@@ -135,27 +135,3 @@ pub enum BattleIncidentConductOutcomeFailureReason {
     InsufficientSp,      // SP不足
     IsBreak,             // ブレイク状態
 }
-
-// // ----------
-// pub enum BattleIncidentStats {
-//     DamageHp(BattleIncidentDamageHp),
-//     DamageSp(BattleIncidentDamageSp),
-//     DamageStamina(BattleIncidentDamageStamina),
-//     DamageBreak(BattleIncidentDamageBreak),
-//     RecoverHp(BattleIncidentRecoverHp),
-//     RecoverSp(BattleIncidentRecoverSp),
-//     RecoverStamina(BattleIncidentRecoverStamina),
-//     RecoverBreak(BattleIncidentRecoverBreak),
-// }
-
-// // 状態変化
-// pub struct BattleIncidentStatusCondition {
-//     // 状態変化内容
-//     pub status_condition: BattleStatusCondition,
-//     // 発生内容
-//     pub status_condition_handling: BattleIncidentStatusConditionHandling,
-// }
-// pub enum BattleIncidentStatusConditionHandling {
-//     Applied(BattleIncidentStatusConditionApplied), // 付与
-//     Removed(BattleIncidentStatusConditionRemoved), // 解除
-// }
