@@ -515,6 +515,11 @@ fn create_mock_battle() -> Battle {
                 fear: BattleStatusAilmentStatus::new(),
                 rage: BattleStatusAilmentStatus::new(),
             },
+            karma: Some(BattleKarma {
+                draw_pile: vec![],
+                discard_pile: vec![],
+                field_cards: vec![],
+            }),
         }],
         enemies: vec![BattleCharacter {
             character_id: 2,
@@ -560,6 +565,7 @@ fn create_mock_battle() -> Battle {
                 fear: BattleStatusAilmentStatus::new(),
                 rage: BattleStatusAilmentStatus::new(),
             },
+            karma: None,
         }],
     }
 }

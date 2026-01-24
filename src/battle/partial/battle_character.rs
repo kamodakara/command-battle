@@ -52,6 +52,15 @@ impl BattleCharacter {
 
         Some(weapon.weapon.performance(&ability))
     }
+
+    // 最大カルマ値を取得する
+    pub fn max_karma(&self) -> u32 {
+        let ability = self.current_ability();
+        (ability.vitality as f32
+            + ability.spirit as f32
+            + (ability.intelligence as f32 * 1.5)
+            + (ability.faith as f32 * 1.5)) as u32
+    }
 }
 
 impl BattleCharacterHP {

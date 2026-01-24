@@ -23,6 +23,8 @@ pub struct BattleCharacter {
     pub is_dead: bool,                                 // 死亡状態
     pub status_ailment: BattleStatusAilment,           // 戦闘中の状態異常
     pub status_conditions: Vec<BattleStatusCondition>, // 状態変化
+
+    pub karma: Option<BattleKarma>, // カルマ (プレイヤーのみ)
 }
 
 pub type BattleCharacterId = u32;

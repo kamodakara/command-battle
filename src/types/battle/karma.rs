@@ -1,6 +1,6 @@
 use super::*;
 
-struct BattleKarma {
+pub struct BattleKarma {
     // 山札
     pub draw_pile: Vec<KarmaCard>,
     // 捨て札
@@ -10,7 +10,7 @@ struct BattleKarma {
     pub field_cards: Vec<KarmaCard>,
 }
 
-struct BattleKarmaCard {
+pub struct BattleKarmaCard {
     pub card: KarmaCard,
     pub remaining_turns: u32,
 }

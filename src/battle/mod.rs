@@ -1,6 +1,8 @@
 mod decide_enemy_conduct;
 mod decide_order;
 mod execute_conduct;
+mod karma_draw_card;
+mod karma_for_turn_end;
 mod partial;
 mod recover_break;
 mod recover_stamina;

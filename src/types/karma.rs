@@ -6,7 +6,7 @@ pub struct KarmaDeck {
 }
 
 pub struct KarmaCard {
-    pub deck_cost: u32,
+    pub cost: u32,
     pub max_turn: u32,             // 場に出ている最大ターン数
     pub effects: Vec<KarmaEffect>, // 空の時は効果なし
 }
