@@ -3,7 +3,30 @@ use super::*;
 impl BattleCharacter {
     pub fn current_ability(&self) -> Ability {
         // TODO: ステータス変化や装備による補正を考慮する
-        self.raw_ability.clone()
+        let mut ability = self.raw_ability.clone();
+
+        // カルマ効果を反映
+        if let Some(karma) = &self.karma {
+            for effect in karma.current_effects() {
+                match effect {
+                    KarmaEffect::AbilityIncrease {
+                        ability_type,
+                        amount,
+                    } => match ability_type {
+                        AbilityType::Strength => ability.strength += amount,
+                        AbilityType::Dexterity => ability.dexterity += amount,
+                        AbilityType::Intelligence => ability.intelligence += amount,
+                        AbilityType::Faith => ability.faith += amount,
+                        AbilityType::Vitality => ability.vitality += amount,
+                        AbilityType::Spirit => ability.spirit += amount,
+                        _ => { /* 無視 */ }
+                    },
+                    _ => { /* 無視 */ }
+                }
+            }
+        }
+
+        ability
     }
 
     pub fn defense_power(&self) -> DefensePower {
@@ -60,6 +83,26 @@ impl BattleCharacter {
             + ability.spirit as f32
             + (ability.intelligence as f32 * 1.5)
             + (ability.faith as f32 * 1.5)) as u32
+    }
+
+    pub fn karma_effects(&self, effect_types: Vec<KarmaEffectType>) -> Vec<KarmaEffect> {
+        if let Some(karma) = &self.karma {
+            let mut karma_effects = karma.current_effects();
+            karma_effects.retain(|effect| match effect {
+                KarmaEffect::AttackDamageModifier { .. } => {
+                    effect_types.contains(&KarmaEffectType::AttackDamageModifier)
+                }
+                KarmaEffect::ReceiveDamageModifier { .. } => {
+                    effect_types.contains(&KarmaEffectType::ReceiveDamageModifier)
+                }
+                KarmaEffect::AbilityIncrease { .. } => {
+                    effect_types.contains(&KarmaEffectType::AbilityIncrease)
+                }
+            });
+            karma_effects
+        } else {
+            Vec::new()
+        }
     }
 }
 

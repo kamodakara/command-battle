@@ -263,6 +263,8 @@ pub fn execute_conduct(
 
                 // ダメージ
                 let damage = calc_damage(&attack_power, &target.defense_power());
+                // TODO: 攻撃側のダメージ補正
+                // TODO: 防御側のダメージ補正
                 let (before_hp_damage, after_hp_damage) = target.hp.damage(damage);
                 // HPダメージのインシデント
                 target_character_incident.add_concrete(BattleCharacterIncidentConcrete::DamageHp(
