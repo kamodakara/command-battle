@@ -1,6 +1,7 @@
 mod character;
 mod incident;
 mod karma;
+mod trance;
 
 use super::character::AbilityType;
 use super::common::*;
@@ -8,12 +9,14 @@ use super::conduct::Art;
 use super::equipment::{Equipment, Weapon};
 use super::karma::*;
 use super::status_ailment::StatusConditionPotency;
+use super::trance::*;
 use crate::types::StatusAilment;
 use std::sync::Arc;
 
 pub use character::*;
 pub use incident::*;
 pub use karma::*;
+pub use trance::*;
 
 // 戦闘中の状態異常
 pub struct BattleStatusAilment {

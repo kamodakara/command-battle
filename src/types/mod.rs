@@ -5,6 +5,7 @@ mod conduct;
 mod equipment;
 mod karma;
 mod status_ailment;
+mod trance;
 
 pub use battle::*;
 pub use character::*;
