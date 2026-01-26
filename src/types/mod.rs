@@ -14,3 +14,4 @@ pub use conduct::*;
 pub use equipment::*;
 pub use karma::*;
 pub use status_ailment::*;
+pub use trance::*;
