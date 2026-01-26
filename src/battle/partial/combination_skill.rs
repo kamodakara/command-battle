@@ -1,33 +1,31 @@
 use super::*;
 
 impl BattleCombinationSkill {
-    pub fn add_condition_conduct_categories(
-        &mut self,
-        categories: Vec<CombinationConductCategory>,
-    ) {
-        if self.current_combination_conduct_log.is_none() {
-            self.current_combination_conduct_log = Some(BattleCombinationConductLog {
-                categories: Vec::new(),
-                results: Vec::new(),
-            })
-        }
-
-        // 現在の行動ログにカテゴリを追加
-        let current_log = self.current_combination_conduct_log.as_mut().unwrap();
-        for category in categories {
-            current_log.categories.push(category);
-        }
+    pub fn initialize_current_conduct(&mut self) {
+        self.current_combination_conduct_log = Some(BattleCombinationConductLog {
+            categories: Vec::new(),
+            results: Vec::new(),
+        });
     }
 
-    pub fn add_condition_conduct_result(&mut self, result: CombinationConductResult) {
-        if self.current_combination_conduct_log.is_none() {
-            // 現在の行動ログが存在しない場合は何もしない
-            return;
+    pub fn add_current_conduct_categories(&mut self, categories: Vec<CombinationConductCategory>) {
+        if let Some(current_log) = &mut self.current_combination_conduct_log {
+            // 現在の行動ログにカテゴリを追加
+            for category in categories {
+                current_log.categories.push(category);
+            }
         }
 
-        // 現在の行動ログに結果を追加
-        let current_log = self.current_combination_conduct_log.as_mut().unwrap();
-        current_log.results.push(result);
+        // 現在の行動ログが存在しない場合は何もしない
+    }
+
+    pub fn add_current_conduct_result(&mut self, result: CombinationConductResult) {
+        if let Some(current_log) = &mut self.current_combination_conduct_log {
+            // 現在の行動ログに結果を追加
+            current_log.results.push(result);
+        }
+
+        // 現在の行動ログが存在しない場合は何もしない
     }
 
     pub fn finalize_current_conduct(&mut self) {
