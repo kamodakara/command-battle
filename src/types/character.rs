@@ -42,15 +42,15 @@ pub struct Ability {
 
 #[derive(Clone)]
 pub enum AbilityType {
-    Vitality,
-    Spirit,
-    Endurance,
-    Agility,
-    Strength,
-    Dexterity,
-    Intelligence,
-    Faith,
-    Arcane,
+    Vitality,     // 生命力
+    Spirit,       // 精神力
+    Endurance,    // 持久力
+    Agility,      // 敏捷性
+    Strength,     // 筋力
+    Dexterity,    // 技量
+    Intelligence, // 知力
+    Faith,        // 信仰
+    Arcane,       // 神秘
 }
 
 // プレイヤーステータス

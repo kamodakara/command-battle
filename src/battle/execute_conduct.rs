@@ -2,6 +2,12 @@ mod conduct_effect;
 
 use super::*;
 
+struct AttackerData {
+    character_id: BattleCharacterId,
+    weapon_performance: WeaponPerformance,
+    // TODO: 他に必要なデータがあれば追加
+}
+
 pub struct BattleExecuteConductRequest {
     pub conduct: BattleConduct,
 }
@@ -71,93 +77,18 @@ pub fn execute_conduct(
         // 武器なし
         unarmed_weapon_performance()
     };
-
-    let sorcery_power = attacker_weapon_performance.final_sorcery_power();
-    // 効果ランク判定
-    // 術力のみの想定なので術力でランク判定
-    let rank = if let Some(rank3) = &conduct.art.rank3
-        && sorcery_power >= rank3.threshold
-    {
-        rank3 // ランク3適用
-    } else if let Some(rank2) = &conduct.art.rank2
-        && sorcery_power >= rank2.threshold
-    {
-        rank2 // ランク2適用
-    } else {
-        &conduct.art.rank1 // ランク1適用
+    // 攻撃者データ準備
+    let attacker_data = AttackerData {
+        character_id: attacker_id,
+        weapon_performance: attacker_weapon_performance,
     };
+
+    let sorcery_power = attacker_data.weapon_performance.final_sorcery_power();
+    // 効果ランク判定
+    let rank = conduct.art.effective_rank(sorcery_power);
 
     // ターゲットの決定
-    // ターゲット範囲が変化している場合、それに応じてターゲットを変更
-    let conduct_target = match &conduct.target {
-        BattleConductTargetType::PlayerSingle(_) => {
-            if rank.target == ArtTarget::All {
-                &BattleConductTargetType::PlayerAll
-            } else {
-                &conduct.target
-            }
-        }
-        BattleConductTargetType::EnemySingle(_) => {
-            if rank.target == ArtTarget::All {
-                &BattleConductTargetType::EnemyAll
-            } else {
-                &conduct.target
-            }
-        }
-        BattleConductTargetType::PlayerAll => {
-            if rank.target == ArtTarget::Single {
-                if let Some(character) = battle.players.first() {
-                    let target_character_id = character.character_id;
-                    &BattleConductTargetType::PlayerSingle(target_character_id)
-                } else {
-                    // TODO: エラー処理
-                    panic!("No player characters available");
-                }
-            } else {
-                &conduct.target
-            }
-        }
-        BattleConductTargetType::EnemyAll => {
-            if rank.target == ArtTarget::Single {
-                if let Some(character) = battle.enemies.first() {
-                    let target_character_id = character.character_id;
-                    &BattleConductTargetType::EnemySingle(target_character_id)
-                } else {
-                    // TODO: エラー処理
-                    panic!("No enemy characters available");
-                }
-            } else {
-                &conduct.target
-            }
-        }
-    };
-    // ターゲットIDリスト取得
-    let target_character_ids = match conduct_target {
-        BattleConductTargetType::PlayerSingle(character_id) => {
-            if let Some(character) = battle.character_mut(&character_id) {
-                vec![character.character_id]
-            } else {
-                // TODO: エラー処理
-                panic!("Defender not found");
-            }
-        }
-        BattleConductTargetType::EnemySingle(character_id) => {
-            if let Some(character) = battle.character_mut(&character_id) {
-                vec![character.character_id]
-            } else {
-                // TODO: エラー処理
-                panic!("Defender not found");
-            }
-        }
-        BattleConductTargetType::PlayerAll => {
-            // playersのcharacter_id全て
-            battle.players.iter().map(|c| c.character_id).collect()
-        }
-        BattleConductTargetType::EnemyAll => {
-            // enemiesのcharacter_id全て
-            battle.enemies.iter().map(|c| c.character_id).collect()
-        }
-    };
+    let target_character_ids = determine_targets(battle, &conduct.target, &rank.target);
 
     // ターゲットごとに効果処理
     let mut target_incidents = Vec::new();
@@ -230,11 +161,11 @@ pub fn execute_conduct(
         match &rank.potency {
             ArtPotency::Attack(art_attack) => {
                 // 武器性能取得
-                let weapon_attack_power = &attacker_weapon_performance.final_attack_power();
-                let weapon_break_power = attacker_weapon_performance.final_break_power();
+                let weapon_attack_power = attacker_data.weapon_performance.final_attack_power();
+                let weapon_break_power = attacker_data.weapon_performance.final_break_power();
 
                 // アーツ攻撃力算出
-                let mut attack_power = art_attack.final_attack_power(weapon_attack_power);
+                let mut attack_power = art_attack.final_attack_power(&weapon_attack_power);
 
                 // 術力補正
                 if conduct.art.art_type == ArtType::Sorcery {
@@ -376,6 +307,87 @@ pub fn execute_conduct(
             defenders: target_incidents,
         }),
     }
+}
+
+// ターゲット決定
+// ターゲット範囲が変化している場合、それに応じてターゲットを変更
+fn determine_targets(
+    battle: &Battle,
+    conduct_target: &BattleConductTargetType,
+    art_target: &ArtTarget,
+) -> Vec<BattleCharacterId> {
+    let conduct_target = match conduct_target {
+        BattleConductTargetType::PlayerSingle(_) => {
+            if art_target == &ArtTarget::All {
+                &BattleConductTargetType::PlayerAll
+            } else {
+                conduct_target
+            }
+        }
+        BattleConductTargetType::EnemySingle(_) => {
+            if art_target == &ArtTarget::All {
+                &BattleConductTargetType::EnemyAll
+            } else {
+                conduct_target
+            }
+        }
+        BattleConductTargetType::PlayerAll => {
+            if art_target == &ArtTarget::Single {
+                if let Some(character) = battle.players.first() {
+                    let target_character_id = character.character_id;
+                    &BattleConductTargetType::PlayerSingle(target_character_id)
+                } else {
+                    // TODO: エラー処理
+                    panic!("No player characters available");
+                }
+            } else {
+                conduct_target
+            }
+        }
+        BattleConductTargetType::EnemyAll => {
+            if art_target == &ArtTarget::Single {
+                if let Some(character) = battle.enemies.first() {
+                    let target_character_id = character.character_id;
+                    &BattleConductTargetType::EnemySingle(target_character_id)
+                } else {
+                    // TODO: エラー処理
+                    panic!("No enemy characters available");
+                }
+            } else {
+                conduct_target
+            }
+        }
+    };
+
+    // ターゲットIDリスト取得
+    let target_character_ids = match conduct_target {
+        BattleConductTargetType::PlayerSingle(character_id) => {
+            if let Some(character) = battle.character(&character_id) {
+                vec![character.character_id]
+            } else {
+                // TODO: エラー処理
+                panic!("Defender not found");
+            }
+        }
+        BattleConductTargetType::EnemySingle(character_id) => {
+            if let Some(character) = battle.character(&character_id) {
+                vec![character.character_id]
+            } else {
+                // TODO: エラー処理
+                panic!("Defender not found");
+            }
+        }
+        BattleConductTargetType::PlayerAll => {
+            // playersのcharacter_id全て
+            battle.players.iter().map(|c| c.character_id).collect()
+        }
+        BattleConductTargetType::EnemyAll => {
+            // enemiesのcharacter_id全て
+            battle.enemies.iter().map(|c| c.character_id).collect()
+        }
+    };
+
+    target_character_ids
 }
 
 // 素手の攻撃性能取得
@@ -534,13 +546,13 @@ fn determine_action_outcome_failure(
 
     // 必要能力が足りないと不発
     let req = &conduct.art.requirement;
-    let abil = &attacker.current_ability();
-    if abil.strength < req.strength
-        || abil.dexterity < req.dexterity
-        || abil.intelligence < req.intelligence
-        || abil.faith < req.faith
-        || abil.arcane < req.arcane
-        || abil.agility < req.agility
+    let ability = &attacker.current_ability();
+    if ability.strength < req.strength
+        || ability.dexterity < req.dexterity
+        || ability.intelligence < req.intelligence
+        || ability.faith < req.faith
+        || ability.arcane < req.arcane
+        || ability.agility < req.agility
     {
         return Some(BattleIncidentConductOutcomeFailureReason::InsufficientAbility);
     }

@@ -1,5 +1,24 @@
 use super::*;
 
+impl Art {
+    // 有効なランクを返す
+    // 効果ランク判定
+    // 術力のみの想定なので術力でランク判定
+    pub fn effective_rank(&self, sorcery_power: u32) -> &ArtRank {
+        if let Some(rank3) = &self.rank3
+            && sorcery_power >= rank3.threshold
+        {
+            rank3 // ランク3適用
+        } else if let Some(rank2) = &self.rank2
+            && sorcery_power >= rank2.threshold
+        {
+            rank2 // ランク2適用
+        } else {
+            &self.rank1 // ランク1適用
+        }
+    }
+}
+
 impl ArtPotencyAttack {
     // 最終的な攻撃力を取得する
     pub fn final_attack_power(&self, weapon_attack_power: &AttackPower) -> AttackPower {

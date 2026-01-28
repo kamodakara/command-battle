@@ -6,6 +6,10 @@ mod trance;
 use super::character::AbilityType;
 use super::common::*;
 use super::conduct::Art;
+use super::effect::{
+    EffectAbilityModifier, EffectAttackDamageModifier, EffectHpPercentageDamage,
+    EffectReceiveDamageModifier, EffectRemoveStatusAilment, EffectSpPercentageDamage,
+};
 use super::equipment::{Equipment, Weapon};
 use super::karma::*;
 use super::status_ailment::StatusConditionPotency;
@@ -43,6 +47,23 @@ impl BattleStatusAilmentStatus {
             is_ailment: false,
         }
     }
+}
+
+// 状態異常になった瞬間の効果
+// 状態異常付与時に一度だけ効果を発揮する
+pub enum BattleStatusAilmentOnAilmentEffect {
+    HpPercentageDamage(EffectHpPercentageDamage), // HP最大値の割合ダメージ
+    SpPercentageDamage(EffectSpPercentageDamage), // SP最大値の割合ダメージ
+                                                  // TODO: トランス値ダメージ
+}
+// 状態異常の継続効果
+pub enum BattleStatusAilmentOngoingEffect {
+    HpPercentageDamage(EffectHpPercentageDamage), // HP最大値の割合ダメージ
+    SpPercentageDamage(EffectSpPercentageDamage), // SP最大値の割合ダメージ
+    AttackDamageModifier(EffectAttackDamageModifier), // 与ダメージ補正
+    ReceiveDamageModifier(EffectReceiveDamageModifier), // 被ダメージ補正
+    RemoveStatusAilment(EffectRemoveStatusAilment), // 状態異常解除
+    AbilityModifier(EffectAbilityModifier),       // 能力補正
 }
 
 // 戦闘中の状態変化
