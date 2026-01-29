@@ -1,14 +1,12 @@
 use bevy::{ecs::relationship::RelatedSpawnerCommands, prelude::*};
 
 use super::*;
-use crate::equipment;
-use crate::player::{create_player_defense_power, create_player_stats};
-use crate::types::{
+use crate::fundamental::{
     Ability, AbilityScaling, Armor, ArmorKind, ArmorResistance, ArmorSlot, Art, ArtPerk,
     ArtPotency, ArtPotencyAttack, ArtRank, ArtRequirement, ArtTarget, ArtType, ArtUsableWeapon,
-    AttackPower, AttackPowerScaling, DefensePower, GuardCutRate, Weapon, WeaponAbilityRequirement,
-    WeaponAttackPower, WeaponAttackPowerAbilityScaling, WeaponBreakPower, WeaponGuard, WeaponKind,
-    WeaponSorceryPower,
+    AttackPower, AttackPowerScaling, DefensePower, Equipment, GuardCutRate, Weapon,
+    WeaponAbilityRequirement, WeaponAttackPower, WeaponAttackPowerAbilityScaling, WeaponBreakPower,
+    WeaponGuard, WeaponKind, WeaponSorceryPower,
 };
 
 // ================== Components ==================
@@ -515,10 +513,10 @@ fn build_status_content(
     };
 
     // プレイヤーステータスを計算
-    let player_stats = create_player_stats(&current_ability);
+    let player_stats = current_ability.player_stats();
 
     // 基礎防御力を計算
-    let defense_power = create_player_defense_power(&current_ability);
+    let defense_power = current_ability.base_defense_power();
 
     // 横並びのコンテナ（左：能力値、右：ステータスと防御力）
     parent
@@ -2609,7 +2607,7 @@ pub fn equipment_list_button_system(
                                 .find(|a| a.id == list_button.equipment_id)
                             {
                                 // 現在の装備状態からEquipmentを構築
-                                let current_equipment = crate::types::Equipment {
+                                let current_equipment = Equipment {
                                     weapon1: prep_state.equipped_weapon1.and_then(|id| {
                                         equipment_db
                                             .weapons
@@ -2683,10 +2681,7 @@ pub fn equipment_list_button_system(
                                 };
 
                                 // 装備可能かチェック
-                                if crate::equipment::is_armor_equippable(
-                                    &armor_data.armor,
-                                    current_equipment,
-                                ) {
+                                if current_equipment.is_equippable(&armor_data.armor) {
                                     match slot {
                                         EquipmentSlot::Armor1 => {
                                             prep_state.equipped_armor1 =

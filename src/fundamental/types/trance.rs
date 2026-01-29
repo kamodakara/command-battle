@@ -3,15 +3,20 @@ use super::*;
 pub struct Heart {
     pub name: String,
 
-    pub level1_effect: HeartEffect,
-    pub level2_effect: HeartEffect,
-    pub level3_effect: HeartEffect,
+    pub level1_effects: Vec<HeartEffect>,
+    pub level2_effects: Vec<HeartEffect>,
+    pub level3_effects: Vec<HeartEffect>,
 
-    pub combination: CombinationSkill,
+    pub combination: Option<CombinationSkill>,
 }
 
+#[derive(Clone)]
 pub enum HeartEffect {
-    // TODO: 実装
+    PhysicalDefenseModifier(EffectPhysicalDefenseModifier), // 物理防御力補正
+    MagicalDefenseModifier(EffectMagicalDefenseModifier),   // 魔法防御力補正
+    PhysicalAttackModifier(EffectPhysicalAttackModifier),   // 物理攻撃力補正
+    MagicalAttackModifier(EffectMagicalAttackModifier),     // 魔法攻撃力補正
+    StaminaRecoveryModifier(EffectStaminaRecoveryModifier), // スタミナ回復量補正
 }
 
 // コンビネーション技

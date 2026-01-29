@@ -1,5 +1,39 @@
 use super::*;
 
+impl Equipment {
+    pub fn armor_defense_power(&self) -> DefensePower {
+        let mut defense_power = DefensePower::default();
+
+        // 装備の防御力を加算
+        if let Some(armor) = &self.armor1 {
+            defense_power.add(&armor.defense);
+        }
+        if let Some(armor) = &self.armor2 {
+            defense_power.add(&armor.defense);
+        }
+        if let Some(armor) = &self.armor3 {
+            defense_power.add(&armor.defense);
+        }
+        if let Some(armor) = &self.armor4 {
+            defense_power.add(&armor.defense);
+        }
+        if let Some(armor) = &self.armor5 {
+            defense_power.add(&armor.defense);
+        }
+        if let Some(armor) = &self.armor6 {
+            defense_power.add(&armor.defense);
+        }
+        if let Some(armor) = &self.armor7 {
+            defense_power.add(&armor.defense);
+        }
+        if let Some(armor) = &self.armor8 {
+            defense_power.add(&armor.defense);
+        }
+
+        defense_power
+    }
+}
+
 impl GuardCutRate {
     // ガードカット後の攻撃力を取得する
     pub fn apply_guard_cut(&self, attack_power: &AttackPower) -> AttackPower {

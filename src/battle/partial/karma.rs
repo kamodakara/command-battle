@@ -1,11 +1,14 @@
 use super::*;
 
 impl BattleKarma {
-    pub fn current_effects(&self) -> Vec<KarmaEffect> {
-        self.field_cards
+    // 現在の場のカルマ効果を取得する
+    pub fn field_effects(&self) -> Vec<KarmaEffect> {
+        let effects: Vec<KarmaEffect> = self
+            .field_cards
             .iter()
             .map(|card| card.effects.clone())
             .flatten()
-            .collect()
+            .collect();
+        effects
     }
 }

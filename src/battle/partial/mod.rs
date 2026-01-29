@@ -5,5 +5,6 @@ mod combination_skill;
 mod equipment;
 mod karma;
 mod status_aliment;
+mod trance;
 
 use super::*;

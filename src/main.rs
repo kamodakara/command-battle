@@ -1,8 +1,6 @@
 mod battle;
-mod equipment;
+mod fundamental;
 mod game;
-mod player;
-mod types;
 
 use crate::game::*;
 use bevy::prelude::*;

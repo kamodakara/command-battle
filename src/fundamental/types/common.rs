@@ -75,6 +75,35 @@ impl AttackPower {
         self.lightning = (self.lightning as f32 * factor) as u32;
         self.chaos = (self.chaos as f32 * factor) as u32;
     }
+
+    pub fn multiply_attribute(&mut self, attribute: &Attribute, factor: f32) {
+        match attribute {
+            Attribute::Slash => {
+                self.slash = (self.slash as f32 * factor) as u32;
+            }
+            Attribute::Strike => {
+                self.strike = (self.strike as f32 * factor) as u32;
+            }
+            Attribute::Thrust => {
+                self.thrust = (self.thrust as f32 * factor) as u32;
+            }
+            Attribute::Impact => {
+                self.impact = (self.impact as f32 * factor) as u32;
+            }
+            Attribute::Magic => {
+                self.magic = (self.magic as f32 * factor) as u32;
+            }
+            Attribute::Fire => {
+                self.fire = (self.fire as f32 * factor) as u32;
+            }
+            Attribute::Lightning => {
+                self.lightning = (self.lightning as f32 * factor) as u32;
+            }
+            Attribute::Chaos => {
+                self.chaos = (self.chaos as f32 * factor) as u32;
+            }
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -183,5 +212,45 @@ impl DefensePower {
         self.fire += other.fire;
         self.lightning += other.lightning;
         self.chaos += other.chaos;
+    }
+
+    pub fn multiply(&mut self, factor: f32) {
+        self.slash = (self.slash as f32 * factor) as u32;
+        self.strike = (self.strike as f32 * factor) as u32;
+        self.thrust = (self.thrust as f32 * factor) as u32;
+        self.impact = (self.impact as f32 * factor) as u32;
+        self.magic = (self.magic as f32 * factor) as u32;
+        self.fire = (self.fire as f32 * factor) as u32;
+        self.lightning = (self.lightning as f32 * factor) as u32;
+        self.chaos = (self.chaos as f32 * factor) as u32;
+    }
+
+    pub fn multiply_attribute(&mut self, attribute: &Attribute, factor: f32) {
+        match attribute {
+            Attribute::Slash => {
+                self.slash = (self.slash as f32 * factor) as u32;
+            }
+            Attribute::Strike => {
+                self.strike = (self.strike as f32 * factor) as u32;
+            }
+            Attribute::Thrust => {
+                self.thrust = (self.thrust as f32 * factor) as u32;
+            }
+            Attribute::Impact => {
+                self.impact = (self.impact as f32 * factor) as u32;
+            }
+            Attribute::Magic => {
+                self.magic = (self.magic as f32 * factor) as u32;
+            }
+            Attribute::Fire => {
+                self.fire = (self.fire as f32 * factor) as u32;
+            }
+            Attribute::Lightning => {
+                self.lightning = (self.lightning as f32 * factor) as u32;
+            }
+            Attribute::Chaos => {
+                self.chaos = (self.chaos as f32 * factor) as u32;
+            }
+        }
     }
 }

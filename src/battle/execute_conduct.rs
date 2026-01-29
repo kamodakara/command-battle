@@ -1,11 +1,38 @@
 mod conduct_effect;
+mod execute_attack_potency;
+mod execute_support_potency;
+
+use execute_attack_potency::execute_attack_potency;
+use execute_support_potency::execute_support_potency;
 
 use super::*;
 
+// 攻撃者データ
+// 判定や計算に必要なデータをまとめる
+// 行動前のデータ
 struct AttackerData {
     character_id: BattleCharacterId,
+
+    character_type: BattleCharacterType,
+    hp: BattleCharacterHP,
+    sp: BattleCharacterSP,
+    stamina: BattleCharacterStamina,
+    break_resistance: BattleCharacterBreak,
+    status_ailment: BattleStatusAilment,
+    status_conditions: Vec<BattleStatusCondition>,
+
+    conduct: BattleConduct,
+    final_ability: Ability, // 効果適応済み能力
     weapon_performance: WeaponPerformance,
-    // TODO: 他に必要なデータがあれば追加
+
+    effects: Vec<Effect>, // 様々な効果
+
+                          // TODO: 他に必要なデータがあれば追加
+}
+
+struct TargetData<'a> {
+    target: &'a mut BattleCharacter,
+    effects: Vec<Effect>, // 様々な効果
 }
 
 pub struct BattleExecuteConductRequest {
@@ -27,13 +54,51 @@ pub fn execute_conduct(
     };
     let attacker_id = attacker.character_id;
 
+    // TODO: 状態異常、カルマ等から効果を取得する
+    let attacker_effects = vec![];
+
+    // 効果適応済み能力取得
+    let attacker_ability = attacker.ability_with_effects(&attacker_effects);
+
+    // 能力補正済みの武器性能取得
+    let attacker_weapon_performance = if let Some(battle_weapon_id) = &conduct.battle_weapon_id {
+        if let Some(weapon) = attacker.weapon(&battle_weapon_id) {
+            weapon.weapon.performance(&attacker_ability)
+        } else {
+            // TODO: エラー処理
+            panic!("Weapon not found");
+        }
+    } else {
+        // 武器なし
+        unarmed_weapon_performance()
+    };
+
+    // 攻撃者データ準備
+    let attacker_data = AttackerData {
+        character_id: attacker_id,
+
+        character_type: attacker.character_type.clone(),
+        hp: attacker.hp.clone(),
+        sp: attacker.sp.clone(),
+        stamina: attacker.stamina.clone(),
+        break_resistance: attacker.break_resistance.clone(),
+        status_ailment: attacker.status_ailment.clone(),
+        status_conditions: attacker.status_conditions.clone(),
+
+        conduct,
+        final_ability: attacker_ability,
+        weapon_performance: attacker_weapon_performance,
+
+        effects: attacker_effects,
+    };
+
     // 行動成否判定
-    if let Some(failure_reason) = determine_action_outcome_failure(&conduct, &attacker) {
+    if let Some(failure_reason) = determine_action_outcome_failure(&attacker_data) {
         // TODO: 不発理由に応じた処理
         return BattleIncidentConduct {
             actor_character_id: attacker_id,
-            target: conduct.target.clone(),
-            conduct,
+            target: attacker_data.conduct.target.clone(),
+            conduct: attacker_data.conduct,
             outcome: BattleIncidentConductOutcome::Failure(BattleIncidentConductOutcomeFailure {
                 reason: failure_reason,
             }),
@@ -46,7 +111,7 @@ pub fn execute_conduct(
         BattleCharacterIncident::new(BattleCharacterIncidentReason::ConductConsumption);
 
     // SP消費
-    let sp_cost = conduct.art.sp_cost;
+    let sp_cost = attacker_data.conduct.art.sp_cost;
     let (before_sp, after_sp) = attacker.sp.damage(sp_cost);
     // インシデント
     attacker_incident.add_concrete(BattleCharacterIncidentConcrete::DamageSp(
@@ -56,7 +121,7 @@ pub fn execute_conduct(
     // スタミナ消費
     if attacker.character_type == BattleCharacterType::Player {
         // プレイヤーの場合のみスタミナ消費処理
-        let stamina_cost = conduct.art.stamina_cost;
+        let stamina_cost = attacker_data.conduct.art.stamina_cost;
         let (before_stamina, after_stamina) = attacker.stamina.damage(stamina_cost);
         // インシデント
         attacker_incident.add_concrete(BattleCharacterIncidentConcrete::DamageStamina(
@@ -64,31 +129,13 @@ pub fn execute_conduct(
         ));
     }
 
-    // 能力補正済みの武器性能取得
-    let attacker_weapon_performance = if let Some(battle_weapon_id) = &conduct.battle_weapon_id {
-        if let Some(performance) = attacker.weapon_performance(&battle_weapon_id) {
-            performance
-        } else {
-            // 指定された武器の性能が見つからなかった場合
-            // TODO: エラー処理
-            panic!("Attacker weapon performance not found");
-        }
-    } else {
-        // 武器なし
-        unarmed_weapon_performance()
-    };
-    // 攻撃者データ準備
-    let attacker_data = AttackerData {
-        character_id: attacker_id,
-        weapon_performance: attacker_weapon_performance,
-    };
-
     let sorcery_power = attacker_data.weapon_performance.final_sorcery_power();
     // 効果ランク判定
-    let rank = conduct.art.effective_rank(sorcery_power);
+    let rank = attacker_data.conduct.art.effective_rank(sorcery_power);
 
     // ターゲットの決定
-    let target_character_ids = determine_targets(battle, &conduct.target, &rank.target);
+    let target_character_ids =
+        determine_targets(battle, &attacker_data.conduct.target, &rank.target);
 
     // ターゲットごとに効果処理
     let mut target_incidents = Vec::new();
@@ -114,7 +161,7 @@ pub fn execute_conduct(
                 StatusConditionPotency::Airborne => {
                     // 空中効果処理
                     // 遠距離攻撃でない時は回避
-                    if !conduct.art.perks.contains(&ArtPerk::Ranged) {
+                    if !attacker_data.conduct.art.perks.contains(&ArtPerk::Ranged) {
                         is_evaded = true;
                         break;
                     }
@@ -122,7 +169,7 @@ pub fn execute_conduct(
                 StatusConditionPotency::Floating => {
                     // 浮遊効果処理
                     // 足元攻撃は回避
-                    if conduct.art.perks.contains(&ArtPerk::AtFeet) {
+                    if attacker_data.conduct.art.perks.contains(&ArtPerk::AtFeet) {
                         is_evaded = true;
                         break;
                     }
@@ -130,7 +177,7 @@ pub fn execute_conduct(
                 StatusConditionPotency::Ranged => {
                     // 遠距離効果処理
                     // 近距離の攻撃を回避
-                    if !conduct.art.perks.contains(&ArtPerk::Ranged) {
+                    if !attacker_data.conduct.art.perks.contains(&ArtPerk::Ranged) {
                         is_evaded = true;
                         break;
                     }
@@ -160,139 +207,41 @@ pub fn execute_conduct(
         // 効果処理
         match &rank.potency {
             ArtPotency::Attack(art_attack) => {
-                // 武器性能取得
-                let weapon_attack_power = attacker_data.weapon_performance.final_attack_power();
-                let weapon_break_power = attacker_data.weapon_performance.final_break_power();
+                // 攻撃効果処理
 
-                // アーツ攻撃力算出
-                let mut attack_power = art_attack.final_attack_power(&weapon_attack_power);
+                // 状態異常、カルマ等の効果を取得する
+                let target_effects = target.current_effects();
 
-                // 術力補正
-                if conduct.art.art_type == ArtType::Sorcery {
-                    // 魔法タイプの場合、術力補正をかける
-                    let sorcery_attack_power_rate = 1.0 + (sorcery_power as f32 / 100.0);
-                    attack_power.multiply(sorcery_attack_power_rate);
+                let target_data = TargetData {
+                    target,
+                    effects: target_effects,
+                };
+                let attack_incidents =
+                    execute_attack_potency(art_attack, &attacker_data, target_data);
+                for incident in attack_incidents.into_iter() {
+                    target_character_incident.add_concrete(incident);
                 }
-
-                // 防御時の攻撃力カット処理
-                let mut is_defended = false;
-                for se in target.status_conditions.iter() {
-                    match &se.potency {
-                        StatusConditionPotency::Resistance(resistance) => {
-                            // 防御時の攻撃力カット処理
-                            attack_power = resistance.cut_rate.apply_guard_cut(&attack_power);
-                            is_defended = true;
-                        }
-                        _ => {
-                            // その他
-                        }
-                    }
-                }
-
-                // ブレイク力算出
-                let break_power = art_attack.final_break_power(weapon_break_power);
-
-                // ダメージ
-                let damage = calc_damage(&attack_power, &target.defense_power());
-                // TODO: 攻撃側のダメージ補正
-                // TODO: 防御側のダメージ補正
-                let (before_hp_damage, after_hp_damage) = target.hp.damage(damage);
-                // HPダメージのインシデント
-                target_character_incident.add_concrete(BattleCharacterIncidentConcrete::DamageHp(
-                    BattleIncidentDamageHp::new(damage, before_hp_damage, after_hp_damage),
-                ));
-
-                // 防御時のスタミナダメージ
-                if is_defended {
-                    let sta_damage = break_power / 4; // TODO: 固定値ではなくガード強度
-                    let (before_sta, after_sta) = target.stamina.damage(sta_damage);
-
-                    // スタミナダメージのインシデント
-                    target_character_incident.add_concrete(
-                        BattleCharacterIncidentConcrete::DamageStamina(
-                            BattleIncidentDamageStamina::new(sta_damage, before_sta, after_sta),
-                        ),
-                    );
-                }
-
-                // ブレイクダメージ処理
-                if target.character_type == BattleCharacterType::Enemy {
-                    // ブレイク中でない時
-                    let mut is_break = false;
-                    for se in target.status_conditions.iter() {
-                        if let StatusConditionPotency::Break(_) = &se.potency {
-                            is_break = true
-                        }
-                    }
-                    if !is_break {
-                        // 敵のブレイクダメージ処理
-                        let (before_break, after_break) =
-                            target.break_resistance.damage(break_power);
-
-                        if after_break == 0 {
-                            // ブレイク状態にする
-                            support_status_effect(
-                                &vec![StatusCondition {
-                                    potency: StatusConditionPotency::Break(StatusConditionBreak {}),
-                                    duration: StatusConditionDuration::Permanent,
-                                }],
-                                target,
-                                &mut target_character_incident,
-                            );
-                        }
-
-                        // ブレイクダメージインシデント追加
-                        target_character_incident.add_concrete(
-                            BattleCharacterIncidentConcrete::DamageBreak(
-                                BattleIncidentDamageBreak::new(
-                                    break_power,
-                                    before_break,
-                                    after_break,
-                                ),
-                            ),
-                        );
-                    }
-                }
-
                 target_incident_character.add_incident(target_character_incident);
                 target_incidents.push(BattleIncidentConductOutcomeSuccessDefender {
                     character: target_incident_character,
-                    is_defended,
                     is_evaded: false,
+                    is_defended: false,
                     is_dead: target.hp.current_hp == 0, // TODO: 戦闘不能判定
                 });
             }
             ArtPotency::Support(support) => {
-                // 支援処理
-                match &support {
-                    ArtPotencySupport::StatusCondition(status_condition) => {
-                        // 支援状態変化処理
-                        support_status_effect(
-                            &status_condition.status_conditions,
-                            target,
-                            &mut target_character_incident,
-                        );
-
-                        target_incident_character.add_incident(target_character_incident);
-                        target_incidents.push(BattleIncidentConductOutcomeSuccessDefender {
-                            character: target_incident_character,
-                            is_defended: false,
-                            is_evaded: false,
-                            is_dead: false,
-                        });
-                    }
-                    ArtPotencySupport::Recover(recover) => {
-                        support_recover(recover, target, &mut target_character_incident);
-
-                        target_incident_character.add_incident(target_character_incident);
-                        target_incidents.push(BattleIncidentConductOutcomeSuccessDefender {
-                            character: target_incident_character,
-                            is_defended: false,
-                            is_evaded: false,
-                            is_dead: false,
-                        })
-                    }
+                // 支援効果処理
+                let support_incidents = execute_support_potency(support, target);
+                for incident in support_incidents.into_iter() {
+                    target_character_incident.add_concrete(incident);
                 }
+                target_incident_character.add_incident(target_character_incident);
+                target_incidents.push(BattleIncidentConductOutcomeSuccessDefender {
+                    character: target_incident_character,
+                    is_evaded: false,
+                    is_defended: false,
+                    is_dead: false,
+                });
             }
         }
     }
@@ -300,8 +249,8 @@ pub fn execute_conduct(
     attacker_incident_character.add_incident(attacker_incident);
     BattleIncidentConduct {
         actor_character_id: attacker_id,
-        target: conduct.target.clone(),
-        conduct,
+        target: attacker_data.conduct.target.clone(),
+        conduct: attacker_data.conduct,
         outcome: BattleIncidentConductOutcome::Success(BattleIncidentConductOutcomeSuccess {
             attacker: attacker_incident_character,
             defenders: target_incidents,
@@ -414,89 +363,6 @@ fn unarmed_weapon_performance() -> WeaponPerformance {
     }
 }
 
-// ダメージ計算
-fn calc_damage(attack_power: &AttackPower, defender: &DefensePower) -> u32 {
-    let damage = (attack_power.slash as f32 / defender.slash as f32)
-        + (attack_power.strike as f32 / defender.strike as f32)
-        + (attack_power.thrust as f32 / defender.thrust as f32)
-        + (attack_power.impact as f32 / defender.impact as f32)
-        + (attack_power.magic as f32 / defender.magic as f32)
-        + (attack_power.fire as f32 / defender.fire as f32)
-        + (attack_power.lightning as f32 / defender.lightning as f32)
-        + (attack_power.chaos as f32 / defender.chaos as f32);
-    damage as u32
-}
-
-fn support_status_effect(
-    status_conditions: &Vec<StatusCondition>,
-    target: &mut BattleCharacter,
-    incident: &mut BattleCharacterIncident,
-) {
-    // 支援行動処理
-    for status_condition in status_conditions {
-        // 状態変化付与処理
-        let battle_status_condition = create_battle_status_condition(status_condition);
-        // 状態変化付与
-        // TODO: 状態変化の重複処理
-        target
-            .status_conditions
-            .push(battle_status_condition.clone());
-
-        // インシデント追加
-        incident.add_concrete(BattleCharacterIncidentConcrete::StatusConditionApplied(
-            BattleIncidentStatusConditionApplied {
-                status_condition: battle_status_condition,
-            },
-        ));
-    }
-}
-
-fn support_recover(
-    recover: &ArtPotencySupportRecover,
-    target: &mut BattleCharacter,
-    incident: &mut BattleCharacterIncident,
-) {
-    // 支援回復処理
-    for potency in &recover.potencies {
-        match potency {
-            SupportRecoverPotency::Hp(hp_recover) => {
-                let hp_rcv = hp_recover.hp_recover;
-                let (before_hp, after_hp) = target.hp.recover(hp_rcv);
-
-                // HP回復のインシデント
-                incident.add_concrete(BattleCharacterIncidentConcrete::RecoverHp(
-                    BattleIncidentRecoverHp::new(hp_rcv, before_hp, after_hp),
-                ));
-            }
-            SupportRecoverPotency::Sp(sp_recover) => {
-                let sp_rcv = sp_recover.sp_recover;
-                let (before_sp, after_sp) = target.sp.recover(sp_rcv);
-
-                // SP回復のインシデント
-                incident.add_concrete(BattleCharacterIncidentConcrete::RecoverSp(
-                    BattleIncidentRecoverSp::new(sp_rcv, before_sp, after_sp),
-                ));
-            }
-            SupportRecoverPotency::Stamina(stamina_recover) => {
-                // スタミナ回復処理はプレイヤーキャラクターのみ
-                if target.character_type == BattleCharacterType::Player {
-                    let stamina_rcv = stamina_recover.stamina_recover;
-                    let (before_stamina, after_stamina) = target.stamina.recover(stamina_rcv);
-
-                    // スタミナ回復のインシデント
-                    incident.add_concrete(BattleCharacterIncidentConcrete::RecoverStamina(
-                        BattleIncidentRecoverStamina::new(
-                            stamina_rcv,
-                            before_stamina,
-                            after_stamina,
-                        ),
-                    ));
-                }
-            }
-        }
-    }
-}
-
 fn create_battle_status_condition(status_condition: &StatusCondition) -> BattleStatusCondition {
     let duration = match &status_condition.duration {
         StatusConditionDuration::Permanent => BattleStatusConditionDuration::Permanent,
@@ -524,20 +390,21 @@ fn create_battle_status_condition(status_condition: &StatusCondition) -> BattleS
 /// 不発の場合、理由を返す
 /// 発動の場合、Noneを返す
 fn determine_action_outcome_failure(
-    conduct: &BattleConduct,
-    attacker: &BattleCharacter,
+    attacker_data: &AttackerData,
 ) -> Option<BattleIncidentConductOutcomeFailureReason> {
-    if attacker.character_type == BattleCharacterType::Player {
+    let conduct = &attacker_data.conduct;
+
+    if attacker_data.character_type == BattleCharacterType::Player {
         // プレイヤーキャラクターの場合のみスタミナチェック
 
         // スタミナが足りないと不発
-        if attacker.stamina.current_stamina < conduct.art.stamina_cost {
+        if attacker_data.stamina.current_stamina < conduct.art.stamina_cost {
             return Some(BattleIncidentConductOutcomeFailureReason::InsufficientStamina);
         }
     }
 
     // ブレイク中行動不能
-    for se in attacker.status_conditions.iter() {
+    for se in attacker_data.status_conditions.iter() {
         if let StatusConditionPotency::Break(_) = &se.potency {
             // ブレイク中
             return Some(BattleIncidentConductOutcomeFailureReason::IsBreak);
@@ -546,7 +413,7 @@ fn determine_action_outcome_failure(
 
     // 必要能力が足りないと不発
     let req = &conduct.art.requirement;
-    let ability = &attacker.current_ability();
+    let ability = &attacker_data.final_ability;
     if ability.strength < req.strength
         || ability.dexterity < req.dexterity
         || ability.intelligence < req.intelligence
@@ -559,7 +426,7 @@ fn determine_action_outcome_failure(
 
     // SPが足りないと不発
     let sp_cost = conduct.art.sp_cost;
-    if attacker.sp.current_sp < sp_cost {
+    if attacker_data.sp.current_sp < sp_cost {
         return Some(BattleIncidentConductOutcomeFailureReason::InsufficientSp);
     }
 

@@ -1,5 +1,3 @@
-use crate::player;
-
 use super::*;
 
 // カルマカードを引く処理
@@ -7,7 +5,6 @@ use super::*;
 // TODO: インシデントの追加
 pub fn karma_draw_card(battle: &mut Battle) {
     let player = battle.players.first_mut().unwrap();
-
     let karma = if let Some(karma) = player.karma.as_mut() {
         karma
     } else {

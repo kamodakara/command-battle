@@ -1,4 +1,4 @@
-use crate::types::Ability;
+use super::Ability;
 
 use super::*;
 
@@ -24,34 +24,39 @@ pub struct BattleCharacter {
     pub status_ailment: BattleStatusAilment,           // 戦闘中の状態異常
     pub status_conditions: Vec<BattleStatusCondition>, // 状態変化
 
-    pub karma: Option<BattleKarma>, // カルマ (プレイヤーのみ)
+    pub karma: Option<BattleKarma>,   // カルマ (プレイヤーのみ)
+    pub trance: Option<BattleTrance>, // トランス (プレイヤーのみ)
 }
 
 pub type BattleCharacterId = u32;
 
-#[derive(PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum BattleCharacterType {
     Player,
     Enemy,
 }
 
 // HP
+#[derive(Clone)]
 pub struct BattleCharacterHP {
     pub max_hp: u32,
     pub current_hp: u32,
 }
 // SP
+#[derive(Clone)]
 pub struct BattleCharacterSP {
     pub max_sp: u32,
     pub current_sp: u32,
 }
 // スタミナ
+#[derive(Clone)]
 pub struct BattleCharacterStamina {
     pub max_stamina: u32,
     pub current_stamina: u32,
     pub stamina_recovery: u32,
 }
 // ブレイク
+#[derive(Clone)]
 pub struct BattleCharacterBreak {
     pub max_break: u32,               // ブレイク最大値
     pub current_break: u32,           // 現在のブレイク値

@@ -1,4 +1,7 @@
 use super::character::AbilityType;
+use super::effect::{
+    EffectAbilityIncrease, EffectAttackDamageModifier, EffectReceiveDamageModifier,
+};
 
 pub struct KarmaDeck {
     pub name: String,
@@ -20,16 +23,9 @@ pub enum KarmaEffectType {
 #[derive(Clone)]
 pub enum KarmaEffect {
     // 攻撃ダメージ補正
-    AttackDamageModifier {
-        modifier: f32,
-    },
+    AttackDamageModifier(EffectAttackDamageModifier),
     // 受けるダメージ補正
-    ReceiveDamageModifier {
-        modifier: f32,
-    },
+    ReceiveDamageModifier(EffectReceiveDamageModifier),
     // 能力上昇
-    AbilityIncrease {
-        ability_type: AbilityType,
-        amount: u32,
-    },
+    AbilityIncrease(EffectAbilityIncrease),
 }

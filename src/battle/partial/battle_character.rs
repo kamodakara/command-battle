@@ -1,38 +1,69 @@
+use rand::rand_core::le;
+
 use super::*;
 
 impl BattleCharacter {
-    pub fn current_ability(&self) -> Ability {
-        // TODO: ステータス変化や装備による補正を考慮する
+    // 効果適応済み能力
+    pub fn ability_with_effects(&self, effects: &Vec<Effect>) -> Ability {
         let mut ability = self.raw_ability.clone();
 
-        // カルマ効果を反映
-        if let Some(karma) = &self.karma {
-            for effect in karma.current_effects() {
-                match effect {
-                    KarmaEffect::AbilityIncrease {
-                        ability_type,
-                        amount,
-                    } => match ability_type {
-                        AbilityType::Strength => ability.strength += amount,
-                        AbilityType::Dexterity => ability.dexterity += amount,
-                        AbilityType::Intelligence => ability.intelligence += amount,
-                        AbilityType::Faith => ability.faith += amount,
-                        AbilityType::Vitality => ability.vitality += amount,
-                        AbilityType::Spirit => ability.spirit += amount,
-                        _ => { /* 無視 */ }
-                    },
-                    _ => { /* 無視 */ }
-                }
+        for effect in effects {
+            match effect {
+                Effect::AbilityIncrease(e) => match e.ability_type {
+                    AbilityType::Strength => ability.strength += e.amount,
+                    AbilityType::Dexterity => ability.dexterity += e.amount,
+                    AbilityType::Intelligence => ability.intelligence += e.amount,
+                    AbilityType::Faith => ability.faith += e.amount,
+                    AbilityType::Vitality => ability.vitality += e.amount,
+                    AbilityType::Spirit => ability.spirit += e.amount,
+                    AbilityType::Endurance => ability.endurance += e.amount,
+                    AbilityType::Agility => ability.agility += e.amount,
+                    AbilityType::Arcane => ability.arcane += e.amount,
+                },
+                _ => { /* 無視 */ }
+            }
+        }
+
+        for effect in effects {
+            match effect {
+                Effect::AbilityModifier(e) => match e.ability_type {
+                    AbilityType::Strength => {
+                        ability.strength = (ability.strength as f32 * e.modifier) as u32
+                    }
+                    AbilityType::Dexterity => {
+                        ability.dexterity = (ability.dexterity as f32 * e.modifier) as u32
+                    }
+                    AbilityType::Intelligence => {
+                        ability.intelligence = (ability.intelligence as f32 * e.modifier) as u32
+                    }
+                    AbilityType::Faith => {
+                        ability.faith = (ability.faith as f32 * e.modifier) as u32
+                    }
+                    AbilityType::Vitality => {
+                        ability.vitality = (ability.vitality as f32 * e.modifier) as u32
+                    }
+                    AbilityType::Spirit => {
+                        ability.spirit = (ability.spirit as f32 * e.modifier) as u32
+                    }
+                    AbilityType::Endurance => {
+                        ability.endurance = (ability.endurance as f32 * e.modifier) as u32
+                    }
+                    AbilityType::Agility => {
+                        ability.agility = (ability.agility as f32 * e.modifier) as u32
+                    }
+                    AbilityType::Arcane => {
+                        ability.arcane = (ability.arcane as f32 * e.modifier) as u32
+                    }
+                },
+                _ => { /* 無視 */ }
             }
         }
 
         ability
     }
 
-    pub fn defense_power(&self) -> DefensePower {
-        // 能力の防御力
-        let ability = self.current_ability();
-        let mut defense_power = create_player_defense_power(&ability);
+    pub fn armor_defense_power(&self) -> DefensePower {
+        let mut defense_power = DefensePower::default();
 
         // 装備の防御力を加算
         if let Some(armor) = &self.raw_equipment.armor1 {
@@ -63,46 +94,108 @@ impl BattleCharacter {
         defense_power
     }
 
-    pub fn weapon_performance(&self, weapon_id: &BattleWeaponId) -> Option<WeaponPerformance> {
-        let weapon = if let Some(w) = self.weapons.iter().find(|w| &w.id == weapon_id) {
-            w
-        } else {
-            // TODO: エラー処理
-            // Noneを返すだけでいいか要検討
-            return None;
-        };
-        let ability = self.current_ability();
+    // 効果適応済み防御力取得
+    pub fn defense_power_with_effects(&self, effects: &Vec<Effect>) -> DefensePower {
+        // 能力の防御力
+        let ability = self.ability_with_effects(effects);
+        let mut defense_power = ability.base_defense_power();
 
-        Some(weapon.weapon.performance(&ability))
+        // 装備の防御力を加算
+        defense_power.add(&self.armor_defense_power());
+
+        defense_power
+    }
+
+    pub fn weapon(&self, weapon_id: &BattleWeaponId) -> Option<&BattleWeapon> {
+        self.weapons.iter().find(|w| &w.id == weapon_id)
     }
 
     // 最大カルマ値を取得する
+    // TODO: 能力変化の影響を受けないので値で持っていてもいいかも
     pub fn max_karma(&self) -> u32 {
-        let ability = self.current_ability();
+        // 最大カルマ値は能力変化の影響を受けない
+        let ability = &self.raw_ability;
         (ability.vitality as f32
             + ability.spirit as f32
             + (ability.intelligence as f32 * 1.5)
             + (ability.faith as f32 * 1.5)) as u32
     }
 
-    pub fn karma_effects(&self, effect_types: Vec<KarmaEffectType>) -> Vec<KarmaEffect> {
-        if let Some(karma) = &self.karma {
-            let mut karma_effects = karma.current_effects();
-            karma_effects.retain(|effect| match effect {
-                KarmaEffect::AttackDamageModifier { .. } => {
-                    effect_types.contains(&KarmaEffectType::AttackDamageModifier)
+    // キャラクター関係の現在有効な効果取得
+    // 状態異常、カルマ、トランスなどで発動している効果をすべて取得する
+    // 効果打消し等あればここで処理する
+    // 最終的に有効な効果一覧を返す
+    pub fn current_effects(&self) -> Vec<Effect> {
+        let mut effects = vec![];
+
+        // 状態異常の継続効果
+        let status_ailment_ongoing_effects = self.status_ailment.current_ongoing_effects();
+        for ongoing_effect in status_ailment_ongoing_effects.into_iter() {
+            match ongoing_effect {
+                BattleStatusAilmentOngoingEffect::HpPercentageDamage(e) => {
+                    effects.push(Effect::HpPercentageDamage(e))
                 }
-                KarmaEffect::ReceiveDamageModifier { .. } => {
-                    effect_types.contains(&KarmaEffectType::ReceiveDamageModifier)
+                BattleStatusAilmentOngoingEffect::SpPercentageDamage(e) => {
+                    effects.push(Effect::SpPercentageDamage(e))
                 }
-                KarmaEffect::AbilityIncrease { .. } => {
-                    effect_types.contains(&KarmaEffectType::AbilityIncrease)
+                BattleStatusAilmentOngoingEffect::AttackDamageModifier(e) => {
+                    effects.push(Effect::AttackDamageModifier(e))
                 }
-            });
-            karma_effects
-        } else {
-            Vec::new()
+                BattleStatusAilmentOngoingEffect::ReceiveDamageModifier(e) => {
+                    effects.push(Effect::ReceiveDamageModifier(e))
+                }
+                BattleStatusAilmentOngoingEffect::AbilityModifier(e) => {
+                    effects.push(Effect::AbilityModifier(e))
+                }
+                BattleStatusAilmentOngoingEffect::RemoveStatusAilment(e) => {
+                    effects.push(Effect::RemoveStatusAilment(e))
+                }
+            }
         }
+
+        // カルマの場効果
+        if let Some(karma) = &self.karma {
+            let karma_field_effects = karma.field_effects();
+
+            for karma_effect in karma_field_effects.into_iter() {
+                match karma_effect {
+                    KarmaEffect::AttackDamageModifier(e) => {
+                        effects.push(Effect::AttackDamageModifier(e))
+                    }
+                    KarmaEffect::ReceiveDamageModifier(e) => {
+                        effects.push(Effect::ReceiveDamageModifier(e))
+                    }
+                    KarmaEffect::AbilityIncrease(e) => effects.push(Effect::AbilityIncrease(e)),
+                }
+            }
+        }
+
+        // トランスハート効果
+        if let Some(trance) = &self.trance {
+            let heart_effects = trance.current_heart_effects();
+
+            for heart_effect in heart_effects.into_iter() {
+                match heart_effect {
+                    HeartEffect::PhysicalDefenseModifier(e) => {
+                        effects.push(Effect::PhysicalDefenseModifier(e))
+                    }
+                    HeartEffect::MagicalDefenseModifier(e) => {
+                        effects.push(Effect::MagicalDefenseModifier(e))
+                    }
+                    HeartEffect::PhysicalAttackModifier(e) => {
+                        effects.push(Effect::PhysicalAttackModifier(e))
+                    }
+                    HeartEffect::MagicalAttackModifier(e) => {
+                        effects.push(Effect::MagicalAttackModifier(e))
+                    }
+                    HeartEffect::StaminaRecoveryModifier(e) => {
+                        effects.push(Effect::StaminaRecoveryModifier(e))
+                    }
+                }
+            }
+        }
+
+        effects
     }
 }
 

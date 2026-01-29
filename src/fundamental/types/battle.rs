@@ -3,6 +3,8 @@ mod incident;
 mod karma;
 mod trance;
 
+use super::StatusAilment;
+use super::character::Ability;
 use super::character::AbilityType;
 use super::common::*;
 use super::conduct::Art;
@@ -14,7 +16,6 @@ use super::equipment::{Equipment, Weapon};
 use super::karma::*;
 use super::status_ailment::StatusConditionPotency;
 use super::trance::*;
-use crate::types::StatusAilment;
 use std::sync::Arc;
 
 pub use character::*;
@@ -23,6 +24,7 @@ pub use karma::*;
 pub use trance::*;
 
 // 戦闘中の状態異常
+#[derive(Clone)]
 pub struct BattleStatusAilment {
     pub poison: BattleStatusAilmentStatus,    // 毒
     pub sleep: BattleStatusAilmentStatus,     // 眠気
@@ -34,6 +36,7 @@ pub struct BattleStatusAilment {
     pub rage: BattleStatusAilmentStatus,      // 激昂
 }
 // 戦闘中の状態異常ステータス
+#[derive(Clone)]
 pub struct BattleStatusAilmentStatus {
     // 蓄積量
     pub accumulation: u32,

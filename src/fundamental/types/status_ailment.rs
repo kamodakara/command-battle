@@ -1,6 +1,7 @@
 use super::equipment::GuardCutRate;
 
 // 状態異常
+#[derive(Clone)]
 pub enum StatusAilment {
     Poison, // 毒
     Sleep,  // 眠気

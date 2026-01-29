@@ -8,9 +8,8 @@ mod recover_break;
 mod recover_stamina;
 mod update_status_condition_for_turn;
 
-use super::equipment;
-use super::player::create_player_defense_power;
-use super::types::*;
+// use super::fundamental;
+use super::fundamental::*;
 
 pub use decide_enemy_conduct::DecideEnemyConductRequest;
 pub use decide_order::BattleDecideOrderRequest;

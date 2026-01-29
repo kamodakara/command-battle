@@ -1,10 +1,7 @@
-use crate::types::{
-    Ability, AbilityType, Armor, ArmorSlot, AttackPower, Equipment, Weapon, WeaponAttackPower,
-    WeaponPerformance, WeaponPerformancePenalty,
-};
+use super::*;
 
 // 装備可能かチェックする関数
-pub fn is_armor_equippable(armor: &Armor, equipment: Equipment) -> bool {
+pub fn is_armor_equippable(armor: &Armor, equipment: &Equipment) -> bool {
     let mut equipment_slots: Vec<&ArmorSlot> = vec![];
     if let Some(a) = &equipment.armor1 {
         equipment_slots.extend(&a.slots);
@@ -39,6 +36,12 @@ pub fn is_armor_equippable(armor: &Armor, equipment: Equipment) -> bool {
     }
     // 装備可能
     true
+}
+
+impl Equipment {
+    pub fn is_equippable(&self, armor: &Armor) -> bool {
+        is_armor_equippable(armor, self)
+    }
 }
 
 impl Weapon {
@@ -140,5 +143,91 @@ impl WeaponAttackPower {
             lightning: self.ability_scaling.lightning.scale_value(ability),
             chaos: self.ability_scaling.chaos.scale_value(ability),
         }
+    }
+}
+
+impl WeaponPerformance {
+    // 最終的な攻撃性能を取得する
+    pub fn final_attack_power(&self) -> AttackPower {
+        let mut attack_power = self.attack_power.clone();
+
+        // 能力補正分を加算
+        attack_power.slash += self.ability_attack_power.slash;
+        attack_power.strike += self.ability_attack_power.strike;
+        attack_power.thrust += self.ability_attack_power.thrust;
+        attack_power.impact += self.ability_attack_power.impact;
+        attack_power.magic += self.ability_attack_power.magic;
+        attack_power.fire += self.ability_attack_power.fire;
+        attack_power.lightning += self.ability_attack_power.lightning;
+        attack_power.chaos += self.ability_attack_power.chaos;
+
+        // ペナルティ分を減算
+        if let Some(penalty) = &self.penalty {
+            attack_power.slash = attack_power
+                .slash
+                .saturating_sub(penalty.penalty_attack_power.slash);
+            attack_power.strike = attack_power
+                .strike
+                .saturating_sub(penalty.penalty_attack_power.strike);
+            attack_power.thrust = attack_power
+                .thrust
+                .saturating_sub(penalty.penalty_attack_power.thrust);
+            attack_power.impact = attack_power
+                .impact
+                .saturating_sub(penalty.penalty_attack_power.impact);
+            attack_power.magic = attack_power
+                .magic
+                .saturating_sub(penalty.penalty_attack_power.magic);
+            attack_power.fire = attack_power
+                .fire
+                .saturating_sub(penalty.penalty_attack_power.fire);
+            attack_power.lightning = attack_power
+                .lightning
+                .saturating_sub(penalty.penalty_attack_power.lightning);
+            attack_power.chaos = attack_power
+                .chaos
+                .saturating_sub(penalty.penalty_attack_power.chaos);
+        }
+
+        attack_power
+    }
+
+    pub fn final_sorcery_power(&self) -> u32 {
+        let mut sorcery_power = self.sorcery_power;
+
+        // 能力補正分を加算
+        sorcery_power += self.ability_sorcery_power;
+
+        // ペナルティ分を減算
+        if let Some(penalty) = &self.penalty {
+            sorcery_power = sorcery_power.saturating_sub(penalty.penalty_sorcery_power);
+        }
+
+        sorcery_power
+    }
+
+    pub fn final_break_power(&self) -> u32 {
+        let mut break_power = self.break_power;
+
+        // 能力補正分を加算
+        break_power += self.ability_break_power;
+
+        // ペナルティ分を減算
+        if let Some(penalty) = &self.penalty {
+            break_power = break_power.saturating_sub(penalty.penalty_break_power);
+        }
+
+        break_power
+    }
+
+    pub fn final_guard_strength(&self) -> u32 {
+        let mut guard_strength = self.guard_strength;
+
+        // ペナルティ分を減算
+        if let Some(penalty) = &self.penalty {
+            guard_strength = guard_strength.saturating_sub(penalty.penalty_guard_strength);
+        }
+
+        guard_strength
     }
 }

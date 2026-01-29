@@ -1,9 +1,8 @@
-use std::f32::consts::E;
-
 use super::*;
 
 impl StatusAilment {
     // 状態異常発動時の効果を取得する
+    // TODO: 毎回データ生成することになるので、要最適化検討？
     pub fn on_ailment_effects(&self) -> Vec<BattleStatusAilmentOnAilmentEffect> {
         match self {
             StatusAilment::Poison => vec![], // 毒は発動時効果なし
@@ -42,6 +41,7 @@ impl StatusAilment {
     }
 
     // 状態異常の継続効果を取得する
+    // TODO: 毎回データ生成することになるので、要最適化検討？
     pub fn ongoing_effects(&self) -> Vec<BattleStatusAilmentOngoingEffect> {
         match self {
             StatusAilment::Poison => vec![BattleStatusAilmentOngoingEffect::HpPercentageDamage(
@@ -127,6 +127,7 @@ impl StatusAilment {
 }
 
 impl BattleStatusAilment {
+    // 現在の継続効果を取得する
     pub fn current_ongoing_effects(&self) -> Vec<BattleStatusAilmentOngoingEffect> {
         let mut ongoing_effects = vec![];
         if self.poison.is_ailment {
@@ -154,41 +155,5 @@ impl BattleStatusAilment {
             ongoing_effects.extend(StatusAilment::Rage.ongoing_effects());
         }
         ongoing_effects
-    }
-
-    // 攻撃側時に有効な状態異常効果を取得する
-    pub fn attacker_effects(&self) -> Vec<Effect> {
-        let current_ongoing_effects = self.current_ongoing_effects();
-        let mut effects = vec![];
-        for effect in current_ongoing_effects {
-            match effect {
-                BattleStatusAilmentOngoingEffect::AbilityModifier(e) => {
-                    effects.push(Effect::AbilityModifier(e))
-                }
-                BattleStatusAilmentOngoingEffect::AttackDamageModifier(e) => {
-                    effects.push(Effect::AttackDamageModifier(e))
-                }
-                _ => {}
-            }
-        }
-        effects
-    }
-
-    // 防御側時に有効な状態異常効果を取得する
-    pub fn defender_effects(&self) -> Vec<Effect> {
-        let current_ongoing_effects = self.current_ongoing_effects();
-        let mut effects = vec![];
-        for effect in current_ongoing_effects {
-            match effect {
-                BattleStatusAilmentOngoingEffect::AbilityModifier(e) => {
-                    effects.push(Effect::AbilityModifier(e))
-                }
-                BattleStatusAilmentOngoingEffect::ReceiveDamageModifier(e) => {
-                    effects.push(Effect::ReceiveDamageModifier(e))
-                }
-                _ => {}
-            }
-        }
-        effects
     }
 }

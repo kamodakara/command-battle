@@ -2,8 +2,8 @@ use crate::battle::{
     BattleDecideOrderRequest, BattleExecuteConductRequest, DecideEnemyConductRequest,
     RecoverBreakRequest, RecoverStaminaRequest, UpdateStatusConditionRequest,
 };
-use crate::types;
-use crate::types::*;
+use crate::fundamental;
+use crate::fundamental::*;
 
 use super::*;
 
@@ -382,7 +382,7 @@ fn create_mock_battle() -> Battle {
     };
 
     // プレイヤー原本（仮）
-    let player_original = Arc::new(types::Player {
+    let player_original = Arc::new(Player {
         ability: Ability {
             vitality: 10,
             spirit: 10,
@@ -437,7 +437,7 @@ fn create_mock_battle() -> Battle {
     });
 
     // 敵原本（仮）
-    let enemy_original = Arc::new(types::Enemy {
+    let enemy_original = Arc::new(Enemy {
         ability: Ability {
             vitality: 10,
             spirit: 10,
@@ -520,6 +520,17 @@ fn create_mock_battle() -> Battle {
                 discard_pile: vec![],
                 field_cards: vec![],
             }),
+            trance: Some(BattleTrance {
+                max_trance: 1000,
+                heart: Heart {
+                    name: "烈火の心臓".to_string(),
+                    level1_effects: vec![],
+                    level2_effects: vec![],
+                    level3_effects: vec![],
+                    combination: None,
+                },
+                current_trance: 0,
+            }),
         }],
         enemies: vec![BattleCharacter {
             character_id: 2,
@@ -566,6 +577,7 @@ fn create_mock_battle() -> Battle {
                 rage: BattleStatusAilmentStatus::new(),
             },
             karma: None,
+            trance: None,
         }],
     }
 }
