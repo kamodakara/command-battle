@@ -38,18 +38,19 @@ pub struct BattleStatusAilment {
 // 戦闘中の状態異常ステータス
 #[derive(Clone)]
 pub struct BattleStatusAilmentStatus {
+    // 蓄積上限値
+    pub max_accumulation: u32,
+    // 状態異常値回復量
+    pub recovery_amount: u32,
+    // 状態異常中の状態異常値回復割合
+    pub ailment_recovery_rate: f32,
+
     // 蓄積量
     pub accumulation: u32,
     // 状態異常になってるか
     pub is_ailment: bool,
-}
-impl BattleStatusAilmentStatus {
-    pub fn new() -> Self {
-        Self {
-            accumulation: 0,
-            is_ailment: false,
-        }
-    }
+    // 状態異常値の蓄積がないターン数
+    pub no_accumulation_turns: u32,
 }
 
 // 状態異常になった瞬間の効果

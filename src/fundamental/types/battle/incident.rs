@@ -66,6 +66,10 @@ pub enum BattleCharacterIncidentConcrete {
     RecoverBreak(BattleIncidentRecoverBreak),     // ブレイク回復
     StatusConditionApplied(BattleIncidentStatusConditionApplied), // 状態変化付与
     StatusConditionRemoved(BattleIncidentStatusConditionRemoved), // 状態変化解除
+    StatusAilmentAccumulation(BattleIncidentStatusAilmentAccumulation), // 状態異常値蓄積
+    StatusAilmentRecovery(BattleIncidentStatusAilmentRecovery), // 状態異常値回復
+    StatusAilmentApplied(BattleIncidentStatusAilmentApplied), // 状態異常付与
+    StatusAilmentRemoved(BattleIncidentStatusAilmentRemoved), // 状態異常解除
 }
 
 // HPダメージ
@@ -117,12 +121,36 @@ pub struct BattleIncidentRecoverBreak {
     pub before: u32, // 回復前ブレイク
     pub after: u32,  // 回復後ブレイク
 }
-
+// 状態異常値蓄積
+pub struct BattleIncidentStatusAilmentAccumulation {
+    pub status_ailment: StatusAilment,
+    pub accumulation: u32,
+    pub before_accumulation: u32,
+    pub after_accumulation: u32,
+}
+// 状態異常値回復
+pub struct BattleIncidentStatusAilmentRecovery {
+    pub status_ailment: StatusAilment,
+    pub recover: u32,
+    pub before_accumulation: u32,
+    pub after_accumulation: u32,
+}
+// 状態変化付与
 pub struct BattleIncidentStatusConditionApplied {
     pub status_condition: BattleStatusCondition,
 }
+// 状態変化解除
 pub struct BattleIncidentStatusConditionRemoved {
     pub status_condition: BattleStatusCondition,
+}
+
+// 状態異常付与
+pub struct BattleIncidentStatusAilmentApplied {
+    pub status_ailment: StatusAilment,
+}
+// 状態異常解除
+pub struct BattleIncidentStatusAilmentRemoved {
+    pub status_ailment: StatusAilment,
 }
 
 // 行動失敗

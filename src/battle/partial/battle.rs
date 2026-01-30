@@ -57,6 +57,10 @@ impl BattleCharacterIncident {
     pub fn add_concrete(&mut self, concrete: BattleCharacterIncidentConcrete) {
         self.concretes.push(concrete);
     }
+
+    pub fn extend_concretes(&mut self, concretes: Vec<BattleCharacterIncidentConcrete>) {
+        self.concretes.extend(concretes);
+    }
 }
 
 impl BattleIncidentDamageHp {

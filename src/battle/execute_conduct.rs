@@ -137,6 +137,9 @@ pub fn execute_conduct(
     let target_character_ids =
         determine_targets(battle, &attacker_data.conduct.target, &rank.target);
 
+    // TODO: コンビネーションログ追加、ランク決まって技の内容が確定した後に行う必要がある
+    // TODO: コンビネーション技判定
+
     // ターゲットごとに効果処理
     let mut target_incidents = Vec::new();
     for target_id in target_character_ids.iter() {

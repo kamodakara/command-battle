@@ -157,3 +157,34 @@ impl BattleStatusAilment {
         ongoing_effects
     }
 }
+
+impl BattleStatusAilmentStatus {
+    pub fn new() -> Self {
+        BattleStatusAilmentStatus {
+            max_accumulation: 100, // TODO: 仮
+            accumulation: 0,
+            is_ailment: false,
+
+            recovery_amount: 10,         // TODO: 仮
+            ailment_recovery_rate: 0.05, // TODO: 仮
+            no_accumulation_turns: 0,
+        }
+    }
+
+    // 蓄積付与
+    pub fn add_accumulation(&mut self, addition: u32) -> (u32, u32) {
+        let before = self.accumulation;
+        self.accumulation += addition;
+        if self.accumulation > self.max_accumulation {
+            self.accumulation = self.max_accumulation;
+        }
+        (before, self.accumulation)
+    }
+
+    // 蓄積回復
+    pub fn recover_accumulation(&mut self, recover: u32) -> (u32, u32) {
+        let before = self.accumulation;
+        self.accumulation = self.accumulation.saturating_sub(recover);
+        (before, self.accumulation)
+    }
+}

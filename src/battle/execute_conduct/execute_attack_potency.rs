@@ -185,3 +185,78 @@ fn calc_damage(attack_power: &AttackPower, defender: &DefensePower) -> u32 {
         + (attack_power.chaos as f32 / defender.chaos as f32);
     damage as u32
 }
+
+// 状態異常蓄積
+fn accumulate_status_ailment(
+    target: &mut BattleCharacter,
+    ailment: &StatusAilment,
+    ailment_accumulation: u32, // 蓄積量
+) -> Vec<BattleCharacterIncidentConcrete> {
+    let mut incidents = vec![];
+
+    let status = match ailment {
+        StatusAilment::Poison => &mut target.status_ailment.poison,
+        StatusAilment::Sleep => &mut target.status_ailment.sleep,
+        StatusAilment::Chill => &mut target.status_ailment.chill,
+        StatusAilment::Bleed => &mut target.status_ailment.bleed,
+        StatusAilment::Burn => &mut target.status_ailment.burn,
+        StatusAilment::Paralysis => &mut target.status_ailment.paralysis,
+        StatusAilment::Fear => &mut target.status_ailment.fear,
+        StatusAilment::Rage => &mut target.status_ailment.rage,
+    };
+
+    let (before, after) = status.add_accumulation(ailment_accumulation);
+    // 蓄積インシデント
+    incidents.push(BattleCharacterIncidentConcrete::StatusAilmentAccumulation(
+        BattleIncidentStatusAilmentAccumulation {
+            status_ailment: ailment.clone(),
+            accumulation: ailment_accumulation,
+            before_accumulation: before,
+            after_accumulation: after,
+        },
+    ));
+
+    if !status.is_ailment && after == status.max_accumulation {
+        // 状態異常でない場合、蓄積
+        status.is_ailment = true;
+
+        // 効果発動
+        let effects = ailment.on_ailment_effects();
+        for effect in effects.iter() {
+            match effect {
+                BattleStatusAilmentOnAilmentEffect::HpPercentageDamage(effect) => {
+                    // HP割合ダメージ
+                    let damage = (target.hp.max_hp as f32 * effect.percentage) as u32;
+                    let (before_hp, after_hp) = target.hp.damage(damage);
+
+                    // HPダメージインシデント
+                    incidents.push(BattleCharacterIncidentConcrete::DamageHp(
+                        BattleIncidentDamageHp::new(damage, before_hp, after_hp),
+                    ));
+                }
+                BattleStatusAilmentOnAilmentEffect::SpPercentageDamage(effect) => {
+                    // SP割合ダメージ
+                    let damage = (target.sp.max_sp as f32 * effect.percentage) as u32;
+                    let (before_sp, after_sp) = target.sp.damage(damage);
+
+                    // SPダメージインシデント
+                    incidents.push(BattleCharacterIncidentConcrete::DamageSp(
+                        BattleIncidentDamageSp::new(damage, before_sp, after_sp),
+                    ));
+                }
+                _ => {
+                    // その他
+                }
+            }
+        }
+
+        // 状態異常付与インシデント
+        incidents.push(BattleCharacterIncidentConcrete::StatusAilmentApplied(
+            BattleIncidentStatusAilmentApplied {
+                status_ailment: ailment.clone(),
+            },
+        ));
+    }
+
+    incidents
+}

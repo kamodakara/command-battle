@@ -65,11 +65,11 @@ pub fn recover_break(battle: &mut Battle, request: RecoverBreakRequest) -> Battl
             // 2ターンブレイクダメージを受けていなければ回復
             if enemy.break_resistance.break_not_damaged_turns >= 2 {
                 let break_recovery = enemy.break_resistance.break_recovery;
-                let (brefore_break, after_break) = enemy.break_resistance.recover(break_recovery);
+                let (before_break, after_break) = enemy.break_resistance.recover(break_recovery);
 
                 // ブレイク値回復インシデント
                 incident.add_concrete(BattleCharacterIncidentConcrete::RecoverBreak(
-                    BattleIncidentRecoverBreak::new(break_recovery, brefore_break, after_break),
+                    BattleIncidentRecoverBreak::new(break_recovery, before_break, after_break),
                 ));
             }
 

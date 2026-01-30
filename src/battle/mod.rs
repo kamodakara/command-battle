@@ -6,6 +6,7 @@ mod karma_for_turn_end;
 mod partial;
 mod recover_break;
 mod recover_stamina;
+mod turn_end;
 mod update_status_condition_for_turn;
 
 // use super::fundamental;
