@@ -2,6 +2,8 @@ mod conduct_effect;
 mod execute_attack_potency;
 mod execute_support_potency;
 
+use std::sync::Arc;
+
 use execute_attack_potency::execute_attack_potency;
 use execute_support_potency::execute_support_potency;
 
@@ -12,6 +14,7 @@ use super::*;
 // 行動前のデータ
 struct AttackerData {
     character_id: BattleCharacterId,
+    conduct: BattleConduct,
 
     character_type: BattleCharacterType,
     hp: BattleCharacterHP,
@@ -21,9 +24,9 @@ struct AttackerData {
     status_ailment: BattleStatusAilment,
     status_conditions: Vec<BattleStatusCondition>,
 
-    conduct: BattleConduct,
     final_ability: Ability, // 効果適応済み能力
     weapon_performance: WeaponPerformance,
+    art_rank: ArtRank, // 効果ランク
 
     effects: Vec<Effect>, // 様々な効果
 
@@ -54,8 +57,8 @@ pub fn execute_conduct(
     };
     let attacker_id = attacker.character_id;
 
-    // TODO: 状態異常、カルマ等から効果を取得する
-    let attacker_effects = vec![];
+    // 状態異常、カルマ等から効果を取得する
+    let mut attacker_effects = attacker.current_effects();
 
     // 効果適応済み能力取得
     let attacker_ability = attacker.ability_with_effects(&attacker_effects);
@@ -73,9 +76,115 @@ pub fn execute_conduct(
         unarmed_weapon_performance()
     };
 
+    let sorcery_power = attacker_weapon_performance.final_sorcery_power();
+    // 効果ランク判定
+    let rank = conduct.art.effective_rank(sorcery_power).clone();
+
+    // コンビネーションログ追加、ランク決まって技の内容が確定した後に行う必要がある
+    if let Some(combination_skill) = &mut attacker.combination_skill {
+        let mut categories = vec![];
+        // 攻撃
+        if let ArtPotency::Attack(potency) = &rank.potency {
+            categories.push(CombinationConductCategory::Attack);
+
+            // 攻撃属性
+            // 攻撃力算出
+            // TODO: 同じことをダメージ計算時にやってるの1回だけにするようにするか検討
+            let weapon_attack_power = attacker_weapon_performance.final_attack_power();
+            let attack_power = potency.final_attack_power(&weapon_attack_power);
+            if attack_power.slash > 0 {
+                categories.push(CombinationConductCategory::AttackAttribute(
+                    Attribute::Slash,
+                ));
+            }
+            if attack_power.strike > 0 {
+                categories.push(CombinationConductCategory::AttackAttribute(
+                    Attribute::Strike,
+                ));
+            }
+            if attack_power.thrust > 0 {
+                categories.push(CombinationConductCategory::AttackAttribute(
+                    Attribute::Thrust,
+                ));
+            }
+            if attack_power.impact > 0 {
+                categories.push(CombinationConductCategory::AttackAttribute(
+                    Attribute::Impact,
+                ));
+            }
+            if attack_power.magic > 0 {
+                categories.push(CombinationConductCategory::AttackAttribute(
+                    Attribute::Magic,
+                ));
+            }
+            if attack_power.fire > 0 {
+                categories.push(CombinationConductCategory::AttackAttribute(Attribute::Fire));
+            }
+            if attack_power.lightning > 0 {
+                categories.push(CombinationConductCategory::AttackAttribute(
+                    Attribute::Lightning,
+                ));
+            }
+            if attack_power.chaos > 0 {
+                categories.push(CombinationConductCategory::AttackAttribute(
+                    Attribute::Chaos,
+                ));
+            }
+        }
+        // 支援
+        if let ArtPotency::Support(_) = &rank.potency {
+            categories.push(CombinationConductCategory::Support);
+        }
+        // アーツ、基礎
+        if conduct.art.art_type == ArtType::Basic {
+            categories.push(CombinationConductCategory::ArtBasic);
+        }
+        // アーツ、技
+        if conduct.art.art_type == ArtType::Skill {
+            categories.push(CombinationConductCategory::ArtSkill);
+        }
+        // アーツ、術
+        if conduct.art.art_type == ArtType::Sorcery {
+            categories.push(CombinationConductCategory::ArtSorcery);
+        }
+
+        // ガード
+        if conduct.art.perks.contains(&ArtPerk::Guard) {
+            combination_skill
+                .add_current_conduct_categories(vec![CombinationConductCategory::Guard]);
+        }
+
+        combination_skill.add_current_conduct_categories(categories);
+
+        // コンビネーション技判定
+        // TODO: このタイミングの効果発動の場合、能力補正を適応できないのでどうするか要検討
+        if combination_skill.can_activate_combination_skill() {
+            // コンビネーション技発動
+            match &combination_skill.combination_skill.effect {
+                HeartCombinationEffect::AttackDamageModifier(modifier) => {
+                    // 与ダメージ補正効果追加
+                    attacker_effects.push(Effect::AttackDamageModifier(
+                        EffectAttackDamageModifier {
+                            modifier: modifier.modifier,
+                        },
+                    ));
+                }
+                HeartCombinationEffect::AttackBreakDamageModifier(modifier) => {
+                    // 与ブレイクダメージ補正効果追加
+                    attacker_effects.push(Effect::AttackBreakDamageModifier(
+                        EffectAttackBreakDamageModifier {
+                            modifier: modifier.modifier,
+                        },
+                    ));
+                }
+            }
+        }
+    }
+
     // 攻撃者データ準備
     let attacker_data = AttackerData {
         character_id: attacker_id,
+        conduct,
 
         character_type: attacker.character_type.clone(),
         hp: attacker.hp.clone(),
@@ -85,15 +194,20 @@ pub fn execute_conduct(
         status_ailment: attacker.status_ailment.clone(),
         status_conditions: attacker.status_conditions.clone(),
 
-        conduct,
         final_ability: attacker_ability,
         weapon_performance: attacker_weapon_performance,
+        art_rank: rank,
 
         effects: attacker_effects,
     };
 
     // 行動成否判定
     if let Some(failure_reason) = determine_action_outcome_failure(&attacker_data) {
+        // コンビネーションログに失敗追加
+        if let Some(combination_skill) = &mut attacker.combination_skill {
+            combination_skill.add_current_conduct_result(CombinationConductResult::Failed);
+        }
+
         // TODO: 不発理由に応じた処理
         return BattleIncidentConduct {
             actor_character_id: attacker_id,
@@ -103,6 +217,11 @@ pub fn execute_conduct(
                 reason: failure_reason,
             }),
         };
+    } else {
+        // コンビネーションログに成功追加
+        if let Some(combination_skill) = &mut attacker.combination_skill {
+            combination_skill.add_current_conduct_result(CombinationConductResult::Success);
+        }
     }
 
     // 攻撃者インシデントの準備
@@ -129,16 +248,12 @@ pub fn execute_conduct(
         ));
     }
 
-    let sorcery_power = attacker_data.weapon_performance.final_sorcery_power();
-    // 効果ランク判定
-    let rank = attacker_data.conduct.art.effective_rank(sorcery_power);
-
     // ターゲットの決定
-    let target_character_ids =
-        determine_targets(battle, &attacker_data.conduct.target, &rank.target);
-
-    // TODO: コンビネーションログ追加、ランク決まって技の内容が確定した後に行う必要がある
-    // TODO: コンビネーション技判定
+    let target_character_ids = determine_targets(
+        battle,
+        &attacker_data.conduct.target,
+        &attacker_data.art_rank.target,
+    );
 
     // ターゲットごとに効果処理
     let mut target_incidents = Vec::new();
@@ -208,7 +323,7 @@ pub fn execute_conduct(
             BattleCharacterIncident::new(BattleCharacterIncidentReason::ConductEffect);
 
         // 効果処理
-        match &rank.potency {
+        match &attacker_data.art_rank.potency {
             ArtPotency::Attack(art_attack) => {
                 // 攻撃効果処理
 
@@ -221,6 +336,8 @@ pub fn execute_conduct(
                 };
                 let attack_incidents =
                     execute_attack_potency(art_attack, &attacker_data, target_data);
+
+                // インシデント
                 for incident in attack_incidents.into_iter() {
                     target_character_incident.add_concrete(incident);
                 }

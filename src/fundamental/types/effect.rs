@@ -6,6 +6,7 @@ pub enum Effect {
     SpPercentageDamage(EffectSpPercentageDamage), // SP最大値の割合ダメージ
     AttackDamageModifier(EffectAttackDamageModifier), // 与ダメージ補正
     ReceiveDamageModifier(EffectReceiveDamageModifier), // 被ダメージ補正
+    AttackBreakDamageModifier(EffectAttackBreakDamageModifier), // 与ブレイクダメージ補正
     RemoveStatusAilment(EffectRemoveStatusAilment), // 状態異常解除
     AbilityIncrease(EffectAbilityIncrease),       // 能力上昇
     AbilityModifier(EffectAbilityModifier),       // 能力補正
@@ -32,6 +33,10 @@ pub struct EffectAttackDamageModifier {
 #[derive(Clone)]
 pub struct EffectReceiveDamageModifier {
     pub modifier: f32, // 被ダメージ補正
+}
+#[derive(Clone)]
+pub struct EffectAttackBreakDamageModifier {
+    pub modifier: f32, // 与ブレイクダメージ補正
 }
 #[derive(Clone)]
 pub struct EffectRemoveStatusAilment {

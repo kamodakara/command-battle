@@ -43,21 +43,23 @@ pub struct CombinationSkillConditionRequirements {
 // コンビネーション用技判定用行動カテゴリ
 #[derive(PartialEq)]
 pub enum CombinationConductCategory {
-    Attack,               // 攻撃
-    Support,              // 支援
-    ArtBase,              // アーツ、基礎
-    ArtSkill,             // アーツ、技
-    ArtSorcery,           // アーツ、術
-    Attribute(Attribute), // 属性
-    Guard,                // ガード
+    Attack,                     // 攻撃
+    Support,                    // 支援
+    ArtBasic,                   // アーツ、基礎
+    ArtSkill,                   // アーツ、技
+    ArtSorcery,                 // アーツ、術
+    AttackAttribute(Attribute), // 攻撃属性
+    Guard,                      // ガード
 }
 #[derive(PartialEq)]
 pub enum CombinationConductResult {
-    Success,      // 成功
-    Failed,       // 失敗
+    Success,      // 行動成功
+    Failed,       // 行動失敗
     GuardSuccess, // ガード成功
 }
 
 pub enum HeartCombinationEffect {
-    // TODO: 実装
+    AttackDamageModifier(EffectAttackDamageModifier), // 与ダメージ補正
+    AttackBreakDamageModifier(EffectAttackBreakDamageModifier), // 与ブレイクダメージ補正
+                                                      // TODO: ガード貫通
 }

@@ -5,6 +5,20 @@ use super::*;
 pub fn turn_end(battle: &mut Battle) -> Vec<BattleIncidentCharacter> {
     let mut incident_characters = vec![];
 
+    // 全キャラクターのコンビネーションのターン終了処理
+    for player in &mut battle.players {
+        if let Some(combination_skill) = &mut player.combination_skill {
+            // コンビネーションのターン終了処理
+            combination_skill.finalize_current_conduct();
+        }
+    }
+    for enemy in &mut battle.enemies {
+        if let Some(combination_skill) = &mut enemy.combination_skill {
+            // コンビネーションのターン終了処理
+            combination_skill.finalize_current_conduct();
+        }
+    }
+
     // 全キャラクターの状態変化更新
     for player in &mut battle.players {
         let incident = update_status_condition(player);

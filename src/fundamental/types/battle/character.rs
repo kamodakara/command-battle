@@ -26,6 +26,7 @@ pub struct BattleCharacter {
 
     pub karma: Option<BattleKarma>,   // カルマ (プレイヤーのみ)
     pub trance: Option<BattleTrance>, // トランス (プレイヤーのみ)
+    pub combination_skill: Option<BattleCombinationSkill>, // コンビネーション技 (プレイヤーのみ)
 }
 
 pub type BattleCharacterId = u32;

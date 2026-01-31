@@ -8,7 +8,7 @@ pub struct BattleTrance {
 }
 
 pub struct BattleCombinationSkill {
-    pub combination_skill: Option<CombinationSkill>,
+    pub combination_skill: CombinationSkill,
 
     pub current_combination_conduct_log: Option<BattleCombinationConductLog>,
     pub combination_logs: Vec<BattleCombinationConductLog>,

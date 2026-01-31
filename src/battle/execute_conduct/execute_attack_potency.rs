@@ -12,8 +12,6 @@ pub fn execute_attack_potency(
 
     // 武器性能取得
     let weapon_attack_power = attacker_data.weapon_performance.final_attack_power();
-    let weapon_break_power = attacker_data.weapon_performance.final_break_power();
-
     // アーツ攻撃力算出
     let mut attack_power = art_attack.final_attack_power(&weapon_attack_power);
 
@@ -64,6 +62,7 @@ pub fn execute_attack_potency(
     });
 
     // ブレイク力算出
+    let weapon_break_power = attacker_data.weapon_performance.final_break_power();
     let break_power = art_attack.final_break_power(weapon_break_power);
 
     // 防御力取得

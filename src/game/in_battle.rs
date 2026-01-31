@@ -531,6 +531,27 @@ fn create_mock_battle() -> Battle {
                 },
                 current_trance: 0,
             }),
+            combination_skill: Some(BattleCombinationSkill {
+                combination_skill: CombinationSkill {
+                    name: "烈火の連撃".to_string(),
+                    effect: HeartCombinationEffect::AttackDamageModifier(
+                        EffectAttackDamageModifier { modifier: 1.5 },
+                    ),
+                    condition: CombinationSkillCondition {
+                        current_requirements: CombinationSkillConditionRequirements {
+                            categories: vec![CombinationConductCategory::Attack],
+                            results: vec![CombinationConductResult::Success],
+                        },
+                        previous_requirements: Some(CombinationSkillConditionRequirements {
+                            categories: vec![CombinationConductCategory::Attack],
+                            results: vec![CombinationConductResult::Success],
+                        }),
+                        two_steps_before_requirements: None,
+                    },
+                },
+                current_combination_conduct_log: None,
+                combination_logs: vec![],
+            }),
         }],
         enemies: vec![BattleCharacter {
             character_id: 2,
@@ -578,6 +599,7 @@ fn create_mock_battle() -> Battle {
             },
             karma: None,
             trance: None,
+            combination_skill: None,
         }],
     }
 }

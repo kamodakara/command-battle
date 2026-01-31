@@ -25,6 +25,7 @@ pub enum ArtPerk {
     Melee,  // 近距離
     Ranged, // 遠距離
     AtFeet, // 足元
+    Guard,  // ガード
 }
 
 // 必要能力

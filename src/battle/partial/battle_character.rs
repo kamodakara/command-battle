@@ -1,5 +1,3 @@
-use rand::rand_core::le;
-
 use super::*;
 
 impl BattleCharacter {
