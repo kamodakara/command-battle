@@ -8,6 +8,8 @@ pub fn execute_attack_potency(
     let target = target_data.target;
     let target_effects = target_data.effects;
 
+    let target_ability = target.ability_with_effects(&target_effects);
+
     let mut incidents = vec![];
 
     // 武器性能取得
@@ -23,14 +25,43 @@ pub fn execute_attack_potency(
         attack_power.multiply(sorcery_attack_power_rate);
     }
 
+    // ブレイク力算出
+    let weapon_break_power = attacker_data.weapon_performance.final_break_power();
+    let break_power = art_attack.final_break_power(weapon_break_power);
+
     // 防御時の攻撃力カット処理
-    let mut is_defended = false;
     for se in target.status_conditions.iter() {
         match &se.potency {
             StatusConditionPotency::Resistance(resistance) => {
-                // 防御時の攻撃力カット処理
-                attack_power = resistance.cut_rate.apply_guard_cut(&attack_power);
-                is_defended = true;
+                let battle_weapon_id = &resistance.battle_weapon_id;
+                if let Some(weapon) = target.weapon(battle_weapon_id) {
+                    let performance = weapon.weapon.performance(&target_ability);
+
+                    // 防御時の攻撃力カット処理
+                    attack_power = weapon.weapon.guard.cut_rate.apply_guard_cut(&attack_power);
+
+                    // 防御時のスタミナダメージ
+                    // ガードで使用する武器の現状の武器性能でガード強度を取得する
+                    let sta_damage = break_power / performance.guard_strength.max(1);
+                    let (before_sta, after_sta) = target.stamina.damage(sta_damage);
+
+                    // ガード成功時のコンビネーションログ
+                    if let Some(combination_skill) = &mut target.combination_skill {
+                        combination_skill
+                            .add_current_conduct_result(CombinationConductResult::GuardSuccess);
+                    }
+
+                    // スタミナダメージのインシデント
+                    incidents.push(BattleCharacterIncidentConcrete::DamageStamina(
+                        BattleIncidentDamageStamina::new(sta_damage, before_sta, after_sta),
+                    ));
+                } else {
+                    // TODO: エラー処理
+                    panic!(
+                        "防御に使用する武器が見つかりませんでした: {:?}",
+                        battle_weapon_id
+                    );
+                };
             }
             _ => {
                 // その他
@@ -60,10 +91,6 @@ pub fn execute_attack_potency(
             }
         }
     });
-
-    // ブレイク力算出
-    let weapon_break_power = attacker_data.weapon_performance.final_break_power();
-    let break_power = art_attack.final_break_power(weapon_break_power);
 
     // 防御力取得
     // TODO: 能力補正は外だしするか考える
@@ -124,17 +151,6 @@ pub fn execute_attack_potency(
     incidents.push(BattleCharacterIncidentConcrete::DamageHp(
         BattleIncidentDamageHp::new(damage, before_hp_damage, after_hp_damage),
     ));
-
-    // 防御時のスタミナダメージ
-    if is_defended {
-        let sta_damage = break_power / 4; // TODO: 固定値ではなくガード強度
-        let (before_sta, after_sta) = target.stamina.damage(sta_damage);
-
-        // スタミナダメージのインシデント
-        incidents.push(BattleCharacterIncidentConcrete::DamageStamina(
-            BattleIncidentDamageStamina::new(sta_damage, before_sta, after_sta),
-        ));
-    }
 
     // ブレイクダメージ処理
     if target.character_type == BattleCharacterType::Enemy {

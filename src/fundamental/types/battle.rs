@@ -109,8 +109,8 @@ pub struct BattleWeapon {
     pub weapon: Weapon,     // 武器情報
 }
 // 武器ID
-#[derive(Clone, PartialEq)]
-pub struct BattleWeaponId(u32);
+#[derive(Clone, PartialEq, Debug)]
+pub struct BattleWeaponId(pub u32);
 
 #[derive(Clone)]
 pub struct BattleConduct {

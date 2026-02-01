@@ -1,4 +1,4 @@
-use super::equipment::GuardCutRate;
+use super::*;
 
 // 状態異常
 #[derive(Clone)]
@@ -58,8 +58,7 @@ pub enum StatusConditionPotency {
 // 戦闘中の状態変化 防御状態
 #[derive(Clone)]
 pub struct StatusConditionResistance {
-    pub cut_rate: GuardCutRate, // カット率
-                                // pub guard_strength: u32,    // ガード強度
+    pub battle_weapon_id: BattleWeaponId, // 防御に使用する武器ID
 }
 // 戦闘中の状態変化 ブレイク状態
 #[derive(Clone)]

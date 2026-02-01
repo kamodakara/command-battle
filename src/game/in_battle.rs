@@ -224,16 +224,7 @@ fn create_default_player_conducts() -> PlayerConducts {
                         status_conditions: vec![StatusCondition {
                             potency: StatusConditionPotency::Resistance(
                                 StatusConditionResistance {
-                                    cut_rate: GuardCutRate {
-                                        slash: 0.5,
-                                        strike: 0.5,
-                                        thrust: 0.5,
-                                        impact: 0.5,
-                                        magic: 0.5,
-                                        fire: 0.5,
-                                        lightning: 0.5,
-                                        chaos: 0.5,
-                                    },
+                                    battle_weapon_id: BattleWeaponId(0), // TODO: 仮のID、あとで差し替え
                                 },
                             ),
                             duration: StatusConditionDuration::Turn(StatusConditionDurationTurn {
