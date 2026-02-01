@@ -499,11 +499,15 @@ fn determine_action_outcome_failure(
         }
     }
 
-    // ブレイク中行動不能
-    for se in attacker_data.status_conditions.iter() {
-        if let StatusConditionPotency::Break(_) = &se.potency {
-            // ブレイク中
-            return Some(BattleIncidentConductOutcomeFailureReason::IsBreak);
+    // 行動不能効果チェック
+    for effect in attacker_data.effects.iter() {
+        match effect {
+            Effect::UnableToAct => {
+                // TODO: インシデント調整
+                // ブレイク中行動不能
+                return Some(BattleIncidentConductOutcomeFailureReason::IsBreak);
+            }
+            _ => {}
         }
     }
 

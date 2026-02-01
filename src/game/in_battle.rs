@@ -505,6 +505,7 @@ fn create_mock_battle() -> Battle {
                 paralysis: BattleStatusAilmentStatus::new(),
                 fear: BattleStatusAilmentStatus::new(),
                 rage: BattleStatusAilmentStatus::new(),
+                breaking: BattleStatusAilmentStatus::new(),
             },
             karma: Some(BattleKarma {
                 draw_pile: vec![],
@@ -587,6 +588,7 @@ fn create_mock_battle() -> Battle {
                 paralysis: BattleStatusAilmentStatus::new(),
                 fear: BattleStatusAilmentStatus::new(),
                 rage: BattleStatusAilmentStatus::new(),
+                breaking: BattleStatusAilmentStatus::new(),
             },
             karma: None,
             trance: None,

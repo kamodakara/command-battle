@@ -27,12 +27,6 @@ pub fn turn_end(battle: &mut Battle) -> Vec<BattleIncidentCharacter> {
         incident_characters.push(incident);
     }
 
-    // 全敵キャラクターのブレイク回復
-    for enemy in &mut battle.enemies {
-        let incident = recover_break(enemy);
-        incident_characters.push(incident);
-    }
-
     // プレイヤーのスタミナ回復
     let incident = recover_stamina(&mut battle.player);
     incident_characters.push(incident);
@@ -78,67 +72,6 @@ pub fn update_status_condition(character: &mut BattleCharacter) -> BattleInciden
 
     BattleIncidentCharacter {
         character_id: character.character_id,
-        incidents: vec![incident],
-    }
-}
-
-// ブレイク回復処理
-pub fn recover_break(enemy: &mut BattleCharacter) -> BattleIncidentCharacter {
-    // 敵キャラクターの場合のブレイク回復処理
-
-    // ブレイク状態かどうか
-    let mut is_break = false;
-    let mut break_status_condition_index = 0;
-    for (index, se) in enemy.status_conditions.iter().enumerate() {
-        if let StatusConditionPotency::Break(_) = &se.potency {
-            is_break = true;
-            break_status_condition_index = index;
-        }
-    }
-
-    let mut incident = BattleCharacterIncident::new(BattleCharacterIncidentReason::TurnEndRecovery);
-
-    if is_break {
-        // ブレイク中
-
-        // ブレイク回復処理
-        if enemy.break_resistance.remaining_breaking_turns == 0 {
-            // ブレイク中解除
-            enemy.break_resistance.clear_breaking();
-
-            // ステータス効果からブレイクを削除
-            let battle_status_condition =
-                enemy.status_conditions.remove(break_status_condition_index);
-
-            // ブレイク状態回復インシデント
-            incident.add_concrete(BattleCharacterIncidentConcrete::StatusConditionRemoved(
-                BattleIncidentStatusConditionRemoved {
-                    status_condition: battle_status_condition,
-                },
-            ));
-        } else {
-            // ブレイク中ターン経過
-            let (_before_breaking_turns, _after_breaking_turns) =
-                enemy.break_resistance.elapse_breaking_turn();
-        }
-    } else {
-        // 2ターンブレイクダメージを受けていなければ回復
-        if enemy.break_resistance.break_not_damaged_turns >= 2 {
-            let break_recovery = enemy.break_resistance.break_recovery;
-            let (brefore_break, after_break) = enemy.break_resistance.recover(break_recovery);
-
-            // ブレイク値回復インシデント
-            incident.add_concrete(BattleCharacterIncidentConcrete::RecoverBreak(
-                BattleIncidentRecoverBreak::new(break_recovery, brefore_break, after_break),
-            ));
-        }
-
-        // ブレイクを受けていないターン数を増やす
-        enemy.break_resistance.break_not_damaged_turns += 1;
-    }
-
-    BattleIncidentCharacter {
-        character_id: enemy.character_id,
         incidents: vec![incident],
     }
 }
@@ -249,6 +182,13 @@ fn recover_character_status_ailments(character: &mut BattleCharacter) -> BattleI
     let rage_incidents =
         recover_ailment_status(StatusAilment::Rage, &mut character.status_ailment.rage);
     incident.extend_concretes(rage_incidents);
+
+    // ブレイク
+    let breaking_incidents = recover_ailment_status(
+        StatusAilment::Breaking,
+        &mut character.status_ailment.breaking,
+    );
+    incident.extend_concretes(breaking_incidents);
 
     BattleIncidentCharacter {
         character_id: character.character_id,

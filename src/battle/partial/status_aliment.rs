@@ -37,6 +37,7 @@ impl StatusAilment {
                     },
                 )]
             }
+            StatusAilment::Breaking => vec![], // ブレイクは発動時効果なし
         }
     }
 
@@ -121,6 +122,14 @@ impl StatusAilment {
                     ability_type: AbilityType::Intelligence,
                     modifier: 0.5, // 知力半減
                 }),
+            ],
+
+            //
+            StatusAilment::Breaking => vec![
+                // 被ダメージ3倍
+                BattleStatusAilmentOngoingEffect::ReceiveDamageModifier(
+                    EffectReceiveDamageModifier { modifier: 3.0 },
+                ),
             ],
         }
     }

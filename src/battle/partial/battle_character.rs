@@ -148,6 +148,7 @@ impl BattleCharacter {
                 BattleStatusAilmentOngoingEffect::RemoveStatusAilment(e) => {
                     effects.push(Effect::RemoveStatusAilment(e))
                 }
+                BattleStatusAilmentOngoingEffect::UnableToAct => effects.push(Effect::UnableToAct),
             }
         }
 

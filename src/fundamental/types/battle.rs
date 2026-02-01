@@ -34,6 +34,7 @@ pub struct BattleStatusAilment {
     pub paralysis: BattleStatusAilmentStatus, // 麻痺
     pub fear: BattleStatusAilmentStatus,      // 恐怖
     pub rage: BattleStatusAilmentStatus,      // 激昂
+    pub breaking: BattleStatusAilmentStatus,  // ブレイク
 }
 // 戦闘中の状態異常ステータス
 #[derive(Clone)]
@@ -68,6 +69,7 @@ pub enum BattleStatusAilmentOngoingEffect {
     ReceiveDamageModifier(EffectReceiveDamageModifier), // 被ダメージ補正
     RemoveStatusAilment(EffectRemoveStatusAilment), // 状態異常解除
     AbilityModifier(EffectAbilityModifier),       // 能力補正
+    UnableToAct,                                  // 行動不能
 }
 
 // 戦闘中の状態変化
@@ -122,7 +124,7 @@ pub struct BattleConduct {
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum BattleConductTargetType {
-    Player,                         // プレイヤー側単体
+    Player,                         // プレイヤー単体
     EnemySingle(BattleCharacterId), // 敵側単体
     EnemyAll,                       // 敵側全体
 }

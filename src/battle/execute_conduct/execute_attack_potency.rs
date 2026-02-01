@@ -153,37 +153,11 @@ pub fn execute_attack_potency(
     ));
 
     // ブレイクダメージ処理
-    if target.character_type == BattleCharacterType::Enemy {
-        // ブレイク中でない時
-        let mut is_break = false;
-        for se in target.status_conditions.iter() {
-            if let StatusConditionPotency::Break(_) = &se.potency {
-                is_break = true
-            }
-        }
-        if !is_break {
-            // 敵のブレイクダメージ処理
-            let (before_break, after_break) = target.break_resistance.damage(break_power);
-
-            if after_break == 0 {
-                // TODO:
-                // ブレイク状態にする
-                // support_status_effect(
-                //     &vec![StatusCondition {
-                //         potency: StatusConditionPotency::Break(StatusConditionBreak {}),
-                //         duration: StatusConditionDuration::Permanent,
-                //     }],
-                //     target,
-                //     &mut target_character_incident,
-                // );
-            }
-
-            // ブレイクダメージインシデント追加
-            incidents.push(BattleCharacterIncidentConcrete::DamageBreak(
-                BattleIncidentDamageBreak::new(break_power, before_break, after_break),
-            ));
-        }
-    }
+    incidents.extend(accumulate_status_ailment(
+        target,
+        &StatusAilment::Breaking,
+        break_power,
+    ));
 
     incidents
 }
@@ -209,6 +183,11 @@ fn accumulate_status_ailment(
 ) -> Vec<BattleCharacterIncidentConcrete> {
     let mut incidents = vec![];
 
+    if ailment == &StatusAilment::Breaking && target.status_ailment.breaking.is_ailment {
+        // ブレイク状態の場合は蓄積しない
+        return incidents;
+    }
+
     let status = match ailment {
         StatusAilment::Poison => &mut target.status_ailment.poison,
         StatusAilment::Sleep => &mut target.status_ailment.sleep,
@@ -218,6 +197,7 @@ fn accumulate_status_ailment(
         StatusAilment::Paralysis => &mut target.status_ailment.paralysis,
         StatusAilment::Fear => &mut target.status_ailment.fear,
         StatusAilment::Rage => &mut target.status_ailment.rage,
+        StatusAilment::Breaking => &mut target.status_ailment.breaking,
     };
 
     let (before, after) = status.add_accumulation(ailment_accumulation);

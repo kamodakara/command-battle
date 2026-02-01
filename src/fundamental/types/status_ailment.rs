@@ -1,7 +1,7 @@
 use super::*;
 
 // 状態異常
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum StatusAilment {
     Poison, // 毒
     Sleep,  // 眠気
@@ -13,6 +13,8 @@ pub enum StatusAilment {
 
     Fear, // 恐怖
     Rage, // 激昂
+
+    Breaking, // ブレイク状態
 }
 
 // =================== 状態変化 ================= //
@@ -47,7 +49,6 @@ pub struct StatusConditionDurationCount {
 #[derive(Clone)]
 pub enum StatusConditionPotency {
     Resistance(StatusConditionResistance), // 防御
-    Break(StatusConditionBreak),           // ブレイク状態
     Evasion,                               // 回避
     Airborne,                              // 空中
     Floating,                              // 浮遊

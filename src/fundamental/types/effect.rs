@@ -15,6 +15,7 @@ pub enum Effect {
     PhysicalAttackModifier(EffectPhysicalAttackModifier), // 物理攻撃力補正
     MagicalAttackModifier(EffectMagicalAttackModifier), // 魔法攻撃力補正
     StaminaRecoveryModifier(EffectStaminaRecoveryModifier), // スタミナ回復量補正
+    UnableToAct, // 行動不能効果 TODO: 何で行動不能なのか情報を持たせるべきか？
 }
 
 #[derive(Clone)]
