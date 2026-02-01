@@ -462,7 +462,7 @@ fn create_mock_battle() -> Battle {
     });
 
     Battle {
-        players: vec![BattleCharacter {
+        player: BattleCharacter {
             character_id: 1,
             raw_ability: player_original.ability.clone(),
             raw_base_defense_power: def.clone(),
@@ -543,7 +543,7 @@ fn create_mock_battle() -> Battle {
                 current_combination_conduct_log: None,
                 combination_logs: vec![],
             }),
-        }],
+        },
         enemies: vec![BattleCharacter {
             character_id: 2,
             raw_ability: enemy_original.ability.clone(),
@@ -1386,7 +1386,7 @@ fn player_input_system(
                     .push(format!("ターン {} プレイヤーは{}を選択", turn.0, name));
 
                 // Battleモジュールで行動実行
-                let player_id = battle.players.first().map(|p| p.character_id).unwrap_or(1);
+                let player_id = battle.player.character_id;
                 let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
                 let player_conduct = match cmd {
                     CommandKind::Attack => BattleConduct {
@@ -1403,19 +1403,19 @@ fn player_input_system(
                     },
                     CommandKind::Heal => BattleConduct {
                         actor_character_id: player_id,
-                        target: BattleConductTargetType::PlayerSingle(player_id),
+                        target: BattleConductTargetType::Player,
                         art: Arc::clone(&player_conducts.heal),
                         battle_weapon_id: None,
                     },
                     CommandKind::Defend => BattleConduct {
                         actor_character_id: player_id,
-                        target: BattleConductTargetType::PlayerSingle(player_id),
+                        target: BattleConductTargetType::Player,
                         art: Arc::clone(&player_conducts.defend),
                         battle_weapon_id: None,
                     },
                     CommandKind::Wait => BattleConduct {
                         actor_character_id: player_id,
-                        target: BattleConductTargetType::PlayerSingle(player_id),
+                        target: BattleConductTargetType::Player,
                         art: Arc::clone(&player_conducts.wait),
                         battle_weapon_id: None,
                     },
@@ -1536,31 +1536,25 @@ fn player_input_system(
             *phase = BattlePhase::TurnEnd;
         }
         BattlePhase::TurnEnd => {
-            let player_character_ids = battle
-                .players
-                .iter()
-                .map(|p| p.character_id)
-                .collect::<Vec<u32>>();
+            let player_character_id = battle.player.character_id;
             let enemy_character_ids = battle
                 .enemies
                 .iter()
                 .map(|e| e.character_id)
                 .collect::<Vec<u32>>();
 
-            for &cid in player_character_ids.iter() {
-                battle.update_status_condition_for_turn(UpdateStatusConditionRequest {
-                    character_id: cid,
-                });
-            }
+            battle.update_status_condition_for_turn(UpdateStatusConditionRequest {
+                character_id: player_character_id,
+            });
             for &cid in enemy_character_ids.iter() {
                 battle.update_status_condition_for_turn(UpdateStatusConditionRequest {
                     character_id: cid,
                 });
             }
 
-            for &cid in player_character_ids.iter() {
-                battle.recover_stamina(RecoverStaminaRequest { character_id: cid });
-            }
+            battle.recover_stamina(RecoverStaminaRequest {
+                character_id: player_character_id,
+            });
 
             for &cid in enemy_character_ids.iter() {
                 battle.recover_break(RecoverBreakRequest { character_id: cid });
@@ -1597,7 +1591,7 @@ fn battle_end_check_system(
 
     let battle = &mut battle_resource.0;
     // TODO: 仮
-    let player = battle.players.first().unwrap();
+    let player = &battle.player;
     let player_hp = player.hp.current_hp;
     let enemy = battle.enemies.first().unwrap();
     let enemy_hp = enemy.hp.current_hp;
@@ -1803,7 +1797,7 @@ fn ui_update_system(
 
     let battle = &battle_resource.0;
 
-    let player = battle.players.first().unwrap();
+    let player = &battle.player;
     let p_hp = player.hp.current_hp;
     let p_stamina = player.stamina.current_stamina;
     let enemy = battle.enemies.first().unwrap();
@@ -2031,7 +2025,7 @@ fn ui_update_player_status_system(
 ) {
     let battle = &battle_resource.0;
 
-    let player = battle.players.first().unwrap();
+    let player = &battle.player;
     let p_hp = player.hp.current_hp;
     let p_sta = player.stamina.current_stamina;
 

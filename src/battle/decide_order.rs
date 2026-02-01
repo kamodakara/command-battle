@@ -10,8 +10,8 @@ pub fn decide_order(battle: &Battle, request: BattleDecideOrderRequest) -> Vec<u
     for id in request.character_ids {
         // TODO: 効果を考慮する
         let effects = vec![];
-        if let Some(character) = battle.players.iter().find(|c| c.character_id == id) {
-            order.push((id, character.ability_with_effects(&effects).agility));
+        if battle.player.character_id == id {
+            order.push((id, battle.player.ability_with_effects(&effects).agility));
         } else if let Some(character) = battle.enemies.iter().find(|c| c.character_id == id) {
             order.push((id, character.ability_with_effects(&effects).agility));
         }

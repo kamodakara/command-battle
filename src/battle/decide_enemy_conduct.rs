@@ -13,10 +13,10 @@ pub fn decide_enemy_conduct(battle: &Battle, request: DecideEnemyConductRequest)
     // TODO: 実装
 
     // 仮
-    let target = battle.players.first().unwrap();
+    let target = &battle.player;
     BattleConduct {
         actor_character_id: request.enemy_character_id,
-        target: BattleConductTargetType::PlayerSingle(target.character_id),
+        target: BattleConductTargetType::Player,
         art: Arc::new(Art {
             name: "敵の攻撃".to_string(),
             sp_cost: 0,

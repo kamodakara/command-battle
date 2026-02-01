@@ -99,7 +99,7 @@ pub struct BattleStatusConditionDurationCount {
 }
 
 pub struct Battle {
-    pub players: Vec<BattleCharacter>,
+    pub player: BattleCharacter,
     pub enemies: Vec<BattleCharacter>,
 }
 
@@ -122,8 +122,7 @@ pub struct BattleConduct {
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum BattleConductTargetType {
-    PlayerSingle(BattleCharacterId), // プレイヤー側単体
-    EnemySingle(BattleCharacterId),  // 敵側単体
-    PlayerAll,                       // プレイヤー側全体
-    EnemyAll,                        // 敵側全体
+    Player,                         // プレイヤー側単体
+    EnemySingle(BattleCharacterId), // 敵側単体
+    EnemyAll,                       // 敵側全体
 }

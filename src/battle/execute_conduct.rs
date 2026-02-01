@@ -386,29 +386,14 @@ fn determine_targets(
     art_target: &ArtTarget,
 ) -> Vec<BattleCharacterId> {
     let conduct_target = match conduct_target {
-        BattleConductTargetType::PlayerSingle(_) => {
-            if art_target == &ArtTarget::All {
-                &BattleConductTargetType::PlayerAll
-            } else {
-                conduct_target
-            }
+        BattleConductTargetType::Player => {
+            // プレイヤー
+            // そのまま
+            &BattleConductTargetType::Player
         }
         BattleConductTargetType::EnemySingle(_) => {
             if art_target == &ArtTarget::All {
                 &BattleConductTargetType::EnemyAll
-            } else {
-                conduct_target
-            }
-        }
-        BattleConductTargetType::PlayerAll => {
-            if art_target == &ArtTarget::Single {
-                if let Some(character) = battle.players.first() {
-                    let target_character_id = character.character_id;
-                    &BattleConductTargetType::PlayerSingle(target_character_id)
-                } else {
-                    // TODO: エラー処理
-                    panic!("No player characters available");
-                }
             } else {
                 conduct_target
             }
@@ -430,13 +415,8 @@ fn determine_targets(
 
     // ターゲットIDリスト取得
     let target_character_ids = match conduct_target {
-        BattleConductTargetType::PlayerSingle(character_id) => {
-            if let Some(character) = battle.character(&character_id) {
-                vec![character.character_id]
-            } else {
-                // TODO: エラー処理
-                panic!("Defender not found");
-            }
+        BattleConductTargetType::Player => {
+            vec![battle.player.character_id]
         }
         BattleConductTargetType::EnemySingle(character_id) => {
             if let Some(character) = battle.character(&character_id) {
@@ -445,10 +425,6 @@ fn determine_targets(
                 // TODO: エラー処理
                 panic!("Defender not found");
             }
-        }
-        BattleConductTargetType::PlayerAll => {
-            // playersのcharacter_id全て
-            battle.players.iter().map(|c| c.character_id).collect()
         }
         BattleConductTargetType::EnemyAll => {
             // enemiesのcharacter_id全て

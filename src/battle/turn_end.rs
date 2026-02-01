@@ -6,11 +6,9 @@ pub fn turn_end(battle: &mut Battle) -> Vec<BattleIncidentCharacter> {
     let mut incident_characters = vec![];
 
     // 全キャラクターのコンビネーションのターン終了処理
-    for player in &mut battle.players {
-        if let Some(combination_skill) = &mut player.combination_skill {
-            // コンビネーションのターン終了処理
-            combination_skill.finalize_current_conduct();
-        }
+    if let Some(combination_skill) = &mut battle.player.combination_skill {
+        // コンビネーションのターン終了処理
+        combination_skill.finalize_current_conduct();
     }
     for enemy in &mut battle.enemies {
         if let Some(combination_skill) = &mut enemy.combination_skill {
@@ -20,10 +18,10 @@ pub fn turn_end(battle: &mut Battle) -> Vec<BattleIncidentCharacter> {
     }
 
     // 全キャラクターの状態変化更新
-    for player in &mut battle.players {
-        let incident = update_status_condition(player);
-        incident_characters.push(incident);
-    }
+    // プレイヤー
+    let incident = update_status_condition(&mut battle.player);
+    incident_characters.push(incident);
+    // 敵
     for enemy in &mut battle.enemies {
         let incident = update_status_condition(enemy);
         incident_characters.push(incident);
@@ -35,21 +33,15 @@ pub fn turn_end(battle: &mut Battle) -> Vec<BattleIncidentCharacter> {
         incident_characters.push(incident);
     }
 
-    // 全プレイヤーキャラクターのスタミナ回復
-    for player in &mut battle.players {
-        let incident = recover_stamina(player);
-        incident_characters.push(incident);
-    }
-
-    // TODO: 仮
-    let player = &mut battle.players.first_mut().unwrap();
+    // プレイヤーのスタミナ回復
+    let incident = recover_stamina(&mut battle.player);
+    incident_characters.push(incident);
     // カルマのターン終了時処理
-    karma(player);
+    karma(&mut battle.player);
 
     // 状態異常終了
-    for player in &mut battle.players {
-        incident_characters.push(recover_character_status_ailments(player));
-    }
+    // プレイヤー
+    incident_characters.push(recover_character_status_ailments(&mut battle.player));
     // 敵キャラクターの状態異常終了
     for enemy in &mut battle.enemies {
         incident_characters.push(recover_character_status_ailments(enemy));

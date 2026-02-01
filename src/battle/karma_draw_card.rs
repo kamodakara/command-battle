@@ -4,7 +4,7 @@ use super::*;
 // 山札からカルマカードを1枚引き、場に出す。
 // TODO: インシデントの追加
 pub fn karma_draw_card(battle: &mut Battle) {
-    let player = battle.players.first_mut().unwrap();
+    let player = &mut battle.player;
     let karma = if let Some(karma) = player.karma.as_mut() {
         karma
     } else {
