@@ -481,6 +481,7 @@ fn create_mock_battle() -> Battle {
             hp: BattleCharacterHP {
                 max_hp: player_original.stats.hp,
                 current_hp: player_original.stats.hp,
+                is_dead: false,
             },
             sp: BattleCharacterSP {
                 max_sp: player_original.stats.sp,
@@ -504,7 +505,6 @@ fn create_mock_battle() -> Battle {
             weapons: vec![
                 // TODO: 装備武器情報生成
             ],
-            is_dead: false,
             status_conditions: vec![],
             status_ailment: BattleStatusAilment {
                 poison: BattleStatusAilmentStatus::new_poison(),
@@ -564,6 +564,7 @@ fn create_mock_battle() -> Battle {
             hp: BattleCharacterHP {
                 max_hp: enemy_original.stats.hp,
                 current_hp: enemy_original.stats.hp,
+                is_dead: false,
             },
             sp: BattleCharacterSP {
                 max_sp: enemy_original.stats.sp,
@@ -587,7 +588,6 @@ fn create_mock_battle() -> Battle {
             weapons: vec![
                 // TODO: 装備武器情報生成
             ],
-            is_dead: false,
             status_conditions: vec![],
             status_ailment: BattleStatusAilment {
                 poison: BattleStatusAilmentStatus::new_poison(),

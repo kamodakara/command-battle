@@ -20,8 +20,7 @@ pub struct BattleCharacter {
 
     pub weapons: Vec<BattleWeapon>, // 装備武器
 
-    pub is_dead: bool,                                 // 死亡状態
-    pub status_ailment: BattleStatusAilment,           // 戦闘中の状態異常
+    pub status_ailment: BattleStatusAilment, // 戦闘中の状態異常
     pub status_conditions: Vec<BattleStatusCondition>, // 状態変化
 
     pub karma: Option<BattleKarma>,   // カルマ (プレイヤーのみ)
@@ -42,6 +41,7 @@ pub enum BattleCharacterType {
 pub struct BattleCharacterHP {
     pub max_hp: u32,
     pub current_hp: u32,
+    pub is_dead: bool, // 死亡状態
 }
 // SP
 #[derive(Clone)]

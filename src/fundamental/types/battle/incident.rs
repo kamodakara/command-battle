@@ -70,6 +70,7 @@ pub enum BattleCharacterIncidentConcrete {
     StatusAilmentRecovery(BattleIncidentStatusAilmentRecovery), // 状態異常値回復
     StatusAilmentApplied(BattleIncidentStatusAilmentApplied), // 状態異常付与
     StatusAilmentRemoved(BattleIncidentStatusAilmentRemoved), // 状態異常解除
+    Death(BattleIncidentDeath),                   // 死亡
 }
 
 // HPダメージ
@@ -162,4 +163,7 @@ pub enum BattleIncidentConductOutcomeFailureReason {
     InsufficientAbility, // 能力不足
     InsufficientSp,      // SP不足
     IsBreak,             // ブレイク状態
+}
+pub struct BattleIncidentDeath {
+    // TODO: 必要な情報
 }

@@ -2,8 +2,6 @@ mod conduct_effect;
 mod execute_attack_potency;
 mod execute_support_potency;
 
-use std::sync::Arc;
-
 use execute_attack_potency::execute_attack_potency;
 use execute_support_potency::execute_support_potency;
 
@@ -423,6 +421,7 @@ fn determine_targets(
             vec![battle.player.character_id]
         }
         BattleConductTargetType::EnemySingle(character_id) => {
+            // TODO: 指定された敵がすでに死亡していた場合、生存している別の敵をターゲットにする
             if let Some(character) = battle.character(&character_id) {
                 vec![character.character_id]
             } else {

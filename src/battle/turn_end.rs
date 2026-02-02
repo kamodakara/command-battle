@@ -5,39 +5,39 @@ use super::*;
 pub fn turn_end(battle: &mut Battle) -> Vec<BattleIncidentCharacter> {
     let mut incident_characters = vec![];
 
-    // 全キャラクターのコンビネーションのターン終了処理
-    if let Some(combination_skill) = &mut battle.player.combination_skill {
+    // プレイヤー
+    let player = &mut battle.player;
+    // コンビネーションのターン終了処理
+    if let Some(combination_skill) = &mut player.combination_skill {
         // コンビネーションのターン終了処理
         combination_skill.finalize_current_conduct();
     }
-    for enemy in &mut battle.enemies {
+
+    // プレイヤーの状態変化更新
+    incident_characters.push(update_status_condition(player));
+
+    // プレイヤーのスタミナ回復
+    incident_characters.push(recover_stamina(player));
+    // カルマのターン終了時処理
+    karma(player);
+    // TODO: カルマのインシデント追加
+
+    // 状態異常終了
+    incident_characters.push(recover_character_status_ailments(player));
+
+    // 敵キャラクター
+    // 生存中の敵キャラクターに対して処理を行う
+    let mut enemies = battle.alive_enemies_mut();
+    for enemy in &mut enemies {
         if let Some(combination_skill) = &mut enemy.combination_skill {
             // コンビネーションのターン終了処理
             combination_skill.finalize_current_conduct();
         }
-    }
 
-    // 全キャラクターの状態変化更新
-    // プレイヤー
-    let incident = update_status_condition(&mut battle.player);
-    incident_characters.push(incident);
-    // 敵
-    for enemy in &mut battle.enemies {
-        let incident = update_status_condition(enemy);
-        incident_characters.push(incident);
-    }
+        // 敵の状態変化更新
+        incident_characters.push(update_status_condition(enemy));
 
-    // プレイヤーのスタミナ回復
-    let incident = recover_stamina(&mut battle.player);
-    incident_characters.push(incident);
-    // カルマのターン終了時処理
-    karma(&mut battle.player);
-
-    // 状態異常終了
-    // プレイヤー
-    incident_characters.push(recover_character_status_ailments(&mut battle.player));
-    // 敵キャラクターの状態異常終了
-    for enemy in &mut battle.enemies {
+        // 敵キャラクターの状態異常終了
         incident_characters.push(recover_character_status_ailments(enemy));
     }
 
@@ -128,11 +128,16 @@ fn karma(player: &mut BattleCharacter) {
     if total_karma_cost > max_karma {
         // HP、SPに最大値の4分の1のダメージを与える
         let penalty_damage = player.hp.max_hp / 4;
-        let (before_hp, after_hp) = player.hp.damage(penalty_damage);
+        let (before_hp, after_hp, is_dead) = player.hp.damage(penalty_damage);
         let penalty_sp_damage = player.sp.max_sp / 4;
         let (before_sp, after_sp) = player.sp.damage(penalty_sp_damage);
 
         // TODO: カルマコスト超過ペナルティのインシデントの追加
+        // HPダメージのインシデント
+        // SPダメージのインシデント
+        if is_dead {
+            // TODO: 死亡インシデントの追加
+        }
     }
 }
 

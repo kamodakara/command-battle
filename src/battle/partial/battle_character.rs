@@ -199,11 +199,14 @@ impl BattleCharacter {
 }
 
 impl BattleCharacterHP {
-    pub fn damage(&mut self, amount: u32) -> (u32, u32) {
+    // ダメージ処理
+    // ダメージを与えた後のHP値と、死亡状態を返す
+    pub fn damage(&mut self, amount: u32) -> (u32, u32, bool) {
         let before = self.current_hp;
         self.current_hp = self.current_hp.saturating_sub(amount);
         let after = self.current_hp;
-        (before, after)
+        self.is_dead = self.current_hp == 0;
+        (before, after, self.is_dead)
     }
     pub fn recover(&mut self, amount: u32) -> (u32, u32) {
         let before = self.current_hp;

@@ -145,12 +145,18 @@ pub fn execute_attack_potency(
             }
         }
     }
-    let (before_hp_damage, after_hp_damage) = target.hp.damage(damage);
+    let (before_hp_damage, after_hp_damage, is_dead) = target.hp.damage(damage);
 
     // HPダメージのインシデント
     incidents.push(BattleCharacterIncidentConcrete::DamageHp(
         BattleIncidentDamageHp::new(damage, before_hp_damage, after_hp_damage),
     ));
+    if is_dead {
+        // 死亡インシデント
+        incidents.push(BattleCharacterIncidentConcrete::Death(
+            BattleIncidentDeath {},
+        ));
+    }
 
     // ブレイクダメージ処理
     incidents.extend(accumulate_status_ailment(
@@ -222,12 +228,18 @@ fn accumulate_status_ailment(
                 BattleStatusAilmentOnAilmentEffect::HpPercentageDamage(effect) => {
                     // HP割合ダメージ
                     let damage = (target.hp.max_hp as f32 * effect.percentage) as u32;
-                    let (before_hp, after_hp) = target.hp.damage(damage);
+                    let (before_hp, after_hp, is_dead) = target.hp.damage(damage);
 
                     // HPダメージインシデント
                     incidents.push(BattleCharacterIncidentConcrete::DamageHp(
                         BattleIncidentDamageHp::new(damage, before_hp, after_hp),
                     ));
+                    if is_dead {
+                        // 死亡インシデント
+                        incidents.push(BattleCharacterIncidentConcrete::Death(
+                            BattleIncidentDeath {},
+                        ));
+                    }
                 }
                 BattleStatusAilmentOnAilmentEffect::SpPercentageDamage(effect) => {
                     // SP割合ダメージ

@@ -13,6 +13,20 @@ impl Battle {
         None
     }
 
+    // 生存中の敵キャラクターを取得する
+    pub fn alive_enemies(&self) -> Vec<&BattleCharacter> {
+        self.enemies
+            .iter()
+            .filter(|enemy| !enemy.hp.is_dead)
+            .collect()
+    }
+    pub fn alive_enemies_mut(&mut self) -> Vec<&mut BattleCharacter> {
+        self.enemies
+            .iter_mut()
+            .filter(|enemy| !enemy.hp.is_dead)
+            .collect()
+    }
+
     pub fn character_mut(
         &mut self,
         character_id: &BattleCharacterId,
