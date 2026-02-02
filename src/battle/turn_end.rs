@@ -37,7 +37,7 @@ pub fn turn_end(battle: &mut Battle) -> Vec<BattleIncidentCharacter> {
         // 敵の状態変化更新
         incident_characters.push(update_status_condition(enemy));
 
-        // 敵キャラクターの状態異常終了
+        // 敵キャラクターの状態異常自然回復処理
         incident_characters.push(recover_character_status_ailments(enemy));
     }
 

@@ -216,6 +216,8 @@ fn accumulate_status_ailment(
             after_accumulation: after,
         },
     ));
+    // 蓄積ターンリセット
+    status.no_accumulation_turns = 0;
 
     if !status.is_ailment && after == status.max_accumulation {
         // 状態異常でない場合、蓄積

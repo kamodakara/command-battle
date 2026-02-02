@@ -1781,7 +1781,7 @@ fn ui_update_system(
         player.stamina.max_stamina,
         e_hp,
         enemy.hp.max_hp,
-        (e_break_max - e_break),
+        e_break,
         e_break_max,
         "通常" // TODO: 敵状態表示
                // if e_bstate.remaining_turns > 0 {
@@ -2212,7 +2212,7 @@ fn ui_update_enemy_system(
         hp_node.width = percent((ratio * 100.0).round());
     }
     if let Ok(mut br_node) = gauge_params.p1().single_mut() {
-        let ratio = ((e_break_max - e_break) as f32 / e_break_max as f32).clamp(0.0, 1.0);
+        let ratio = (e_break as f32 / e_break_max as f32).clamp(0.0, 1.0);
         br_node.width = percent((ratio * 100.0).round());
     }
     // TODO: ブレイク状態の表示何とかする
