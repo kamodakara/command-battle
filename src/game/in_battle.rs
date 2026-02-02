@@ -615,14 +615,29 @@ fn create_equipped_weapons_with_arts() -> PlayerEquippedWeapons {
                 weapon: straight_sword,
                 skills: straight_sword_skills,
                 sorceries: straight_sword_sorceries,
+                battle_weapon_id: BattleWeaponId(0),
             },
             EquippedWeaponWithArts {
                 weapon: staff,
                 skills: staff_skills,
                 sorceries: staff_sorceries,
+                battle_weapon_id: BattleWeaponId(1),
             },
         ],
     }
+}
+
+// BattleCharacter用の武器リストを作成
+fn create_battle_weapons() -> Vec<BattleWeapon> {
+    let equipped = create_equipped_weapons_with_arts();
+    equipped
+        .weapons
+        .into_iter()
+        .map(|w| BattleWeapon {
+            id: w.battle_weapon_id,
+            weapon: w.weapon,
+        })
+        .collect()
 }
 
 #[derive(Clone)]
@@ -836,9 +851,7 @@ fn create_mock_battle() -> Battle {
                 current_stamina: player_original.stats.stamina,
                 stamina_recovery: player_original.stats.stamina_recovery,
             },
-            weapons: vec![
-                // TODO: 装備武器情報生成
-            ],
+            weapons: create_battle_weapons(),
             status_conditions: vec![],
             status_ailment: BattleStatusAilment {
                 poison: BattleStatusAilmentStatus::new_poison(),
@@ -980,8 +993,9 @@ struct PlayerEquippedWeapons {
 #[derive(Clone)]
 struct EquippedWeaponWithArts {
     weapon: Weapon,
-    skills: Vec<Arc<Art>>,    // 技
-    sorceries: Vec<Arc<Art>>, // 術
+    skills: Vec<Arc<Art>>,            // 技
+    sorceries: Vec<Arc<Art>>,         // 術
+    battle_weapon_id: BattleWeaponId, // 戦闘武器ID
 }
 
 // 予約コマンドのキュー
@@ -996,6 +1010,7 @@ struct CurrentCoomand(Option<CommandKind>);
 struct SelectedArt {
     art: Option<Arc<Art>>,
     weapon_index: Option<usize>,
+    battle_weapon_id: Option<BattleWeaponId>,
 }
 
 // 直前のプレイヤー実行コマンドが攻撃だったかを保持（攻撃後の攻撃=連撃）
@@ -1618,6 +1633,9 @@ fn player_input_system(
                 return;
             };
 
+            // 選択された武器IDを取得
+            let weapon_id = selected_art.battle_weapon_id.take();
+
             log.0
                 .push(format!("ターン {} プレイヤーは{}を選択", turn.0, art.name));
 
@@ -1635,7 +1653,7 @@ fn player_input_system(
                 actor_character_id: player_id,
                 target,
                 art: Arc::clone(&art),
-                battle_weapon_id: None,
+                battle_weapon_id: weapon_id,
             };
 
             let enemy_conduct = battle.decide_enemy_conduct(DecideEnemyConductRequest {
@@ -1801,6 +1819,14 @@ fn action_menu_click_system(
                     // アーツを選択
                     selected_art.art = Some(Arc::clone(art));
                     selected_art.weapon_index = action_menu.selected_weapon_index;
+                    // 武器が選択されている場合、BattleWeaponIdを設定
+                    selected_art.battle_weapon_id =
+                        action_menu.selected_weapon_index.and_then(|idx| {
+                            equipped_weapons
+                                .weapons
+                                .get(idx)
+                                .map(|w| w.battle_weapon_id.clone())
+                        });
                 }
             }
         }
