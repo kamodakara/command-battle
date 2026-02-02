@@ -1679,6 +1679,8 @@ fn create_arts_database() -> ArtsDatabase {
                     WeaponKind::Greatsword,
                 ]),
                 art_type: ArtType::Skill,
+                always_hits: false,
+                priority: 0,
                 rank1: ArtRank {
                     threshold: 0,
                     target: ArtTarget::Single,
@@ -1732,6 +1734,8 @@ fn create_arts_database() -> ArtsDatabase {
                     WeaponKind::StraightSword,
                 ]),
                 art_type: ArtType::Skill,
+                always_hits: false,
+                priority: 0,
                 rank1: ArtRank {
                     threshold: 0,
                     target: ArtTarget::Single,
@@ -1781,7 +1785,9 @@ fn create_arts_database() -> ArtsDatabase {
                     agility: 0,
                 },
                 usable_weapon: ArtUsableWeapon::All,
+                always_hits: false,
                 art_type: ArtType::Sorcery,
+                priority: 0,
                 rank1: ArtRank {
                     threshold: 0,
                     target: ArtTarget::Single,
@@ -1822,7 +1828,9 @@ fn create_arts_database() -> ArtsDatabase {
                     agility: 0,
                 },
                 usable_weapon: ArtUsableWeapon::All,
+                always_hits: false,
                 art_type: ArtType::Sorcery,
+                priority: 0,
                 rank1: ArtRank {
                     threshold: 0,
                     target: ArtTarget::Single,
@@ -1866,7 +1874,9 @@ fn create_arts_database() -> ArtsDatabase {
                     WeaponKind::Greatsword,
                     WeaponKind::Axe,
                 ]),
+                always_hits: true,
                 art_type: ArtType::Skill,
+                priority: 0,
                 rank1: ArtRank {
                     threshold: 0,
                     target: ArtTarget::Single,
@@ -1916,7 +1926,9 @@ fn create_arts_database() -> ArtsDatabase {
                     agility: 0,
                 },
                 usable_weapon: ArtUsableWeapon::All,
+                always_hits: false,
                 art_type: ArtType::Sorcery,
+                priority: 0,
                 rank1: ArtRank {
                     threshold: 0,
                     target: ArtTarget::All,

@@ -269,53 +269,57 @@ pub fn execute_conduct(
 
         // 回避判定
         let mut is_evaded = false;
-        for se in target.status_conditions.iter() {
-            match &se.potency {
-                StatusConditionPotency::Evasion => {
-                    // 回避効果処理
-                    is_evaded = true;
-                    break;
-                }
-                StatusConditionPotency::Airborne => {
-                    // 空中効果処理
-                    // 遠距離攻撃でない時は回避
-                    if !attacker_data.conduct.art.perks.contains(&ArtPerk::Ranged) {
+        if !attacker_data.conduct.art.always_hits {
+            // 必中でない場合のみ回避判定
+
+            for se in target.status_conditions.iter() {
+                match &se.potency {
+                    StatusConditionPotency::Evasion => {
+                        // 回避効果処理
                         is_evaded = true;
                         break;
                     }
-                }
-                StatusConditionPotency::Floating => {
-                    // 浮遊効果処理
-                    // 足元攻撃は回避
-                    if attacker_data.conduct.art.perks.contains(&ArtPerk::AtFeet) {
-                        is_evaded = true;
-                        break;
+                    StatusConditionPotency::Airborne => {
+                        // 空中効果処理
+                        // 遠距離攻撃でない時は回避
+                        if !attacker_data.conduct.art.perks.contains(&ArtPerk::Ranged) {
+                            is_evaded = true;
+                            break;
+                        }
                     }
-                }
-                StatusConditionPotency::Ranged => {
-                    // 遠距離効果処理
-                    // 近距離の攻撃を回避
-                    if !attacker_data.conduct.art.perks.contains(&ArtPerk::Ranged) {
-                        is_evaded = true;
-                        break;
+                    StatusConditionPotency::Floating => {
+                        // 浮遊効果処理
+                        // 足元攻撃は回避
+                        if attacker_data.conduct.art.perks.contains(&ArtPerk::AtFeet) {
+                            is_evaded = true;
+                            break;
+                        }
                     }
-                }
-                _ => {
-                    // その他
+                    StatusConditionPotency::Ranged => {
+                        // 遠距離効果処理
+                        // 近距離の攻撃を回避
+                        if !attacker_data.conduct.art.perks.contains(&ArtPerk::Ranged) {
+                            is_evaded = true;
+                            break;
+                        }
+                    }
+                    _ => {
+                        // その他
+                    }
                 }
             }
-        }
-        if is_evaded {
-            // 回避された場合の処理
-            // 防御者インシデント作成
-            target_incidents.push(BattleIncidentConductOutcomeSuccessDefender {
-                character: target_incident_character,
-                is_evaded: true,
-                is_defended: false,
-                is_dead: false,
-            });
-            // 回避して、効果処理は行わない
-            continue;
+            if is_evaded {
+                // 回避された場合の処理
+                // 防御者インシデント作成
+                target_incidents.push(BattleIncidentConductOutcomeSuccessDefender {
+                    character: target_incident_character,
+                    is_evaded: true,
+                    is_defended: false,
+                    is_dead: false,
+                });
+                // 回避して、効果処理は行わない
+                continue;
+            }
         }
 
         // 発生インシデント

@@ -12,6 +12,8 @@ pub struct Art {
     pub requirement: ArtRequirement,    // 必要能力
     pub art_type: ArtType,              // 技能内容
     pub usable_weapon: ArtUsableWeapon, // 使用可能武器種、技のみ武器種が指定される想定、技以外は全武器種
+    pub always_hits: bool,              // 必中、回復など用
+    pub priority: i32,                  // 行動優先度、高い方ほど先に行動する
     // 技能ランク
     // 条件を満たすと上位ランクの効果が適用される(術のみ想定)
     pub rank1: ArtRank,         // 技能ランク

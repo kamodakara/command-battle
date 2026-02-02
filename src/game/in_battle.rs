@@ -113,6 +113,8 @@ fn create_default_player_conducts() -> PlayerConducts {
             },
             art_type: ArtType::Basic,
             usable_weapon: ArtUsableWeapon::All,
+            always_hits: false,
+            priority: 0,
             rank1: ArtRank {
                 threshold: 0,
                 target: ArtTarget::Single,
@@ -150,6 +152,8 @@ fn create_default_player_conducts() -> PlayerConducts {
             },
             art_type: ArtType::Basic,
             usable_weapon: ArtUsableWeapon::All,
+            always_hits: false,
+            priority: 0,
             rank1: ArtRank {
                 threshold: 0,
                 target: ArtTarget::Single,
@@ -187,6 +191,8 @@ fn create_default_player_conducts() -> PlayerConducts {
             },
             art_type: ArtType::Basic,
             usable_weapon: ArtUsableWeapon::All,
+            always_hits: true,
+            priority: 0,
             rank1: ArtRank {
                 threshold: 0,
                 target: ArtTarget::Single,
@@ -216,6 +222,8 @@ fn create_default_player_conducts() -> PlayerConducts {
             },
             art_type: ArtType::Basic,
             usable_weapon: ArtUsableWeapon::All,
+            always_hits: false,
+            priority: 0,
             rank1: ArtRank {
                 threshold: 0,
                 target: ArtTarget::Single,
@@ -252,6 +260,8 @@ fn create_default_player_conducts() -> PlayerConducts {
             },
             art_type: ArtType::Basic,
             usable_weapon: ArtUsableWeapon::All,
+            always_hits: false,
+            priority: 0,
             rank1: ArtRank {
                 threshold: 0,
                 target: ArtTarget::Single,
@@ -1430,7 +1440,7 @@ fn player_input_system(
 
                 // 行動順決定
                 let order = battle.decide_order(BattleDecideOrderRequest {
-                    character_ids: vec![player_id, enemy_id],
+                    conducts: vec![&player_conduct, &enemy_conduct],
                 });
 
                 let mut player_dealt_damage_hp: u32 = 0;

@@ -32,6 +32,8 @@ pub fn decide_enemy_conduct(battle: &Battle, request: DecideEnemyConductRequest)
             },
             art_type: ArtType::Basic,
             usable_weapon: ArtUsableWeapon::All,
+            always_hits: false,
+            priority: 0,
             rank1: ArtRank {
                 threshold: 0,
                 target: ArtTarget::Single,
