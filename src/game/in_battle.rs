@@ -1919,8 +1919,11 @@ fn action_menu_update_system(
         return;
     }
 
-    // リソースが変更されていない場合はスキップ
-    if !action_menu.is_changed() {
+    // メニューアイテムが存在するかチェック
+    let has_menu_items = menu_items_q.iter().next().is_some();
+
+    // リソースが変更されていない場合、かつメニューアイテムが既に存在する場合はスキップ
+    if !action_menu.is_changed() && has_menu_items {
         return;
     }
 
