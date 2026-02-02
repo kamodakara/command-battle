@@ -19,6 +19,7 @@ pub struct Equipment {
 // 武器
 #[derive(Clone)]
 pub struct Weapon {
+    pub name: String,                                  // 名前
     pub kind: WeaponKind,                              // 種類
     pub weight: u32,                                   // 重量
     pub ability_requirement: WeaponAbilityRequirement, // 必要能力

@@ -1960,6 +1960,7 @@ fn create_arts_database() -> ArtsDatabase {
 // 武器生成関数（簡略化のため一部のみ実装）
 fn create_longsword() -> Weapon {
     Weapon {
+        name: "ロングソード".to_string(),
         kind: WeaponKind::StraightSword,
         weight: 10,
         ability_requirement: WeaponAbilityRequirement {
@@ -1994,6 +1995,7 @@ fn create_longsword() -> Weapon {
 
 fn create_greatsword() -> Weapon {
     Weapon {
+        name: "大剣".to_string(),
         kind: WeaponKind::Greatsword,
         weight: 20,
         ability_requirement: WeaponAbilityRequirement {
@@ -2028,6 +2030,7 @@ fn create_greatsword() -> Weapon {
 
 fn create_spear() -> Weapon {
     Weapon {
+        name: "槍".to_string(),
         kind: WeaponKind::Spear,
         weight: 12,
         ability_requirement: WeaponAbilityRequirement {
@@ -2062,6 +2065,7 @@ fn create_spear() -> Weapon {
 
 fn create_axe() -> Weapon {
     Weapon {
+        name: "斧".to_string(),
         kind: WeaponKind::Axe,
         weight: 18,
         ability_requirement: WeaponAbilityRequirement {
@@ -2096,6 +2100,7 @@ fn create_axe() -> Weapon {
 
 fn create_shield() -> Weapon {
     Weapon {
+        name: "盾".to_string(),
         kind: WeaponKind::Shield,
         weight: 8,
         ability_requirement: WeaponAbilityRequirement {

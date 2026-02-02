@@ -1,7 +1,6 @@
 use crate::battle::{
     BattleDecideOrderRequest, BattleExecuteConductRequest, DecideEnemyConductRequest,
 };
-use crate::fundamental;
 use crate::fundamental::*;
 
 use super::*;
@@ -19,6 +18,14 @@ impl Plugin for InBattlePlugin {
             .add_systems(
                 Update,
                 player_input_system.run_if(in_state(GameState::Battle)),
+            )
+            .add_systems(
+                Update,
+                action_menu_click_system.run_if(in_state(GameState::Battle)),
+            )
+            .add_systems(
+                Update,
+                action_menu_update_system.run_if(in_state(GameState::Battle)),
             )
             .add_systems(
                 Update,
@@ -277,6 +284,428 @@ fn create_default_player_conducts() -> PlayerConducts {
             rank2: None,
             rank3: None,
         }),
+    }
+}
+
+// 基本アーツを作成
+fn create_basic_arts() -> Vec<Arc<Art>> {
+    vec![
+        Arc::new(Art {
+            name: "攻撃".to_string(),
+            sp_cost: 0,
+            stamina_cost: 5,
+            perks: vec![ArtPerk::Melee],
+            requirement: ArtRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            art_type: ArtType::Basic,
+            usable_weapon: ArtUsableWeapon::All,
+            always_hits: false,
+            priority: 0,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Attack(ArtPotencyAttack {
+                    attack_power: AttackPower {
+                        slash: 25,
+                        strike: 0,
+                        thrust: 0,
+                        impact: 0,
+                        magic: 0,
+                        fire: 0,
+                        lightning: 0,
+                        chaos: 0,
+                    },
+                    weapon_attack_power_scaling: AttackPowerScaling::default(),
+                    break_power: 10,
+                    weapon_break_power_scaling: 0.0,
+                }),
+            },
+            rank2: None,
+            rank3: None,
+        }),
+        Arc::new(Art {
+            name: "防御".to_string(),
+            sp_cost: 0,
+            stamina_cost: 5,
+            perks: vec![ArtPerk::Guard],
+            requirement: ArtRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            art_type: ArtType::Basic,
+            usable_weapon: ArtUsableWeapon::All,
+            always_hits: false,
+            priority: 0,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Support(ArtPotencySupport::StatusCondition(
+                    ArtPotencySupportStatusCondition {
+                        status_conditions: vec![StatusCondition {
+                            potency: StatusConditionPotency::Resistance(
+                                StatusConditionResistance {
+                                    battle_weapon_id: BattleWeaponId(0),
+                                },
+                            ),
+                            duration: StatusConditionDuration::Turn(StatusConditionDurationTurn {
+                                turns: 1,
+                            }),
+                        }],
+                    },
+                )),
+            },
+            rank2: None,
+            rank3: None,
+        }),
+        Arc::new(Art {
+            name: "待機".to_string(),
+            sp_cost: 0,
+            stamina_cost: 0,
+            perks: vec![],
+            requirement: ArtRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            art_type: ArtType::Basic,
+            usable_weapon: ArtUsableWeapon::All,
+            always_hits: false,
+            priority: 0,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Support(ArtPotencySupport::Recover(
+                    ArtPotencySupportRecover {
+                        potencies: vec![SupportRecoverPotency::Stamina(
+                            SupportRecoverPotencyStamina {
+                                stamina_recover: 60,
+                            },
+                        )],
+                    },
+                )),
+            },
+            rank2: None,
+            rank3: None,
+        }),
+    ]
+}
+
+// サンプル武器と対応するスキル・術を作成
+fn create_equipped_weapons_with_arts() -> PlayerEquippedWeapons {
+    // 直剣
+    let straight_sword = Weapon {
+        name: "ロングソード".to_string(),
+        kind: WeaponKind::StraightSword,
+        weight: 4,
+        ability_requirement: WeaponAbilityRequirement {
+            strength: 10,
+            dexterity: 10,
+            intelligence: 0,
+            faith: 0,
+            arcane: 0,
+            agility: 0,
+        },
+        attack_power: WeaponAttackPower {
+            base: AttackPower {
+                slash: 30,
+                strike: 0,
+                thrust: 5,
+                impact: 0,
+                magic: 0,
+                fire: 0,
+                lightning: 0,
+                chaos: 0,
+            },
+            ability_scaling: WeaponAttackPowerAbilityScaling {
+                slash: AbilityScaling::default(),
+                strike: AbilityScaling::default(),
+                thrust: AbilityScaling::default(),
+                impact: AbilityScaling::default(),
+                magic: AbilityScaling::default(),
+                fire: AbilityScaling::default(),
+                lightning: AbilityScaling::default(),
+                chaos: AbilityScaling::default(),
+            },
+        },
+        sorcery_power: WeaponSorceryPower {
+            base: 0,
+            scaling: AbilityScaling::default(),
+        },
+        break_power: WeaponBreakPower {
+            base_power: 15,
+            scaling: AbilityScaling::default(),
+        },
+        guard: WeaponGuard {
+            cut_rate: GuardCutRate {
+                slash: 0.5,
+                strike: 0.5,
+                thrust: 0.5,
+                impact: 0.5,
+                magic: 0.2,
+                fire: 0.2,
+                lightning: 0.2,
+                chaos: 0.2,
+            },
+            guard_strength: 30,
+        },
+    };
+    let straight_sword_skills = vec![
+        Arc::new(Art {
+            name: "横斬り".to_string(),
+            sp_cost: 0,
+            stamina_cost: 15,
+            perks: vec![ArtPerk::Melee],
+            requirement: ArtRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            art_type: ArtType::Skill,
+            usable_weapon: ArtUsableWeapon::Specific(vec![WeaponKind::StraightSword]),
+            always_hits: false,
+            priority: 0,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Attack(ArtPotencyAttack {
+                    attack_power: AttackPower {
+                        slash: 40,
+                        strike: 0,
+                        thrust: 0,
+                        impact: 0,
+                        magic: 0,
+                        fire: 0,
+                        lightning: 0,
+                        chaos: 0,
+                    },
+                    weapon_attack_power_scaling: AttackPowerScaling {
+                        slash: 1.0,
+                        strike: 0.0,
+                        thrust: 0.0,
+                        impact: 0.0,
+                        magic: 0.0,
+                        fire: 0.0,
+                        lightning: 0.0,
+                        chaos: 0.0,
+                    },
+                    break_power: 15,
+                    weapon_break_power_scaling: 1.0,
+                }),
+            },
+            rank2: None,
+            rank3: None,
+        }),
+        Arc::new(Art {
+            name: "突き".to_string(),
+            sp_cost: 0,
+            stamina_cost: 20,
+            perks: vec![ArtPerk::Melee],
+            requirement: ArtRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            art_type: ArtType::Skill,
+            usable_weapon: ArtUsableWeapon::Specific(vec![WeaponKind::StraightSword]),
+            always_hits: false,
+            priority: 0,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Attack(ArtPotencyAttack {
+                    attack_power: AttackPower {
+                        slash: 0,
+                        strike: 0,
+                        thrust: 50,
+                        impact: 0,
+                        magic: 0,
+                        fire: 0,
+                        lightning: 0,
+                        chaos: 0,
+                    },
+                    weapon_attack_power_scaling: AttackPowerScaling {
+                        slash: 0.0,
+                        strike: 0.0,
+                        thrust: 1.2,
+                        impact: 0.0,
+                        magic: 0.0,
+                        fire: 0.0,
+                        lightning: 0.0,
+                        chaos: 0.0,
+                    },
+                    break_power: 20,
+                    weapon_break_power_scaling: 1.0,
+                }),
+            },
+            rank2: None,
+            rank3: None,
+        }),
+    ];
+    let straight_sword_sorceries: Vec<Arc<Art>> = vec![];
+
+    // 杖
+    let staff = Weapon {
+        name: "賢者の杖".to_string(),
+        kind: WeaponKind::Staff,
+        weight: 2,
+        ability_requirement: WeaponAbilityRequirement {
+            strength: 0,
+            dexterity: 0,
+            intelligence: 15,
+            faith: 0,
+            arcane: 0,
+            agility: 0,
+        },
+        attack_power: WeaponAttackPower {
+            base: AttackPower {
+                slash: 0,
+                strike: 10,
+                thrust: 0,
+                impact: 0,
+                magic: 20,
+                fire: 0,
+                lightning: 0,
+                chaos: 0,
+            },
+            ability_scaling: WeaponAttackPowerAbilityScaling {
+                slash: AbilityScaling::default(),
+                strike: AbilityScaling::default(),
+                thrust: AbilityScaling::default(),
+                impact: AbilityScaling::default(),
+                magic: AbilityScaling::default(),
+                fire: AbilityScaling::default(),
+                lightning: AbilityScaling::default(),
+                chaos: AbilityScaling::default(),
+            },
+        },
+        sorcery_power: WeaponSorceryPower {
+            base: 50,
+            scaling: AbilityScaling::default(),
+        },
+        break_power: WeaponBreakPower {
+            base_power: 5,
+            scaling: AbilityScaling::default(),
+        },
+        guard: WeaponGuard {
+            cut_rate: GuardCutRate {
+                slash: 0.2,
+                strike: 0.2,
+                thrust: 0.2,
+                impact: 0.2,
+                magic: 0.5,
+                fire: 0.3,
+                lightning: 0.3,
+                chaos: 0.3,
+            },
+            guard_strength: 10,
+        },
+    };
+    let staff_skills: Vec<Arc<Art>> = vec![];
+    let staff_sorceries = vec![
+        Arc::new(Art {
+            name: "ファイアボール".to_string(),
+            sp_cost: 10,
+            stamina_cost: 10,
+            perks: vec![ArtPerk::Ranged],
+            requirement: ArtRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 10,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            art_type: ArtType::Sorcery,
+            usable_weapon: ArtUsableWeapon::Specific(vec![WeaponKind::Staff]),
+            always_hits: false,
+            priority: 0,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Attack(ArtPotencyAttack {
+                    attack_power: AttackPower {
+                        slash: 0,
+                        strike: 0,
+                        thrust: 0,
+                        impact: 0,
+                        magic: 0,
+                        fire: 60,
+                        lightning: 0,
+                        chaos: 0,
+                    },
+                    weapon_attack_power_scaling: AttackPowerScaling::default(),
+                    break_power: 25,
+                    weapon_break_power_scaling: 0.0,
+                }),
+            },
+            rank2: None,
+            rank3: None,
+        }),
+        Arc::new(Art {
+            name: "ヒール".to_string(),
+            sp_cost: 15,
+            stamina_cost: 5,
+            perks: vec![],
+            requirement: ArtRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 5,
+                faith: 5,
+                arcane: 0,
+                agility: 0,
+            },
+            art_type: ArtType::Sorcery,
+            usable_weapon: ArtUsableWeapon::Specific(vec![WeaponKind::Staff]),
+            always_hits: true,
+            priority: 0,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Support(ArtPotencySupport::Recover(
+                    ArtPotencySupportRecover {
+                        potencies: vec![SupportRecoverPotency::Hp(SupportRecoverPotencyHp {
+                            hp_recover: 50,
+                        })],
+                    },
+                )),
+            },
+            rank2: None,
+            rank3: None,
+        }),
+    ];
+
+    PlayerEquippedWeapons {
+        weapons: vec![
+            EquippedWeaponWithArts {
+                weapon: straight_sword,
+                skills: straight_sword_skills,
+                sorceries: straight_sword_sorceries,
+            },
+            EquippedWeaponWithArts {
+                weapon: staff,
+                skills: staff_skills,
+                sorceries: staff_sorceries,
+            },
+        ],
     }
 }
 
@@ -590,8 +1019,8 @@ fn create_mock_battle() -> Battle {
 #[derive(Resource)]
 struct EnemyPlannedAction(Option<BattleConduct>);
 
-// コマンド種別
-#[derive(Clone, Copy)]
+// コマンド種別（互換性のため残す）
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum CommandKind {
     Attack,
     Skill,
@@ -600,12 +1029,58 @@ enum CommandKind {
     Wait,
 }
 
+// 行動選択メニューの状態
+#[derive(Clone, PartialEq, Eq)]
+enum ActionMenuState {
+    CategorySelect,          // カテゴリ選択（基本、武器1、武器2...）
+    BasicArtsSelect,         // 基本アーツ選択
+    WeaponArtsSelect(usize), // 武器の技・術選択（武器インデックス）
+}
+
+impl Default for ActionMenuState {
+    fn default() -> Self {
+        ActionMenuState::CategorySelect
+    }
+}
+
+// 行動選択リソース
+#[derive(Resource, Default)]
+struct ActionMenuSelection {
+    state: ActionMenuState,
+    selected_art: Option<Arc<Art>>,
+    selected_weapon_index: Option<usize>,
+}
+
+// プレイヤーの基本アーツリスト
+#[derive(Resource)]
+struct PlayerBasicArts(Vec<Arc<Art>>);
+
+// プレイヤーの装備武器とそれに対応するスキル
+#[derive(Resource)]
+struct PlayerEquippedWeapons {
+    weapons: Vec<EquippedWeaponWithArts>,
+}
+
+#[derive(Clone)]
+struct EquippedWeaponWithArts {
+    weapon: Weapon,
+    skills: Vec<Arc<Art>>,    // 技
+    sorceries: Vec<Arc<Art>>, // 術
+}
+
 // 予約コマンドのキュー
 #[derive(Resource, Default)]
 struct CommandQueue(std::collections::VecDeque<CommandKind>);
 
 #[derive(Resource)]
 struct CurrentCoomand(Option<CommandKind>);
+
+// 選択されたアーツ（新システム）
+#[derive(Resource, Default)]
+struct SelectedArt {
+    art: Option<Arc<Art>>,
+    weapon_index: Option<usize>,
+}
 
 // 直前のプレイヤー実行コマンドが攻撃だったかを保持（攻撃後の攻撃=連撃）
 #[derive(Resource, Default)]
@@ -679,6 +1154,28 @@ struct UiEnemyDamageText;
 #[derive(Component)]
 struct UiMessage;
 
+// 行動選択メニュー用コンポーネント
+#[derive(Component)]
+struct UiActionMenu;
+#[derive(Component)]
+struct UiActionMenuContainer;
+// メニューアイテム（ボタン）
+#[derive(Component)]
+struct ActionMenuItem {
+    item_type: ActionMenuItemType,
+}
+#[derive(Clone)]
+enum ActionMenuItemType {
+    Category(ActionMenuCategory),
+    Art(Arc<Art>),
+}
+#[derive(Clone, PartialEq, Eq)]
+enum ActionMenuCategory {
+    Basic,
+    Weapon(usize), // 武器インデックス
+    Back,          // 戻る
+}
+
 #[derive(Component)]
 struct UiCommand;
 #[derive(Component)]
@@ -726,9 +1223,10 @@ fn setup_battle_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
     };
     commands.insert_resource(CombatLog(vec![
         format!("初期敵行動: {}", first_action.current_step().unwrap().name),
-        "コマンドを選択してください (A=攻撃 S=強攻撃 H=回復 D=防御 W=待機 / Backspace=直前取り消し / Esc=全クリア / Enter=決定)".to_string(),
+        "行動を選択してください".to_string(),
     ]));
     commands.insert_resource(CurrentCoomand(None));
+    commands.insert_resource(SelectedArt::default());
     commands.insert_resource(CommandQueue::default());
     commands.insert_resource(PlayerChainState::default());
     commands.insert_resource(PendingSelections::default());
@@ -737,6 +1235,10 @@ fn setup_battle_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(EnemyDamagePopup::default());
     // プレイヤー行動定義をリソースとして挿入
     commands.insert_resource(create_default_player_conducts());
+    // 基本アーツと武器データをリソースとして挿入
+    commands.insert_resource(PlayerBasicArts(create_basic_arts()));
+    commands.insert_resource(create_equipped_weapons_with_arts());
+    commands.insert_resource(ActionMenuSelection::default());
     // Battleモジュールの戦闘データを初期化
     commands.insert_resource(BattleResource(create_mock_battle()));
 
@@ -1084,84 +1586,59 @@ fn setup_battle_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
             ));
         });
 
-    // 画面右端のコマンド入力表示（白枠）
+    // 行動選択メニュー（クリック可能なボタン式）
+    let equipped_weapons = create_equipped_weapons_with_arts();
     commands
         .spawn((
-            UiCommand,
+            UiActionMenu,
             Node {
-                width: Val::Px(320.0),
+                width: Val::Px(300.0),
                 height: Val::Auto,
                 position_type: PositionType::Absolute,
                 left: Val::Px(12.0),
                 bottom: Val::Px(16.0),
-                border: UiRect::all(Val::Px(1.0)),
+                border: UiRect::all(Val::Px(2.0)),
                 padding: UiRect::all(Val::Px(8.0)),
-                ..default()
-            },
-            BackgroundColor(Color::BLACK),
-            BorderColor::all(Color::WHITE),
-            Visibility::Hidden, // 初期は非表示
-            ZIndex(10),
-        ))
-        .with_children(|col| {
-            col.spawn((
-                Text::new(""),
-                TextFont {
-                    font: font.clone(),
-                    font_size: 16.0,
-                    ..default()
-                },
-                TextColor(Color::WHITE),
-            ));
-        });
-
-    // コマンド説明（コマンド入力パネルの上に固定表示）
-    commands
-        .spawn((
-            UiCommandHelp,
-            Node {
-                width: Val::Px(320.0),
-                height: Val::Auto,
-                position_type: PositionType::Absolute,
-                left: Val::Px(12.0),
-                bottom: Val::Px(180.0), // 入力パネルの上に来るようマージン多め
-                border: UiRect::all(Val::Px(1.0)),
-                padding: UiRect::all(Val::Px(8.0)),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(4.0),
                 ..default()
             },
             BackgroundColor(Color::from(LinearRgba {
                 red: 0.0,
                 green: 0.0,
-                blue: 0.0,
-                alpha: 0.6,
+                blue: 0.1,
+                alpha: 0.9,
             })),
             BorderColor::all(Color::WHITE),
+            Visibility::Hidden, // 初期は非表示（AwaitCommandで表示）
             ZIndex(10),
         ))
-        .with_children(|col| {
-            col.spawn((
-                Text::new(
-                    "[コマンド説明]
-攻撃:   消費15/威力10/ブレイク10 (強化中: 消費5/威力25/ブレイク25)
-        攻撃、強攻撃後の「連撃」に変化 消費が5になる
-強攻撃: 消費25/威力25/ブレイク25 (強化中: 威力45/ブレイク40)
-        防御直後「ガードカウンター」に変化 威力+5,ブレイク+20
-回復:   消費15/回復50 (強化中: 消費20 / 回復60)
-防御:   消費10/次の敵攻撃を無効化 (強化中: 消費5)
-待機:   消費0/スタミナ+60
-強化:   モメンタム50消費 / 11ターン持続\n",
-                ),
+        .with_children(|menu| {
+            // メニュータイトル
+            menu.spawn((
+                Text::new("[行動選択]"),
                 TextFont {
                     font: font.clone(),
-                    font_size: 14.0,
+                    font_size: 18.0,
                     ..default()
                 },
                 TextColor(Color::WHITE),
             ));
+            // メニューコンテナ（動的に中身が変わる）
+            menu.spawn((
+                UiActionMenuContainer,
+                Node {
+                    width: percent(100),
+                    height: Val::Auto,
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(4.0),
+                    margin: UiRect::top(Val::Px(8.0)),
+                    ..default()
+                },
+            ));
         });
-    println!(
-        "ゲーム開始: A=攻撃 S=強攻撃 H=回復(+50) D=防御 W=待機(+スタミナ50回復) / Backspace=直前取り消し / Esc=全クリア / Enter=決定"
-    );
+
+    println!("ゲーム開始: 行動をクリックして選択してください");
 }
 
 // ================== Input & Battle Resolution ==================
@@ -1177,6 +1654,8 @@ fn player_input_system(
     mut batch: ResMut<ConsecutiveBatch>,
     mut enemy_damage_popup: ResMut<EnemyDamagePopup>,
     player_conducts: Res<PlayerConducts>,
+    mut selected_art: ResMut<SelectedArt>,
+    mut action_menu: ResMut<ActionMenuSelection>,
     // Battleモジュール
     mut battle_resource: ResMut<BattleResource>,
     mut current_command: ResMut<CurrentCoomand>,
@@ -1193,337 +1672,171 @@ fn player_input_system(
             *phase = BattlePhase::AwaitCommand;
         }
         BattlePhase::AwaitCommand => {
-            // 予約キューがあれば、先頭を実行するか確認フェーズに遷移
-            if let Some(_next) = queue.0.front() {
-                // コマンド入力パネルで確認表示を行うため、ここではログ出力しない
-                *phase = BattlePhase::ConfirmQueued;
-                return;
-            } else {
-                // 未確定選択へ追加（このフレームで押されたキー）
-                let mut added: Vec<&'static str> = Vec::new();
-                // 最大選択数制限（3件）
-                const MAX_SELECT: usize = 3;
-                let at_limit = pending.0.len() >= MAX_SELECT;
+            // Escapeでメニューをカテゴリ選択に戻す
+            if keyboard.just_pressed(KeyCode::Escape) {
+                action_menu.state = ActionMenuState::CategorySelect;
+                action_menu.selected_art = None;
+                action_menu.selected_weapon_index = None;
+            }
 
-                // 取り消し操作: Backspace=直前取り消し / Escape=全クリア（ログには出さない）
-                if keyboard.just_pressed(KeyCode::Escape) {
-                    if !pending.0.is_empty() {
-                        pending.0.clear();
-                    }
-                }
-                if keyboard.just_pressed(KeyCode::Backspace) {
-                    if let Some(removed) = pending.0.pop() {
-                        let _ = removed; // ログは出さない
-                    }
-                }
-                if keyboard.just_pressed(KeyCode::KeyA) {
-                    if !at_limit {
-                        pending.0.push(CommandKind::Attack);
-                        added.push("攻撃");
-                    } else {
-                        log.0
-                            .push("これ以上選択を追加できません (最大3件)".to_string());
-                    }
-                }
-                if keyboard.just_pressed(KeyCode::KeyS) {
-                    if !at_limit {
-                        pending.0.push(CommandKind::Skill);
-                        added.push("強攻撃");
-                    } else {
-                        log.0
-                            .push("これ以上選択を追加できません (最大3件)".to_string());
-                    }
-                }
-                if keyboard.just_pressed(KeyCode::KeyH) {
-                    if !at_limit {
-                        pending.0.push(CommandKind::Heal);
-                        added.push("回復");
-                    } else {
-                        log.0
-                            .push("これ以上選択を追加できません (最大3件)".to_string());
-                    }
-                }
-                if keyboard.just_pressed(KeyCode::KeyD) {
-                    if !at_limit {
-                        pending.0.push(CommandKind::Defend);
-                        added.push("防御");
-                    } else {
-                        log.0
-                            .push("これ以上選択を追加できません (最大3件)".to_string());
-                    }
-                }
-                if keyboard.just_pressed(KeyCode::KeyW) {
-                    if !at_limit {
-                        pending.0.push(CommandKind::Wait);
-                        added.push("待機");
-                    } else {
-                        log.0
-                            .push("これ以上選択を追加できません (最大3件)".to_string());
-                    }
-                }
-                // 強化系コマンドは廃止
-                // 選択追加のログは出さず、UI側表示に任せる
+            // クリックでアーツが選択されたら実行フェーズへ
+            if let Some(art) = selected_art.art.take() {
+                log.0.push(format!("{}を選択", art.name));
 
-                // Enterで確定: 先頭を実行、2つ目以降を予約キューへ
-                if keyboard.just_pressed(KeyCode::Enter) && !pending.0.is_empty() {
-                    // 確定時、選択した全コマンドをログ出力
-                    let all_names = pending
-                        .0
-                        .iter()
-                        .map(|c| match c {
-                            CommandKind::Attack => "攻撃",
-                            CommandKind::Skill => "強攻撃",
-                            CommandKind::Heal => "回復",
-                            CommandKind::Defend => "防御",
-                            CommandKind::Wait => "待機",
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", ");
-                    log.0.push(format!("選択確定: {}", all_names));
+                // アーツを行動として設定
+                action_menu.selected_art = Some(Arc::clone(&art));
 
-                    // 先頭を今回実行（連撃判定は実行時に行う）
-                    current_command.0 = Some(pending.0[0]);
-
-                    // 残りをキューへ（連撃判定は実行時に行う）
-                    for &cmd in pending.0.iter().skip(1) {
-                        queue.0.push_back(cmd);
-                    }
-                    // 連続バッチ総数の記録と実行済み数のリセット
-                    batch.total = pending.0.len();
-                    batch.executed = 0;
-                    // モメンタム増加は実行選択時に行うため、ここでは加算しない
-                    // ログ出力
-                    if pending.0.len() > 1 {
-                        let names = pending
-                            .0
-                            .iter()
-                            .skip(1)
-                            .map(|c| match c {
-                                CommandKind::Attack => "攻撃",
-                                CommandKind::Skill => "強攻撃",
-                                CommandKind::Heal => "回復",
-                                CommandKind::Defend => "防御",
-                                CommandKind::Wait => "待機",
-                            })
-                            .collect::<Vec<_>>()
-                            .join(", ");
-                        log.0.push(format!(
-                            "{}件のコマンドを予約 ({})",
-                            pending.0.len() - 1,
-                            names
-                        ));
-                    }
-                    // バッファをクリア
-                    pending.0.clear();
-
-                    // フェーズを進行
-                    *phase = BattlePhase::InBattle;
-                }
+                // フェーズを進行
+                *phase = BattlePhase::InBattle;
             }
         }
         BattlePhase::ConfirmQueued => {
-            // キューが空なら待機に戻る
-            if queue.0.front().is_none() {
-                *phase = BattlePhase::AwaitCommand;
-                return;
-            }
-            // 実行確定（YまたはEnter）
-            if keyboard.just_pressed(KeyCode::KeyY) || keyboard.just_pressed(KeyCode::Enter) {
-                if let Some(next) = queue.0.pop_front() {
-                    current_command.0 = Some(next);
-                    *phase = BattlePhase::InBattle;
-                }
-                return;
-            }
-            // 再選択（NまたはEsc）: 以降の予約コマンドをリセット
-            if keyboard.just_pressed(KeyCode::KeyN) || keyboard.just_pressed(KeyCode::Escape) {
-                let cleared = queue.0.len();
-                queue.0.clear();
-                pending.0.clear();
-                batch.total = 0;
-                batch.executed = 0;
-                if cleared > 0 {
-                    log.0.push(
-                        "連続コマンドの予約をリセットしました。コマンドを選び直してください"
-                            .to_string(),
-                    );
-                }
-                *phase = BattlePhase::AwaitCommand;
-
-                return;
-            }
+            // 使用されなくなったが互換性のため残す
+            *phase = BattlePhase::AwaitCommand;
         }
         BattlePhase::InBattle => {
-            let command = if let Some(cmd) = current_command.0 {
-                cmd
+            // 選択されたアーツを取得
+            let art = if let Some(art) = action_menu.selected_art.take() {
+                art
             } else {
-                // コマンドが無い場合は待機に戻る
+                // アーツが無い場合は待機に戻る
                 *phase = BattlePhase::AwaitCommand;
                 return;
             };
 
-            batch.executed += 1;
-            // 共通のコマンド解決処理
-            let mut resolve_command = |cmd: CommandKind| {
-                *phase = BattlePhase::InBattle;
-                let name = match cmd {
-                    CommandKind::Attack => "攻撃",
-                    CommandKind::Skill => "強攻撃",
-                    CommandKind::Heal => "回復",
-                    CommandKind::Defend => "防御",
-                    CommandKind::Wait => "待機",
+            log.0
+                .push(format!("ターン {} プレイヤーは{}を選択", turn.0, art.name));
+
+            // Battleモジュールで行動実行
+            let player_id = battle.player.character_id;
+            let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
+
+            // アーツの効果タイプに応じてターゲットを決定
+            let target = match &art.rank1.potency {
+                ArtPotency::Attack(_) => BattleConductTargetType::EnemySingle(enemy_id),
+                ArtPotency::Support(_) => BattleConductTargetType::Player,
+            };
+
+            let player_conduct = BattleConduct {
+                actor_character_id: player_id,
+                target,
+                art: Arc::clone(&art),
+                battle_weapon_id: None,
+            };
+
+            let enemy_conduct = battle.decide_enemy_conduct(DecideEnemyConductRequest {
+                enemy_character_id: enemy_id,
+            });
+            planned.0 = Some(enemy_conduct.clone());
+
+            // 行動順決定
+            let order = battle.decide_order(BattleDecideOrderRequest {
+                conducts: vec![&player_conduct, &enemy_conduct],
+            });
+
+            let mut player_dealt_damage_hp: u32 = 0;
+            // 行動実行
+            for actor_id in order {
+                let conduct_to_execute = if actor_id == player_id {
+                    player_conduct.clone()
+                } else {
+                    enemy_conduct.clone()
                 };
-                log.0
-                    .push(format!("ターン {} プレイヤーは{}を選択", turn.0, name));
-
-                // Battleモジュールで行動実行
-                let player_id = battle.player.character_id;
-                let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
-                let player_conduct = match cmd {
-                    CommandKind::Attack => BattleConduct {
-                        actor_character_id: player_id,
-                        target: BattleConductTargetType::EnemySingle(enemy_id),
-                        art: Arc::clone(&player_conducts.attack),
-                        battle_weapon_id: None,
-                    },
-                    CommandKind::Skill => BattleConduct {
-                        actor_character_id: player_id,
-                        target: BattleConductTargetType::EnemySingle(enemy_id),
-                        art: Arc::clone(&player_conducts.skill),
-                        battle_weapon_id: None,
-                    },
-                    CommandKind::Heal => BattleConduct {
-                        actor_character_id: player_id,
-                        target: BattleConductTargetType::Player,
-                        art: Arc::clone(&player_conducts.heal),
-                        battle_weapon_id: None,
-                    },
-                    CommandKind::Defend => BattleConduct {
-                        actor_character_id: player_id,
-                        target: BattleConductTargetType::Player,
-                        art: Arc::clone(&player_conducts.defend),
-                        battle_weapon_id: None,
-                    },
-                    CommandKind::Wait => BattleConduct {
-                        actor_character_id: player_id,
-                        target: BattleConductTargetType::Player,
-                        art: Arc::clone(&player_conducts.wait),
-                        battle_weapon_id: None,
-                    },
-                };
-
-                let enemy_conduct = battle.decide_enemy_conduct(DecideEnemyConductRequest {
-                    enemy_character_id: enemy_id,
-                });
-                planned.0 = Some(enemy_conduct.clone());
-
-                // 行動順決定
-                let order = battle.decide_order(BattleDecideOrderRequest {
-                    conducts: vec![&player_conduct, &enemy_conduct],
+                let incident = battle.execute_conduct(BattleExecuteConductRequest {
+                    conduct: conduct_to_execute,
                 });
 
-                let mut player_dealt_damage_hp: u32 = 0;
-                // 行動実行
-                for actor_id in order {
-                    let conduct_to_execute = if actor_id == player_id {
-                        player_conduct.clone()
-                    } else {
-                        enemy_conduct.clone()
-                    };
-                    let incident = battle.execute_conduct(BattleExecuteConductRequest {
-                        conduct: conduct_to_execute,
-                    });
-
-                    match incident.outcome {
-                        BattleIncidentConductOutcome::Failure(failure) => {
-                            log.0.push(format!("{}は不発", incident.conduct.art.name));
+                match incident.outcome {
+                    BattleIncidentConductOutcome::Failure(failure) => {
+                        log.0.push(format!("{}は不発", incident.conduct.art.name));
+                    }
+                    BattleIncidentConductOutcome::Success(s) => {
+                        for character_incident in s.attacker.incidents.iter() {
+                            for incident_concrete in character_incident.concretes.iter() {
+                                match incident_concrete {
+                                    BattleCharacterIncidentConcrete::DamageSp(d) => log.0.push(
+                                        format!("SP -{} ({} → {})", d.damage, d.before, d.after),
+                                    ),
+                                    BattleCharacterIncidentConcrete::DamageStamina(d) => {
+                                        log.0.push(format!(
+                                            "Stamina -{} ({} → {})",
+                                            d.damage, d.before, d.after
+                                        ))
+                                    }
+                                    _ => {}
+                                }
+                            }
                         }
-                        BattleIncidentConductOutcome::Success(s) => {
-                            for character_incident in s.attacker.incidents.iter() {
+                        for def in s.defenders.iter() {
+                            if def.is_evaded {
+                                log.0.push("回避した".to_string());
+                            }
+                            if def.is_defended {
+                                log.0.push("防御した".to_string());
+                            }
+
+                            for character_incident in def.character.incidents.iter() {
                                 for incident_concrete in character_incident.concretes.iter() {
                                     match incident_concrete {
-                                        BattleCharacterIncidentConcrete::DamageSp(d) => {
+                                        BattleCharacterIncidentConcrete::DamageHp(d) => {
+                                            if def.character.character_id == player_id {
+                                                player_dealt_damage_hp = d.damage;
+                                            }
                                             log.0.push(format!(
-                                                "SP -{} ({} → {})",
-                                                d.damage, d.before, d.after
+                                                "{} に{}ダメージ (HP {} → {})",
+                                                if def.character.character_id == enemy_id {
+                                                    "敵"
+                                                } else {
+                                                    "プレイヤー"
+                                                },
+                                                d.damage,
+                                                d.before,
+                                                d.after
+                                            ));
+                                            // 敵へのダメージをポップアップに反映
+                                            if def.character.character_id == enemy_id {
+                                                enemy_damage_popup.amount = d.damage as i32;
+                                                enemy_damage_popup.timer = 1.0;
+                                            }
+                                        }
+                                        BattleCharacterIncidentConcrete::RecoverHp(r) => {
+                                            log.0.push(format!(
+                                                "{} のHPを{}回復 ({} → {})",
+                                                if def.character.character_id == player_id {
+                                                    "プレイヤー"
+                                                } else {
+                                                    "敵"
+                                                },
+                                                r.recover,
+                                                r.before,
+                                                r.after
                                             ))
                                         }
-                                        BattleCharacterIncidentConcrete::DamageStamina(d) => {
+                                        BattleCharacterIncidentConcrete::RecoverStamina(r) => {
                                             log.0.push(format!(
-                                                "Stamina -{} ({} → {})",
-                                                d.damage, d.before, d.after
+                                                "{} のスタミナを{}回復 ({} → {})",
+                                                if def.character.character_id == player_id {
+                                                    "プレイヤー"
+                                                } else {
+                                                    "敵"
+                                                },
+                                                r.recover,
+                                                r.before,
+                                                r.after
                                             ))
                                         }
                                         _ => {}
                                     }
                                 }
                             }
-                            for def in s.defenders.iter() {
-                                if def.is_evaded {
-                                    log.0.push("回避した".to_string());
-                                }
-                                if def.is_defended {
-                                    log.0.push("防御した".to_string());
-                                }
-
-                                for character_incident in def.character.incidents.iter() {
-                                    for incident_concrete in character_incident.concretes.iter() {
-                                        match incident_concrete {
-                                            BattleCharacterIncidentConcrete::DamageHp(d) => {
-                                                if def.character.character_id == player_id {
-                                                    player_dealt_damage_hp = d.damage;
-                                                }
-                                                log.0.push(format!(
-                                                    "{} に{}ダメージ (HP {} → {})",
-                                                    if def.character.character_id == enemy_id {
-                                                        "敵"
-                                                    } else {
-                                                        "プレイヤー"
-                                                    },
-                                                    d.damage,
-                                                    d.before,
-                                                    d.after
-                                                ));
-                                            }
-                                            BattleCharacterIncidentConcrete::RecoverHp(r) => {
-                                                log.0.push(format!(
-                                                    "{} のHPを{}回復 ({} → {})",
-                                                    if def.character.character_id == player_id {
-                                                        "プレイヤー"
-                                                    } else {
-                                                        "敵"
-                                                    },
-                                                    r.recover,
-                                                    r.before,
-                                                    r.after
-                                                ))
-                                            }
-                                            BattleCharacterIncidentConcrete::DamageBreak(d) => log
-                                                .0
-                                                .push(format!("敵にブレイクダメージ {}", d.damage)),
-                                            BattleCharacterIncidentConcrete::RecoverBreak(r) => log
-                                                .0
-                                                .push(format!("敵のブレイク回復 {}", r.recover)),
-                                            BattleCharacterIncidentConcrete::RecoverStamina(r) => {
-                                                log.0.push(format!(
-                                                    "Stamina +{} ({} → {})",
-                                                    r.recover, r.before, r.after
-                                                ))
-                                            }
-                                            _ => {}
-                                        }
-                                    }
-                                }
-                            }
                         }
                     }
                 }
-            };
+            }
 
-            // 今回は1件だけ処理（各ターン1コマンドのルール）
-            resolve_command(command);
-
+            // ターン終了
             turn.0 += 1;
+            action_menu.state = ActionMenuState::CategorySelect;
             *phase = BattlePhase::TurnEnd;
         }
         BattlePhase::TurnEnd => {
@@ -1535,6 +1848,271 @@ fn player_input_system(
             return;
         }
     }
+}
+
+// ================== Action Menu Click System ==================
+fn action_menu_click_system(
+    phase: Res<BattlePhase>,
+    mut action_menu: ResMut<ActionMenuSelection>,
+    mut selected_art: ResMut<SelectedArt>,
+    basic_arts: Res<PlayerBasicArts>,
+    equipped_weapons: Res<PlayerEquippedWeapons>,
+    mut interaction_query: Query<
+        (&Interaction, &ActionMenuItem),
+        (Changed<Interaction>, With<Button>),
+    >,
+) {
+    // AwaitCommand フェーズでのみ処理
+    if *phase != BattlePhase::AwaitCommand {
+        return;
+    }
+
+    for (interaction, menu_item) in interaction_query.iter_mut() {
+        if *interaction == Interaction::Pressed {
+            match &menu_item.item_type {
+                ActionMenuItemType::Category(category) => match category {
+                    ActionMenuCategory::Basic => {
+                        action_menu.state = ActionMenuState::BasicArtsSelect;
+                    }
+                    ActionMenuCategory::Weapon(idx) => {
+                        action_menu.state = ActionMenuState::WeaponArtsSelect(*idx);
+                        action_menu.selected_weapon_index = Some(*idx);
+                    }
+                    ActionMenuCategory::Back => {
+                        action_menu.state = ActionMenuState::CategorySelect;
+                        action_menu.selected_weapon_index = None;
+                    }
+                },
+                ActionMenuItemType::Art(art) => {
+                    // アーツを選択
+                    selected_art.art = Some(Arc::clone(art));
+                    selected_art.weapon_index = action_menu.selected_weapon_index;
+                }
+            }
+        }
+    }
+}
+
+// ================== Action Menu Update System ==================
+fn action_menu_update_system(
+    phase: Res<BattlePhase>,
+    action_menu: Res<ActionMenuSelection>,
+    basic_arts: Res<PlayerBasicArts>,
+    equipped_weapons: Res<PlayerEquippedWeapons>,
+    asset_server: Res<AssetServer>,
+    mut commands: Commands,
+    mut menu_vis_q: Query<&mut Visibility, With<UiActionMenu>>,
+    container_q: Query<Entity, With<UiActionMenuContainer>>,
+    menu_items_q: Query<Entity, With<ActionMenuItem>>,
+) {
+    // メニューの表示/非表示
+    if let Ok(mut vis) = menu_vis_q.single_mut() {
+        *vis = if *phase == BattlePhase::AwaitCommand {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+    }
+
+    // AwaitCommand フェーズでのみ処理
+    if *phase != BattlePhase::AwaitCommand {
+        return;
+    }
+
+    // リソースが変更されていない場合はスキップ
+    if !action_menu.is_changed() {
+        return;
+    }
+
+    let Ok(container_entity) = container_q.single() else {
+        return;
+    };
+
+    // 古いメニューアイテムを削除
+    for entity in menu_items_q.iter() {
+        commands.entity(entity).despawn();
+    }
+
+    let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
+
+    // メニュー状態に応じてボタンを生成
+    match &action_menu.state {
+        ActionMenuState::CategorySelect => {
+            // カテゴリ選択: 基本 + 装備武器
+            commands.entity(container_entity).with_children(|parent| {
+                // 基本ボタン
+                spawn_menu_button(
+                    parent,
+                    &font,
+                    "基本",
+                    ActionMenuItemType::Category(ActionMenuCategory::Basic),
+                );
+
+                // 装備武器ボタン
+                for (idx, weapon) in equipped_weapons.weapons.iter().enumerate() {
+                    spawn_menu_button(
+                        parent,
+                        &font,
+                        &weapon.weapon.name,
+                        ActionMenuItemType::Category(ActionMenuCategory::Weapon(idx)),
+                    );
+                }
+            });
+        }
+        ActionMenuState::BasicArtsSelect => {
+            // 基本アーツ選択
+            commands.entity(container_entity).with_children(|parent| {
+                // 戻るボタン
+                spawn_menu_button(
+                    parent,
+                    &font,
+                    "← 戻る",
+                    ActionMenuItemType::Category(ActionMenuCategory::Back),
+                );
+
+                // 基本アーツ
+                for art in basic_arts.0.iter() {
+                    let label = format!("{} (ST{})", art.name, art.stamina_cost);
+                    spawn_menu_button(
+                        parent,
+                        &font,
+                        &label,
+                        ActionMenuItemType::Art(Arc::clone(art)),
+                    );
+                }
+            });
+        }
+        ActionMenuState::WeaponArtsSelect(weapon_idx) => {
+            // 武器の技・術選択
+            if let Some(weapon_data) = equipped_weapons.weapons.get(*weapon_idx) {
+                commands.entity(container_entity).with_children(|parent| {
+                    // 戻るボタン
+                    spawn_menu_button(
+                        parent,
+                        &font,
+                        "← 戻る",
+                        ActionMenuItemType::Category(ActionMenuCategory::Back),
+                    );
+
+                    // 技
+                    if !weapon_data.skills.is_empty() {
+                        spawn_menu_label(parent, &font, "【技】");
+                        for art in weapon_data.skills.iter() {
+                            let label = format!("{} (ST{})", art.name, art.stamina_cost);
+                            spawn_menu_button(
+                                parent,
+                                &font,
+                                &label,
+                                ActionMenuItemType::Art(Arc::clone(art)),
+                            );
+                        }
+                    }
+
+                    // 術
+                    if !weapon_data.sorceries.is_empty() {
+                        spawn_menu_label(parent, &font, "【術】");
+                        for art in weapon_data.sorceries.iter() {
+                            let label =
+                                format!("{} (SP{}/ST{})", art.name, art.sp_cost, art.stamina_cost);
+                            spawn_menu_button(
+                                parent,
+                                &font,
+                                &label,
+                                ActionMenuItemType::Art(Arc::clone(art)),
+                            );
+                        }
+                    }
+
+                    // 技も術もない場合
+                    if weapon_data.skills.is_empty() && weapon_data.sorceries.is_empty() {
+                        spawn_menu_label(parent, &font, "(この武器には技・術がありません)");
+                    }
+                });
+            }
+        }
+    }
+}
+
+// ヘルパー: メニューボタン生成
+fn spawn_menu_button<'a>(
+    parent: &mut ChildSpawnerCommands<'a>,
+    font: &Handle<Font>,
+    label: &str,
+    item_type: ActionMenuItemType,
+) {
+    parent
+        .spawn((
+            ActionMenuItem { item_type },
+            Button,
+            Node {
+                width: percent(100),
+                height: Val::Px(32.0),
+                justify_content: JustifyContent::FlexStart,
+                align_items: AlignItems::Center,
+                padding: UiRect::horizontal(Val::Px(8.0)),
+                border: UiRect::all(Val::Px(1.0)),
+                margin: UiRect::bottom(Val::Px(2.0)),
+                ..default()
+            },
+            BackgroundColor(Color::from(LinearRgba {
+                red: 0.15,
+                green: 0.15,
+                blue: 0.25,
+                alpha: 1.0,
+            })),
+            BorderColor::all(Color::from(LinearRgba {
+                red: 0.4,
+                green: 0.4,
+                blue: 0.6,
+                alpha: 1.0,
+            })),
+        ))
+        .with_children(|btn| {
+            btn.spawn((
+                Text::new(label.to_string()),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+            ));
+        });
+}
+
+// ヘルパー: メニューラベル生成
+fn spawn_menu_label<'a>(parent: &mut ChildSpawnerCommands<'a>, font: &Handle<Font>, label: &str) {
+    parent
+        .spawn((
+            ActionMenuItem {
+                item_type: ActionMenuItemType::Category(ActionMenuCategory::Back),
+            }, // ダミー
+            Node {
+                width: percent(100),
+                height: Val::Px(24.0),
+                justify_content: JustifyContent::FlexStart,
+                align_items: AlignItems::Center,
+                padding: UiRect::horizontal(Val::Px(4.0)),
+                margin: UiRect::top(Val::Px(8.0)),
+                ..default()
+            },
+        ))
+        .with_children(|lbl| {
+            lbl.spawn((
+                Text::new(label.to_string()),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextColor(Color::from(LinearRgba {
+                    red: 0.7,
+                    green: 0.7,
+                    blue: 0.9,
+                    alpha: 1.0,
+                })),
+            ));
+        });
 }
 
 // ================== End Check ==================
@@ -1843,26 +2421,8 @@ fn ui_update_system(
         BattlePhase::DecideEnemyConduct => {
             format!("敵の行動決定中... 次の行動: {}", enemy_action_str)
         }
-        BattlePhase::AwaitCommand => format!(
-            "コマンド入力待ち \nコマンドを選択してください(最大3つ)\n A=攻撃 S=強攻撃 H=回復 D=防御 W=待機\n Backspace=直前取り消し / Esc=全クリア\n Enter=決定\n [選択中] {selected_str}"
-        ),
-        BattlePhase::ConfirmQueued => {
-            let next_name = if let Some(next) = queue.0.front() {
-                match next {
-                    CommandKind::Attack => "攻撃",
-                    CommandKind::Skill => "強攻撃",
-                    CommandKind::Heal => "回復",
-                    CommandKind::Defend => "防御",
-                    CommandKind::Wait => "待機",
-                }
-            } else {
-                "(なし)"
-            };
-            format!(
-                "連続コマンド確認\n次の予約: {}\n Y=実行 / N=選択しなおし(以降リセット)",
-                next_name
-            )
-        }
+        BattlePhase::AwaitCommand => "行動を選択してください".to_string(),
+        BattlePhase::ConfirmQueued => "確認中".to_string(),
         BattlePhase::InBattle => "処理中".to_string(),
         BattlePhase::TurnEnd => "ターン終了".to_string(),
         BattlePhase::Finished => "終了".to_string(),
@@ -1883,71 +2443,10 @@ fn ui_update_system(
     ui_log_text.0 = log_text;
 }
 
-// コマンド入力表示（右端パネル）の表示制御と内容更新
-fn ui_update_command_system(
-    phase: Res<BattlePhase>,
-    planned: Res<EnemyPlannedAction>,
-    pending: Res<PendingSelections>,
-    queue: Res<CommandQueue>,
-    mut cmd_panel_q: Query<(&mut Visibility, &Children), With<UiCommand>>,
-    mut texts: Query<&mut Text>,
+// コマンド入力表示（旧システム - 新UIメニューに置き換え済み）
+fn ui_update_command_system(// 新しいUIシステムに置き換え済みのため、何もしない
 ) {
-    let Ok((mut vis, children)) = cmd_panel_q.single_mut() else {
-        return;
-    };
-    match *phase {
-        BattlePhase::AwaitCommand => {
-            *vis = Visibility::Visible;
-            for child in children.iter() {
-                if let Ok(mut t) = texts.get_mut(child) {
-                    let selected_str = if pending.0.is_empty() {
-                        "(なし)".to_string()
-                    } else {
-                        pending
-                            .0
-                            .iter()
-                            .map(|c| match c {
-                                CommandKind::Attack => "攻撃",
-                                CommandKind::Skill => "強攻撃",
-                                CommandKind::Heal => "回復",
-                                CommandKind::Defend => "防御",
-                                CommandKind::Wait => "待機",
-                            })
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    };
-                    t.0 = format!(
-                        "[コマンド入力] \nA=攻撃 S=強攻撃 H=回復 D=防御 W=待機\nZ=攻撃強化 X=強攻撃強化 C=回復強化 V=防御強化\nBackspace=直前取り消し Esc=全クリア Enter=決定 \n選択中: {selected_str}"
-                    );
-                }
-            }
-        }
-        BattlePhase::ConfirmQueued => {
-            *vis = Visibility::Visible;
-            for child in children.iter() {
-                if let Ok(mut t) = texts.get_mut(child) {
-                    let next_name = if let Some(next) = queue.0.front() {
-                        match next {
-                            CommandKind::Attack => "攻撃",
-                            CommandKind::Skill => "強攻撃",
-                            CommandKind::Heal => "回復",
-                            CommandKind::Defend => "防御",
-                            CommandKind::Wait => "待機",
-                        }
-                    } else {
-                        "(なし)"
-                    };
-                    t.0 = format!(
-                        "[連続コマンド確認]\n次の予約: {}\nY=実行 / N=選び直し(以降の予約はリセット)",
-                        next_name
-                    );
-                }
-            }
-        }
-        _ => {
-            *vis = Visibility::Hidden;
-        }
-    }
+    // 古いUiCommandパネルは削除され、action_menu_update_system で処理される
 }
 
 // 画面下のUiMessageに最新メッセージを最大20行表示
