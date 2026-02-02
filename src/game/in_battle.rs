@@ -1,6 +1,5 @@
 use crate::battle::{
     BattleDecideOrderRequest, BattleExecuteConductRequest, DecideEnemyConductRequest,
-    RecoverBreakRequest, RecoverStaminaRequest, UpdateStatusConditionRequest,
 };
 use crate::fundamental;
 use crate::fundamental::*;
@@ -1548,29 +1547,7 @@ fn player_input_system(
             *phase = BattlePhase::TurnEnd;
         }
         BattlePhase::TurnEnd => {
-            let player_character_id = battle.player.character_id;
-            let enemy_character_ids = battle
-                .enemies
-                .iter()
-                .map(|e| e.character_id)
-                .collect::<Vec<u32>>();
-
-            battle.update_status_condition_for_turn(UpdateStatusConditionRequest {
-                character_id: player_character_id,
-            });
-            for &cid in enemy_character_ids.iter() {
-                battle.update_status_condition_for_turn(UpdateStatusConditionRequest {
-                    character_id: cid,
-                });
-            }
-
-            battle.recover_stamina(RecoverStaminaRequest {
-                character_id: player_character_id,
-            });
-
-            for &cid in enemy_character_ids.iter() {
-                battle.recover_break(RecoverBreakRequest { character_id: cid });
-            }
+            battle.turn_end();
 
             *phase = BattlePhase::DecideEnemyConduct;
         }
