@@ -13,10 +13,9 @@ pub struct BattleCharacter {
 
     pub character_type: BattleCharacterType,
 
-    pub hp: BattleCharacterHP,                  // HP
-    pub sp: BattleCharacterSP,                  // SP
-    pub stamina: BattleCharacterStamina,        // スタミナ (プレイヤーのみ)
-    pub break_resistance: BattleCharacterBreak, // ブレイク耐性 (敵のみ)
+    pub hp: BattleCharacterHP,           // HP
+    pub sp: BattleCharacterSP,           // SP
+    pub stamina: BattleCharacterStamina, // スタミナ (プレイヤーのみ)
 
     pub weapons: Vec<BattleWeapon>, // 装備武器
 
@@ -55,16 +54,4 @@ pub struct BattleCharacterStamina {
     pub max_stamina: u32,
     pub current_stamina: u32,
     pub stamina_recovery: u32,
-}
-// ブレイク
-#[derive(Clone)]
-pub struct BattleCharacterBreak {
-    pub max_break: u32,               // ブレイク最大値
-    pub current_break: u32,           // 現在のブレイク値
-    pub break_recovery: u32,          // ブレイク回復量
-    pub break_not_damaged_turns: u32, // ブレイクダメージを受けてないターン数
-
-    pub is_breaking: bool,             // ブレイク中
-    pub max_breaking_turns: u32,       // ブレイク中、最大ターン
-    pub remaining_breaking_turns: u32, // ブレイク中、残りターン数
 }

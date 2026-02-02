@@ -18,7 +18,6 @@ struct AttackerData {
     hp: BattleCharacterHP,
     sp: BattleCharacterSP,
     stamina: BattleCharacterStamina,
-    break_resistance: BattleCharacterBreak,
     status_ailment: BattleStatusAilment,
     status_conditions: Vec<BattleStatusCondition>,
 
@@ -188,7 +187,6 @@ pub fn execute_conduct(
         hp: attacker.hp.clone(),
         sp: attacker.sp.clone(),
         stamina: attacker.stamina.clone(),
-        break_resistance: attacker.break_resistance.clone(),
         status_ailment: attacker.status_ailment.clone(),
         status_conditions: attacker.status_conditions.clone(),
 

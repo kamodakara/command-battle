@@ -245,37 +245,3 @@ impl BattleCharacterStamina {
         (before, after)
     }
 }
-
-// ブレイク耐性
-impl BattleCharacterBreak {
-    pub fn damage(&mut self, amount: u32) -> (u32, u32) {
-        let before = self.current_break;
-        self.current_break = self.current_break.saturating_sub(amount);
-        let after = self.current_break;
-
-        // ブレイクダメージを受けたのでターン数リセット
-        self.break_not_damaged_turns = 0;
-
-        (before, after)
-    }
-    pub fn recover(&mut self, amount: u32) -> (u32, u32) {
-        let before = self.current_break;
-        self.current_break = std::cmp::min(self.current_break + amount, self.max_break);
-        let after = self.current_break;
-        (before, after)
-    }
-
-    // ブレイクターン経過
-    pub fn elapse_breaking_turn(&mut self) -> (u32, u32) {
-        let before = self.remaining_breaking_turns;
-        self.remaining_breaking_turns.saturating_sub(1);
-        let after = self.remaining_breaking_turns;
-        (before, after)
-    }
-
-    // ブレイク中、解除
-    pub fn clear_breaking(&mut self) {
-        self.is_breaking = false;
-        self.remaining_breaking_turns = 0;
-    }
-}

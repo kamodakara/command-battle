@@ -491,16 +491,6 @@ fn create_mock_battle() -> Battle {
                 current_stamina: player_original.stats.stamina,
                 stamina_recovery: player_original.stats.stamina_recovery,
             },
-            break_resistance: BattleCharacterBreak {
-                max_break: 0,
-                current_break: 0,
-                break_recovery: 0,
-                break_not_damaged_turns: 0,
-
-                is_breaking: false,
-                max_breaking_turns: 0,
-                remaining_breaking_turns: 0,
-            },
             weapons: vec![
                 // TODO: 装備武器情報生成
             ],
@@ -573,16 +563,6 @@ fn create_mock_battle() -> Battle {
                 max_stamina: 0,
                 current_stamina: 0,
                 stamina_recovery: 0,
-            },
-            break_resistance: BattleCharacterBreak {
-                max_break: enemy_original.stats.break_max,
-                current_break: enemy_original.stats.break_max,
-                break_recovery: enemy_original.stats.break_recovery,
-                break_not_damaged_turns: 0,
-
-                is_breaking: false,
-                max_breaking_turns: enemy_original.stats.break_turn,
-                remaining_breaking_turns: 0,
             },
             weapons: vec![
                 // TODO: 装備武器情報生成
@@ -1791,8 +1771,8 @@ fn ui_update_system(
     let p_stamina = player.stamina.current_stamina;
     let enemy = battle.enemies.first().unwrap();
     let e_hp = enemy.hp.current_hp;
-    let e_break = enemy.break_resistance.current_break;
-    let e_break_max = enemy.break_resistance.max_break;
+    let e_break = enemy.status_ailment.breaking.accumulation;
+    let e_break_max = enemy.status_ailment.breaking.max_accumulation;
     ui_status_text.0 = format!(
         "プレイヤーHP: {} / {}\nスタミナ: {} / {}\n100\n\n敵HP: {} / {}\n敵ブレイク値: {} / {}\n敵状態: {}\n\n",
         p_hp,
@@ -2220,8 +2200,8 @@ fn ui_update_enemy_system(
 
     let enemy = battle.enemies.first().unwrap();
     let e_hp = enemy.hp.current_hp;
-    let e_break = enemy.break_resistance.current_break;
-    let e_break_max = enemy.break_resistance.max_break;
+    let e_break = enemy.status_ailment.breaking.accumulation;
+    let e_break_max = enemy.status_ailment.breaking.max_accumulation;
 
     if let Ok(mut hp_node) = gauge_params.p0().single_mut() {
         let ratio = if enemy.hp.max_hp > 0 {
