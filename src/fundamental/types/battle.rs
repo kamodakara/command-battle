@@ -4,10 +4,10 @@ mod karma;
 mod trance;
 
 use super::StatusAilment;
+use super::art::Art;
 use super::character::Ability;
 use super::character::AbilityType;
 use super::common::*;
-use super::conduct::Art;
 use super::effect::{
     EffectAbilityModifier, EffectAttackDamageModifier, EffectHpPercentageDamage,
     EffectReceiveDamageModifier, EffectRemoveStatusAilment, EffectSpPercentageDamage,

@@ -1,5 +1,5 @@
+use super::art::Art;
 use super::common::DefensePower;
-use super::conduct::Art;
 use super::equipment::Equipment;
 
 // 敵
