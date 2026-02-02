@@ -92,19 +92,44 @@ struct ConsecutiveBatch {
     executed: usize, // このバッチで既に実行した数
 }
 
-// プレイヤーの行動定義（リソース）
-#[derive(Resource)]
-struct PlayerConducts {
-    attack: Arc<Art>,
-    skill: Arc<Art>,
-    heal: Arc<Art>,
-    defend: Arc<Art>,
-    wait: Arc<Art>,
-}
-
-fn create_default_player_conducts() -> PlayerConducts {
-    PlayerConducts {
-        attack: Arc::new(Art {
+fn player_arts() -> Vec<Arc<Art>> {
+    vec![
+        // 基本アーツ
+        Arc::new(Art {
+            name: "待機".to_string(),
+            sp_cost: 0,
+            stamina_cost: 0,
+            perks: vec![],
+            requirement: ArtRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            art_type: ArtType::Basic,
+            usable_weapon: ArtUsableWeapon::All,
+            always_hits: false,
+            priority: 0,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Support(ArtPotencySupport::Recover(
+                    ArtPotencySupportRecover {
+                        potencies: vec![SupportRecoverPotency::Stamina(
+                            SupportRecoverPotencyStamina {
+                                stamina_recover: 60,
+                            },
+                        )],
+                    },
+                )),
+            },
+            rank2: None,
+            rank3: None,
+        }),
+        // 技
+        Arc::new(Art {
             name: "攻撃".to_string(),
             sp_cost: 0,
             stamina_cost: 5,
@@ -117,7 +142,7 @@ fn create_default_player_conducts() -> PlayerConducts {
                 arcane: 0,
                 agility: 0,
             },
-            art_type: ArtType::Basic,
+            art_type: ArtType::Skill,
             usable_weapon: ArtUsableWeapon::All,
             always_hits: false,
             priority: 0,
@@ -143,7 +168,7 @@ fn create_default_player_conducts() -> PlayerConducts {
             rank2: None,
             rank3: None,
         }),
-        skill: Arc::new(Art {
+        Arc::new(Art {
             name: "強攻撃".to_string(),
             sp_cost: 0,
             stamina_cost: 25,
@@ -156,7 +181,7 @@ fn create_default_player_conducts() -> PlayerConducts {
                 arcane: 0,
                 agility: 0,
             },
-            art_type: ArtType::Basic,
+            art_type: ArtType::Skill,
             usable_weapon: ArtUsableWeapon::All,
             always_hits: false,
             priority: 0,
@@ -182,7 +207,7 @@ fn create_default_player_conducts() -> PlayerConducts {
             rank2: None,
             rank3: None,
         }),
-        heal: Arc::new(Art {
+        Arc::new(Art {
             name: "回復".to_string(),
             sp_cost: 0,
             stamina_cost: 25,
@@ -213,122 +238,6 @@ fn create_default_player_conducts() -> PlayerConducts {
             rank2: None,
             rank3: None,
         }),
-        defend: Arc::new(Art {
-            name: "防御".to_string(),
-            sp_cost: 0,
-            stamina_cost: 5,
-            perks: vec![],
-            requirement: ArtRequirement {
-                strength: 0,
-                dexterity: 0,
-                intelligence: 0,
-                faith: 0,
-                arcane: 0,
-                agility: 0,
-            },
-            art_type: ArtType::Basic,
-            usable_weapon: ArtUsableWeapon::All,
-            always_hits: false,
-            priority: 0,
-            rank1: ArtRank {
-                threshold: 0,
-                target: ArtTarget::Single,
-                potency: ArtPotency::Support(ArtPotencySupport::StatusCondition(
-                    ArtPotencySupportStatusCondition {
-                        status_conditions: vec![StatusCondition {
-                            potency: StatusConditionPotency::Resistance(
-                                StatusConditionResistance {
-                                    battle_weapon_id: BattleWeaponId(0), // TODO: 仮のID、あとで差し替え
-                                },
-                            ),
-                            duration: StatusConditionDuration::Turn(StatusConditionDurationTurn {
-                                turns: 1,
-                            }),
-                        }],
-                    },
-                )),
-            },
-            rank2: None,
-            rank3: None,
-        }),
-        wait: Arc::new(Art {
-            name: "待機".to_string(),
-            sp_cost: 0,
-            stamina_cost: 0,
-            perks: vec![],
-            requirement: ArtRequirement {
-                strength: 0,
-                dexterity: 0,
-                intelligence: 0,
-                faith: 0,
-                arcane: 0,
-                agility: 0,
-            },
-            art_type: ArtType::Basic,
-            usable_weapon: ArtUsableWeapon::All,
-            always_hits: false,
-            priority: 0,
-            rank1: ArtRank {
-                threshold: 0,
-                target: ArtTarget::Single,
-                potency: ArtPotency::Support(ArtPotencySupport::Recover(
-                    ArtPotencySupportRecover {
-                        potencies: vec![SupportRecoverPotency::Stamina(
-                            SupportRecoverPotencyStamina {
-                                stamina_recover: 60,
-                            },
-                        )],
-                    },
-                )),
-            },
-            rank2: None,
-            rank3: None,
-        }),
-    }
-}
-
-// 基本アーツを作成
-fn create_basic_arts() -> Vec<Arc<Art>> {
-    vec![
-        Arc::new(Art {
-            name: "攻撃".to_string(),
-            sp_cost: 0,
-            stamina_cost: 5,
-            perks: vec![ArtPerk::Melee],
-            requirement: ArtRequirement {
-                strength: 0,
-                dexterity: 0,
-                intelligence: 0,
-                faith: 0,
-                arcane: 0,
-                agility: 0,
-            },
-            art_type: ArtType::Basic,
-            usable_weapon: ArtUsableWeapon::All,
-            always_hits: false,
-            priority: 0,
-            rank1: ArtRank {
-                threshold: 0,
-                target: ArtTarget::Single,
-                potency: ArtPotency::Attack(ArtPotencyAttack {
-                    attack_power: AttackPower {
-                        slash: 25,
-                        strike: 0,
-                        thrust: 0,
-                        impact: 0,
-                        magic: 0,
-                        fire: 0,
-                        lightning: 0,
-                        chaos: 0,
-                    },
-                    weapon_attack_power_scaling: AttackPowerScaling::default(),
-                    break_power: 10,
-                    weapon_break_power_scaling: 0.0,
-                }),
-            },
-            rank2: None,
-            rank3: None,
-        }),
         Arc::new(Art {
             name: "防御".to_string(),
             sp_cost: 0,
@@ -342,7 +251,7 @@ fn create_basic_arts() -> Vec<Arc<Art>> {
                 arcane: 0,
                 agility: 0,
             },
-            art_type: ArtType::Basic,
+            art_type: ArtType::Skill,
             usable_weapon: ArtUsableWeapon::All,
             always_hits: false,
             priority: 0,
@@ -367,102 +276,6 @@ fn create_basic_arts() -> Vec<Arc<Art>> {
             rank2: None,
             rank3: None,
         }),
-        Arc::new(Art {
-            name: "待機".to_string(),
-            sp_cost: 0,
-            stamina_cost: 0,
-            perks: vec![],
-            requirement: ArtRequirement {
-                strength: 0,
-                dexterity: 0,
-                intelligence: 0,
-                faith: 0,
-                arcane: 0,
-                agility: 0,
-            },
-            art_type: ArtType::Basic,
-            usable_weapon: ArtUsableWeapon::All,
-            always_hits: false,
-            priority: 0,
-            rank1: ArtRank {
-                threshold: 0,
-                target: ArtTarget::Single,
-                potency: ArtPotency::Support(ArtPotencySupport::Recover(
-                    ArtPotencySupportRecover {
-                        potencies: vec![SupportRecoverPotency::Stamina(
-                            SupportRecoverPotencyStamina {
-                                stamina_recover: 60,
-                            },
-                        )],
-                    },
-                )),
-            },
-            rank2: None,
-            rank3: None,
-        }),
-    ]
-}
-
-// サンプル武器と対応するスキル・術を作成
-fn create_equipped_weapons_with_arts() -> PlayerEquippedWeapons {
-    // 直剣
-    let straight_sword = Weapon {
-        name: "ロングソード".to_string(),
-        kind: WeaponKind::StraightSword,
-        weight: 4,
-        ability_requirement: WeaponAbilityRequirement {
-            strength: 10,
-            dexterity: 10,
-            intelligence: 0,
-            faith: 0,
-            arcane: 0,
-            agility: 0,
-        },
-        attack_power: WeaponAttackPower {
-            base: AttackPower {
-                slash: 30,
-                strike: 0,
-                thrust: 5,
-                impact: 0,
-                magic: 0,
-                fire: 0,
-                lightning: 0,
-                chaos: 0,
-            },
-            ability_scaling: WeaponAttackPowerAbilityScaling {
-                slash: AbilityScaling::default(),
-                strike: AbilityScaling::default(),
-                thrust: AbilityScaling::default(),
-                impact: AbilityScaling::default(),
-                magic: AbilityScaling::default(),
-                fire: AbilityScaling::default(),
-                lightning: AbilityScaling::default(),
-                chaos: AbilityScaling::default(),
-            },
-        },
-        sorcery_power: WeaponSorceryPower {
-            base: 0,
-            scaling: AbilityScaling::default(),
-        },
-        break_power: WeaponBreakPower {
-            base_power: 15,
-            scaling: AbilityScaling::default(),
-        },
-        guard: WeaponGuard {
-            cut_rate: GuardCutRate {
-                slash: 0.5,
-                strike: 0.5,
-                thrust: 0.5,
-                impact: 0.5,
-                magic: 0.2,
-                fire: 0.2,
-                lightning: 0.2,
-                chaos: 0.2,
-            },
-            guard_strength: 30,
-        },
-    };
-    let straight_sword_skills = vec![
         Arc::new(Art {
             name: "横斬り".to_string(),
             sp_cost: 0,
@@ -559,68 +372,7 @@ fn create_equipped_weapons_with_arts() -> PlayerEquippedWeapons {
             rank2: None,
             rank3: None,
         }),
-    ];
-    let straight_sword_sorceries: Vec<Arc<Art>> = vec![];
-
-    // 杖
-    let staff = Weapon {
-        name: "賢者の杖".to_string(),
-        kind: WeaponKind::Staff,
-        weight: 2,
-        ability_requirement: WeaponAbilityRequirement {
-            strength: 0,
-            dexterity: 0,
-            intelligence: 15,
-            faith: 0,
-            arcane: 0,
-            agility: 0,
-        },
-        attack_power: WeaponAttackPower {
-            base: AttackPower {
-                slash: 0,
-                strike: 10,
-                thrust: 0,
-                impact: 0,
-                magic: 20,
-                fire: 0,
-                lightning: 0,
-                chaos: 0,
-            },
-            ability_scaling: WeaponAttackPowerAbilityScaling {
-                slash: AbilityScaling::default(),
-                strike: AbilityScaling::default(),
-                thrust: AbilityScaling::default(),
-                impact: AbilityScaling::default(),
-                magic: AbilityScaling::default(),
-                fire: AbilityScaling::default(),
-                lightning: AbilityScaling::default(),
-                chaos: AbilityScaling::default(),
-            },
-        },
-        sorcery_power: WeaponSorceryPower {
-            base: 50,
-            scaling: AbilityScaling::default(),
-        },
-        break_power: WeaponBreakPower {
-            base_power: 5,
-            scaling: AbilityScaling::default(),
-        },
-        guard: WeaponGuard {
-            cut_rate: GuardCutRate {
-                slash: 0.2,
-                strike: 0.2,
-                thrust: 0.2,
-                impact: 0.2,
-                magic: 0.5,
-                fire: 0.3,
-                lightning: 0.3,
-                chaos: 0.3,
-            },
-            guard_strength: 10,
-        },
-    };
-    let staff_skills: Vec<Arc<Art>> = vec![];
-    let staff_sorceries = vec![
+        // 術
         Arc::new(Art {
             name: "ファイアボール".to_string(),
             sp_cost: 10,
@@ -691,7 +443,171 @@ fn create_equipped_weapons_with_arts() -> PlayerEquippedWeapons {
             rank2: None,
             rank3: None,
         }),
-    ];
+    ]
+}
+
+fn create_basic_arts() -> Vec<Arc<Art>> {
+    player_arts()
+        .into_iter()
+        .filter(|art| art.art_type == ArtType::Basic)
+        .map(|art| Arc::clone(&art))
+        .collect()
+}
+
+// サンプル武器と対応するスキル・術を作成
+fn create_equipped_weapons_with_arts() -> PlayerEquippedWeapons {
+    let arts = player_arts();
+
+    // 直剣
+    let straight_sword = Weapon {
+        name: "ロングソード".to_string(),
+        kind: WeaponKind::StraightSword,
+        weight: 4,
+        ability_requirement: WeaponAbilityRequirement {
+            strength: 10,
+            dexterity: 10,
+            intelligence: 0,
+            faith: 0,
+            arcane: 0,
+            agility: 0,
+        },
+        attack_power: WeaponAttackPower {
+            base: AttackPower {
+                slash: 30,
+                strike: 0,
+                thrust: 5,
+                impact: 0,
+                magic: 0,
+                fire: 0,
+                lightning: 0,
+                chaos: 0,
+            },
+            ability_scaling: WeaponAttackPowerAbilityScaling {
+                slash: AbilityScaling::default(),
+                strike: AbilityScaling::default(),
+                thrust: AbilityScaling::default(),
+                impact: AbilityScaling::default(),
+                magic: AbilityScaling::default(),
+                fire: AbilityScaling::default(),
+                lightning: AbilityScaling::default(),
+                chaos: AbilityScaling::default(),
+            },
+        },
+        sorcery_power: WeaponSorceryPower {
+            base: 0,
+            scaling: AbilityScaling::default(),
+        },
+        break_power: WeaponBreakPower {
+            base_power: 15,
+            scaling: AbilityScaling::default(),
+        },
+        guard: WeaponGuard {
+            cut_rate: GuardCutRate {
+                slash: 0.5,
+                strike: 0.5,
+                thrust: 0.5,
+                impact: 0.5,
+                magic: 0.2,
+                fire: 0.2,
+                lightning: 0.2,
+                chaos: 0.2,
+            },
+            guard_strength: 30,
+        },
+    };
+    let straight_sword_skills = arts
+        .iter()
+        .filter(|art| {
+            art.art_type == ArtType::Skill
+                && (
+            art.usable_weapon == ArtUsableWeapon::All
+                || matches!(
+                    &art.usable_weapon,
+                    ArtUsableWeapon::Specific(kinds) if kinds.contains(&WeaponKind::StraightSword)
+                ))
+        })
+        .map(|art| Arc::clone(art))
+        .collect::<Vec<Arc<Art>>>();
+    let straight_sword_sorceries: Vec<Arc<Art>> = arts
+        .iter()
+        .filter(|art| art.art_type == ArtType::Sorcery)
+        .map(|art| Arc::clone(art))
+        .collect::<Vec<Arc<Art>>>();
+
+    // 杖
+    let staff = Weapon {
+        name: "賢者の杖".to_string(),
+        kind: WeaponKind::Staff,
+        weight: 2,
+        ability_requirement: WeaponAbilityRequirement {
+            strength: 0,
+            dexterity: 0,
+            intelligence: 15,
+            faith: 0,
+            arcane: 0,
+            agility: 0,
+        },
+        attack_power: WeaponAttackPower {
+            base: AttackPower {
+                slash: 0,
+                strike: 10,
+                thrust: 0,
+                impact: 0,
+                magic: 20,
+                fire: 0,
+                lightning: 0,
+                chaos: 0,
+            },
+            ability_scaling: WeaponAttackPowerAbilityScaling {
+                slash: AbilityScaling::default(),
+                strike: AbilityScaling::default(),
+                thrust: AbilityScaling::default(),
+                impact: AbilityScaling::default(),
+                magic: AbilityScaling::default(),
+                fire: AbilityScaling::default(),
+                lightning: AbilityScaling::default(),
+                chaos: AbilityScaling::default(),
+            },
+        },
+        sorcery_power: WeaponSorceryPower {
+            base: 50,
+            scaling: AbilityScaling::default(),
+        },
+        break_power: WeaponBreakPower {
+            base_power: 5,
+            scaling: AbilityScaling::default(),
+        },
+        guard: WeaponGuard {
+            cut_rate: GuardCutRate {
+                slash: 0.2,
+                strike: 0.2,
+                thrust: 0.2,
+                impact: 0.2,
+                magic: 0.5,
+                fire: 0.3,
+                lightning: 0.3,
+                chaos: 0.3,
+            },
+            guard_strength: 10,
+        },
+    };
+    let staff_skills: Vec<Arc<Art>> = arts
+        .iter()
+        .filter(|art| {
+            art.art_type == ArtType::Skill
+                && (art.usable_weapon == ArtUsableWeapon::All
+                    || matches!(
+                        &art.usable_weapon,
+                        ArtUsableWeapon::Specific(kinds) if kinds.contains(&WeaponKind::Staff)
+                    ))
+        })
+        .map(|art| Arc::clone(art))
+        .collect::<Vec<Arc<Art>>>();
+    let staff_sorceries = arts
+        .iter()
+        .filter(|art| art.art_type == ArtType::Sorcery)
+        .map(|art| Arc::clone(art))
+        .collect::<Vec<Arc<Art>>>();
 
     PlayerEquippedWeapons {
         weapons: vec![
@@ -1234,7 +1150,6 @@ fn setup_battle_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(ConsecutiveBatch::default());
     commands.insert_resource(EnemyDamagePopup::default());
     // プレイヤー行動定義をリソースとして挿入
-    commands.insert_resource(create_default_player_conducts());
     // 基本アーツと武器データをリソースとして挿入
     commands.insert_resource(PlayerBasicArts(create_basic_arts()));
     commands.insert_resource(create_equipped_weapons_with_arts());
@@ -1653,7 +1568,6 @@ fn player_input_system(
     mut planned: ResMut<EnemyPlannedAction>,
     mut batch: ResMut<ConsecutiveBatch>,
     mut enemy_damage_popup: ResMut<EnemyDamagePopup>,
-    player_conducts: Res<PlayerConducts>,
     mut selected_art: ResMut<SelectedArt>,
     mut action_menu: ResMut<ActionMenuSelection>,
     // Battleモジュール

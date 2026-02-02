@@ -49,7 +49,7 @@ pub enum ArtType {
     Sorcery, // 術
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum ArtUsableWeapon {
     All,                       // 全ての武器種
     Specific(Vec<WeaponKind>), // 特定の武器種
