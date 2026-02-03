@@ -2752,9 +2752,6 @@ fn ui_update_player_status_system(
     let battle = &battle_resource.0;
 
     let player = &battle.player;
-    if let Some(trance) = &player.trance {
-        let a = trance.current_heart_effects();
-    }
     let p_hp = player.hp.current_hp;
     let p_sta = player.stamina.current_stamina;
 
