@@ -1077,6 +1077,14 @@ struct UiHpGaugeFill;
 struct UiStaText;
 #[derive(Component)]
 struct UiStaGaugeFill;
+#[derive(Component)]
+struct UiTranceText;
+#[derive(Component)]
+struct UiTranceGaugeFill;
+#[derive(Component)]
+struct UiTranceLevelText;
+#[derive(Component)]
+struct UiTranceEffectText;
 
 #[derive(Component)]
 struct UiEnemy;
@@ -1515,6 +1523,99 @@ fn setup_battle_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
                     })),
                 ));
             });
+
+            // トランス表示テキスト（トランス値とレベル）
+            col.spawn((Node {
+                flex_direction: FlexDirection::Row,
+                justify_content: JustifyContent::SpaceBetween,
+                ..default()
+            },))
+                .with_children(|row| {
+                    row.spawn((
+                        UiTranceText,
+                        Text::new("トランス: --- / ---"),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 16.0,
+                            ..default()
+                        },
+                        TextColor(Color::from(LinearRgba {
+                            red: 0.90,
+                            green: 0.60,
+                            blue: 0.90,
+                            alpha: 1.0,
+                        })),
+                    ));
+                    row.spawn((
+                        UiTranceLevelText,
+                        Text::new("Lv.0"),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 16.0,
+                            ..default()
+                        },
+                        TextColor(Color::from(LinearRgba {
+                            red: 1.0,
+                            green: 0.85,
+                            blue: 0.30,
+                            alpha: 1.0,
+                        })),
+                    ));
+                });
+            // トランスゲージ（枠）
+            col.spawn((
+                Node {
+                    width: percent(100),
+                    height: Val::Px(12.0),
+                    border: UiRect::all(Val::Px(1.0)),
+                    ..default()
+                },
+                BackgroundColor(Color::from(LinearRgba {
+                    red: 0.15,
+                    green: 0.15,
+                    blue: 0.15,
+                    alpha: 1.0,
+                })),
+                BorderColor::all(Color::from(LinearRgba {
+                    red: 0.80,
+                    green: 0.50,
+                    blue: 0.80,
+                    alpha: 1.0,
+                })),
+            ))
+            .with_children(|g| {
+                g.spawn((
+                    UiTranceGaugeFill,
+                    Node {
+                        width: percent(0),
+                        height: percent(100),
+                        ..default()
+                    },
+                    BackgroundColor(Color::from(LinearRgba {
+                        red: 0.75,
+                        green: 0.30,
+                        blue: 0.85,
+                        alpha: 1.0,
+                    })),
+                ));
+            });
+
+            // トランス効果表示テキスト
+            col.spawn((
+                UiTranceEffectText,
+                Text::new("効果: なし"),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextColor(Color::from(LinearRgba {
+                    red: 0.70,
+                    green: 0.70,
+                    blue: 0.90,
+                    alpha: 1.0,
+                })),
+            ));
         });
 
     // 行動選択メニュー（クリック可能なボタン式）
@@ -2739,14 +2840,63 @@ fn ui_update_message_system(log: Res<CombatLog>, mut msg_q: Query<&mut Text, Wit
     msg.0 = s;
 }
 
-// 右上プレイヤーステータスの更新（HP/スタミナテキスト＆ゲージ）
+// 右上プレイヤーステータスの更新（HP/スタミナ/トランス テキスト＆ゲージ）
 fn ui_update_player_status_system(
     battle_resource: Res<BattleResource>,
-    mut hp_text_q: Query<&mut Text, (With<UiHpText>, Without<UiStaText>)>,
-    mut sta_text_q: Query<&mut Text, (With<UiStaText>, Without<UiHpText>)>,
+    mut hp_text_q: Query<
+        &mut Text,
+        (
+            With<UiHpText>,
+            Without<UiStaText>,
+            Without<UiTranceText>,
+            Without<UiTranceLevelText>,
+            Without<UiTranceEffectText>,
+        ),
+    >,
+    mut sta_text_q: Query<
+        &mut Text,
+        (
+            With<UiStaText>,
+            Without<UiHpText>,
+            Without<UiTranceText>,
+            Without<UiTranceLevelText>,
+            Without<UiTranceEffectText>,
+        ),
+    >,
+    mut trance_text_q: Query<
+        &mut Text,
+        (
+            With<UiTranceText>,
+            Without<UiHpText>,
+            Without<UiStaText>,
+            Without<UiTranceLevelText>,
+            Without<UiTranceEffectText>,
+        ),
+    >,
+    mut trance_level_text_q: Query<
+        &mut Text,
+        (
+            With<UiTranceLevelText>,
+            Without<UiHpText>,
+            Without<UiStaText>,
+            Without<UiTranceText>,
+            Without<UiTranceEffectText>,
+        ),
+    >,
+    mut trance_effect_text_q: Query<
+        &mut Text,
+        (
+            With<UiTranceEffectText>,
+            Without<UiHpText>,
+            Without<UiStaText>,
+            Without<UiTranceText>,
+            Without<UiTranceLevelText>,
+        ),
+    >,
     mut gauge_params: ParamSet<(
         Query<&mut Node, With<UiHpGaugeFill>>,
         Query<&mut Node, With<UiStaGaugeFill>>,
+        Query<&mut Node, With<UiTranceGaugeFill>>,
     )>,
 ) {
     let battle = &battle_resource.0;
@@ -2761,6 +2911,43 @@ fn ui_update_player_status_system(
     }
     if let Ok(mut sta_text) = sta_text_q.single_mut() {
         sta_text.0 = format!("スタミナ: {} / {}", p_sta, player.stamina.max_stamina);
+    }
+
+    // トランス表示更新
+    if let Some(trance) = &player.trance {
+        use crate::battle::BattleTranceController;
+        let current_trance = trance.current_trance;
+        let max_trance = trance.max_trance;
+        let trance_level = trance.trance_level();
+        let heart_effects = trance.current_heart_effects();
+
+        if let Ok(mut trance_text) = trance_text_q.single_mut() {
+            trance_text.0 = format!("トランス: {} / {}", current_trance, max_trance);
+        }
+        if let Ok(mut level_text) = trance_level_text_q.single_mut() {
+            level_text.0 = format!("Lv.{}", trance_level);
+        }
+        if let Ok(mut effect_text) = trance_effect_text_q.single_mut() {
+            if heart_effects.is_empty() {
+                effect_text.0 = "効果: なし".to_string();
+            } else {
+                let effect_strs: Vec<String> = heart_effects
+                    .iter()
+                    .map(|e| format_heart_effect(e))
+                    .collect();
+                effect_text.0 = format!("効果: {}", effect_strs.join(", "));
+            }
+        }
+
+        // トランスゲージ幅更新
+        if let Ok(mut trance_node) = gauge_params.p2().single_mut() {
+            let ratio = if max_trance > 0 {
+                (current_trance as f32 / max_trance as f32).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+            trance_node.width = percent((ratio * 100.0).round());
+        }
     }
 
     // ゲージ幅更新
@@ -2779,6 +2966,25 @@ fn ui_update_player_status_system(
             0.0
         };
         sta_node.width = percent((ratio * 100.0).round());
+    }
+}
+
+// HeartEffectを表示用文字列に変換するヘルパー関数
+fn format_heart_effect(effect: &HeartEffect) -> String {
+    match effect {
+        HeartEffect::PhysicalDefenseModifier(m) => {
+            format!("物防+{:.0}%", (m.modifier - 1.0) * 100.0)
+        }
+        HeartEffect::MagicalDefenseModifier(m) => {
+            format!("魔防+{:.0}%", (m.modifier - 1.0) * 100.0)
+        }
+        HeartEffect::PhysicalAttackModifier(m) => {
+            format!("物攻+{:.0}%", (m.modifier - 1.0) * 100.0)
+        }
+        HeartEffect::MagicalAttackModifier(m) => format!("魔攻+{:.0}%", (m.modifier - 1.0) * 100.0),
+        HeartEffect::StaminaRecoveryModifier(m) => {
+            format!("スタミナ回復+{:.0}%", (m.modifier - 1.0) * 100.0)
+        }
     }
 }
 
