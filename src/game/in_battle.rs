@@ -1059,10 +1059,6 @@ struct UiHpGaugeFill;
 struct UiStaText;
 #[derive(Component)]
 struct UiStaGaugeFill;
-#[derive(Component)]
-struct UiMomentumText;
-#[derive(Component)]
-struct UiBuffsText;
 
 #[derive(Component)]
 struct UiEnemy;
@@ -1384,7 +1380,7 @@ fn setup_battle_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
                         });
                 });
         });
-    // 右上にプレイヤーステータス枠（HP/スタミナの文字とゲージ、モメンタム表示）
+    // 右上にプレイヤーステータス枠（HP/スタミナの文字とゲージ）
     commands
         .spawn((
             UiPlayerStatus,
@@ -1491,29 +1487,6 @@ fn setup_battle_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
                     })),
                 ));
             });
-
-            // モメンタム表示テキスト
-            col.spawn((
-                UiMomentumText,
-                Text::new("モメンタム: --- / 100"),
-                TextFont {
-                    font: font.clone(),
-                    font_size: 16.0,
-                    ..default()
-                },
-                TextColor(Color::WHITE),
-            ));
-            // 強化状態表示テキスト
-            col.spawn((
-                UiBuffsText,
-                Text::new("強化: なし"),
-                TextFont {
-                    font: font.clone(),
-                    font_size: 16.0,
-                    ..default()
-                },
-                TextColor(Color::WHITE),
-            ));
         });
 
     // 行動選択メニュー（クリック可能なボタン式）
@@ -2234,7 +2207,7 @@ fn ui_update_system(
     planned: Res<EnemyPlannedAction>,
     battle_resource: Res<BattleResource>,
     mut ui_staus_q: Query<&mut Text, (With<UiStatus>, Without<UiPhase>, Without<UiLog>)>,
-    // プレイヤーステータス（右上）の更新用: テキスト群（HP、スタミナ、モメンタム）
+    // プレイヤーステータス（右上）の更新用: テキスト群（HP、スタミナ）
     // 右上プレイヤーステータスは別システムで更新（引数が多すぎるため分割）
     mut ui_eff_atk_q: Query<
         (&mut Text, &mut TextColor),
@@ -2316,12 +2289,6 @@ fn ui_update_system(
     let Ok((mut eff_atk_text, mut eff_atk_color)) = ui_eff_atk_q.single_mut() else {
         return;
     };
-    // let atk_break_add = if buffs.attack > 0 { 25 } else { 15 };
-    // let atk_enh_suffix = if buffs.attack > 0 { " (強化中)" } else { "" };
-    // eff_atk_text.0 = format!(
-    //     "攻撃 力:{} 消費:{}{} / ブレイク+{}\n",
-    //     atk_power, atk_cost, atk_enh_suffix, atk_break_add
-    // );
     eff_atk_color.0 = Color::WHITE;
 
     // 強攻撃の有効値表示は別システムで更新
@@ -2411,24 +2378,11 @@ fn ui_update_message_system(log: Res<CombatLog>, mut msg_q: Query<&mut Text, Wit
     msg.0 = s;
 }
 
-// 右上プレイヤーステータスの更新（HP/スタミナテキスト＆ゲージ、モメンタムテキスト）
+// 右上プレイヤーステータスの更新（HP/スタミナテキスト＆ゲージ）
 fn ui_update_player_status_system(
     battle_resource: Res<BattleResource>,
-    mut hp_text_q: Query<&mut Text, (With<UiHpText>, Without<UiStaText>, Without<UiMomentumText>)>,
-    mut sta_text_q: Query<&mut Text, (With<UiStaText>, Without<UiHpText>, Without<UiMomentumText>)>,
-    mut momentum_text_q: Query<
-        &mut Text,
-        (With<UiMomentumText>, Without<UiHpText>, Without<UiStaText>),
-    >,
-    mut buffs_text_q: Query<
-        &mut Text,
-        (
-            With<UiBuffsText>,
-            Without<UiHpText>,
-            Without<UiStaText>,
-            Without<UiMomentumText>,
-        ),
-    >,
+    mut hp_text_q: Query<&mut Text, (With<UiHpText>, Without<UiStaText>)>,
+    mut sta_text_q: Query<&mut Text, (With<UiStaText>, Without<UiHpText>)>,
     mut gauge_params: ParamSet<(
         Query<&mut Node, With<UiHpGaugeFill>>,
         Query<&mut Node, With<UiStaGaugeFill>>,
@@ -2446,15 +2400,6 @@ fn ui_update_player_status_system(
     }
     if let Ok(mut sta_text) = sta_text_q.single_mut() {
         sta_text.0 = format!("スタミナ: {} / {}", p_sta, player.stamina.max_stamina);
-    }
-    if let Ok(mut buffs_text) = buffs_text_q.single_mut() {
-        // 表示: 強化中のものと残りターン。未強化は「なし」。
-        let mut parts: Vec<String> = Vec::new();
-        if parts.is_empty() {
-            buffs_text.0 = "強化: なし".to_string();
-        } else {
-            buffs_text.0 = format!("強化: {}", parts.join(" "));
-        }
     }
 
     // ゲージ幅更新
