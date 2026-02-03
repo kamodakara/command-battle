@@ -1,5 +1,6 @@
 use crate::battle::{
-    BattleDecideOrderRequest, BattleExecuteConductRequest, DecideEnemyConductRequest,
+    BattleController, BattleDecideOrderRequest, BattleExecuteConductRequest,
+    BattleTranceController, DecideEnemyConductRequest,
 };
 use crate::fundamental::*;
 
@@ -2101,26 +2102,6 @@ fn action_menu_update_system(
 
                 spawn_menu_label(parent, &font, "");
 
-                // 1つ以上入力済みなら「入力完了」ボタンを表示
-                if !consecutive.commands.is_empty() {
-                    let finish_label =
-                        format!("✓ 入力完了（{}ターン分）", consecutive.commands.len());
-                    spawn_menu_button(
-                        parent,
-                        &font,
-                        &finish_label,
-                        ActionMenuItemType::ConsecutiveAction(ConsecutiveActionType::FinishInput),
-                    );
-                }
-
-                // 戻るボタン
-                spawn_menu_button(
-                    parent,
-                    &font,
-                    "← 戻る",
-                    ActionMenuItemType::Category(ActionMenuCategory::Back),
-                );
-
                 // カテゴリ選択: 基本 + 武器
                 spawn_menu_button(
                     parent,
@@ -2135,6 +2116,26 @@ fn action_menu_update_system(
                         &font,
                         &weapon.weapon.name,
                         ActionMenuItemType::Category(ActionMenuCategory::Weapon(idx)),
+                    );
+                }
+
+                // 1つ以上入力済みなら「入力完了」ボタンを表示
+                if !consecutive.commands.is_empty() {
+                    let finish_label =
+                        format!("入力完了（{}ターン分）", consecutive.commands.len());
+                    spawn_menu_button(
+                        parent,
+                        &font,
+                        &finish_label,
+                        ActionMenuItemType::ConsecutiveAction(ConsecutiveActionType::FinishInput),
+                    );
+
+                    // 戻るボタン
+                    spawn_menu_button(
+                        parent,
+                        &font,
+                        "前の行動を取り消す",
+                        ActionMenuItemType::Category(ActionMenuCategory::Back),
                     );
                 }
             });
@@ -2751,6 +2752,9 @@ fn ui_update_player_status_system(
     let battle = &battle_resource.0;
 
     let player = &battle.player;
+    if let Some(trance) = &player.trance {
+        let a = trance.current_heart_effects();
+    }
     let p_hp = player.hp.current_hp;
     let p_sta = player.stamina.current_stamina;
 

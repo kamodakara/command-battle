@@ -1,10 +1,14 @@
 use super::*;
 
-impl Art {
+pub trait ArtPartialTrait {
+    // 有効なランクを返す
+    fn effective_rank(&self, sorcery_power: u32) -> &ArtRank;
+}
+impl ArtPartialTrait for Art {
     // 有効なランクを返す
     // 効果ランク判定
     // 術力のみの想定なので術力でランク判定
-    pub fn effective_rank(&self, sorcery_power: u32) -> &ArtRank {
+    fn effective_rank(&self, sorcery_power: u32) -> &ArtRank {
         if let Some(rank3) = &self.rank3
             && sorcery_power >= rank3.threshold
         {
@@ -19,9 +23,15 @@ impl Art {
     }
 }
 
-impl ArtPotencyAttack {
+pub trait ArtPotencyAttackPartialTrait {
     // 最終的な攻撃力を取得する
-    pub fn final_attack_power(&self, weapon_attack_power: &AttackPower) -> AttackPower {
+    fn final_attack_power(&self, weapon_attack_power: &AttackPower) -> AttackPower;
+    // 最終的なブレイク力を取得する
+    fn final_break_power(&self, weapon_break_power: u32) -> u32;
+}
+impl ArtPotencyAttackPartialTrait for ArtPotencyAttack {
+    // 最終的な攻撃力を取得する
+    fn final_attack_power(&self, weapon_attack_power: &AttackPower) -> AttackPower {
         let mut attack_power = self.attack_power.clone();
         let mut weapon_power = weapon_attack_power.clone();
 
@@ -50,7 +60,7 @@ impl ArtPotencyAttack {
     }
 
     // 最終的なブレイク力を取得する
-    pub fn final_break_power(&self, weapon_break_power: u32) -> u32 {
+    fn final_break_power(&self, weapon_break_power: u32) -> u32 {
         let mut break_power = self.break_power;
 
         // 武器の破壊力補正をかける

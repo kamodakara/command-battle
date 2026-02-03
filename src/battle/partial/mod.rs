@@ -7,4 +7,7 @@ mod karma;
 mod status_aliment;
 mod trance;
 
-use super::*;
+pub use art::*;
+pub use trance::*;
+
+use super::super::fundamental::*;
