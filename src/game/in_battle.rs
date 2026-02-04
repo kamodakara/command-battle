@@ -949,40 +949,79 @@ fn create_mock_battle() -> Battle {
 #[derive(Resource)]
 struct EnemyPlannedAction(Option<BattleConduct>);
 
-// コマンド種別（互換性のため残す）
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum CommandKind {
-    Attack,
-    Skill,
-    Heal,
-    Defend,
-    Wait,
-}
-
 // 行動選択メニューの状態
 #[derive(Clone, PartialEq, Eq)]
 enum ActionMenuState {
-    CategorySelect,                       // カテゴリ選択（基本、武器1、武器2...）
-    BasicArtsSelect,                      // 基本アーツ選択
-    WeaponArtsSelect(usize),              // 武器の技・術選択（武器インデックス）
-    ConsecutiveConfirm,                   // 連続コマンド確認画面
-    ConsecutiveInput { turn: usize },     // 連続コマンド入力中 - カテゴリ選択
-    ConsecutiveBasicArts { turn: usize }, // 連続コマンド入力中 - 基本アーツ選択
-    ConsecutiveWeaponArts { turn: usize, weapon_idx: usize }, // 連続コマンド入力中 - 武器アーツ選択
+    ConsecutiveConfirm,                          // 連続コマンド確認画面
+    ConsecutiveInput,                            // 連続コマンド入力中 - カテゴリ選択
+    ConsecutiveBasicArts,                        // 連続コマンド入力中 - 基本アーツ選択
+    ConsecutiveWeaponArts { weapon_idx: usize }, // 連続コマンド入力中 - 武器アーツ選択
 }
 
-impl Default for ActionMenuState {
-    fn default() -> Self {
-        ActionMenuState::CategorySelect
-    }
+#[derive(Clone)]
+enum CommandSelectionState {
+    Confirm,
+    SelectCategory, // カテゴリ選択
+    SelectBasicArt, // 基本アーツ選択
+    // 武器アーツ選択
+    SelectWeaponArt { weapon_idx: usize },
+    // アーツ選択済み
+    SelectedArt(SelectedArtEnum),
+}
+#[derive(Clone)]
+enum SelectedArtEnum {
+    Basic { art: Arc<Art> },
+    Weapon { art: Arc<Art>, weapon_index: usize },
 }
 
 // 行動選択リソース
-#[derive(Resource, Default)]
+#[derive(Resource)]
 struct ActionMenuSelection {
-    state: ActionMenuState,
-    selected_art: Option<Arc<Art>>,
-    selected_weapon_index: Option<usize>,
+    menu_state: ActionMenuState,
+    command_state: CommandSelectionState,
+    // selected_art: Option<Arc<Art>>,
+    // selected_weapon_index: Option<usize>,
+}
+impl Default for ActionMenuSelection {
+    fn default() -> Self {
+        ActionMenuSelection {
+            menu_state: ActionMenuState::ConsecutiveInput,
+            command_state: CommandSelectionState::SelectCategory,
+        }
+    }
+}
+impl ActionMenuSelection {
+    // 確定選択
+    fn confirm(&mut self) {
+        self.menu_state = ActionMenuState::ConsecutiveConfirm;
+        self.command_state = CommandSelectionState::Confirm;
+    }
+    // カテゴリ選択
+    fn input(&mut self) {
+        self.menu_state = ActionMenuState::ConsecutiveInput;
+        self.command_state = CommandSelectionState::SelectCategory;
+    }
+
+    // 基本を選択
+    fn select_category_basic(&mut self) {
+        self.menu_state = ActionMenuState::ConsecutiveBasicArts;
+        self.command_state = CommandSelectionState::SelectBasicArt;
+    }
+    // 基本アーツ選択
+    fn select_basic_art(&mut self, art: Arc<Art>) {
+        self.command_state = CommandSelectionState::SelectedArt(SelectedArtEnum::Basic { art });
+    }
+
+    // 武器を選択
+    fn select_category_weapon(&mut self, weapon_idx: usize) {
+        self.menu_state = ActionMenuState::ConsecutiveWeaponArts { weapon_idx };
+        self.command_state = CommandSelectionState::SelectWeaponArt { weapon_idx };
+    }
+    // 武器アーツ選択
+    fn select_weapon_art(&mut self, art: Arc<Art>, weapon_index: usize) {
+        self.command_state =
+            CommandSelectionState::SelectedArt(SelectedArtEnum::Weapon { art, weapon_index });
+    }
 }
 
 // プレイヤーの基本アーツリスト
@@ -1003,13 +1042,6 @@ struct EquippedWeaponWithArts {
     battle_weapon_id: BattleWeaponId, // 戦闘武器ID
 }
 
-// 予約コマンドのキュー
-#[derive(Resource, Default)]
-struct CommandQueue(std::collections::VecDeque<CommandKind>);
-
-#[derive(Resource)]
-struct CurrentCoomand(Option<CommandKind>);
-
 // 選択されたアーツ（新システム）
 #[derive(Resource, Default)]
 struct SelectedArt {
@@ -1017,16 +1049,6 @@ struct SelectedArt {
     weapon_index: Option<usize>,
     battle_weapon_id: Option<BattleWeaponId>,
 }
-
-// 直前のプレイヤー実行コマンドが攻撃だったかを保持（攻撃後の攻撃=連撃）
-#[derive(Resource, Default)]
-struct PlayerChainState {
-    last_was_attack: bool,
-}
-
-// 未確定の複数選択バッファ（Enterで確定）
-#[derive(Resource, Default)]
-struct PendingSelections(Vec<CommandKind>);
 
 // 連続コマンド用リソース：最大3ターン分のアーツを保存
 #[derive(Resource, Default)]
@@ -1126,9 +1148,8 @@ enum ActionMenuItemType {
 #[derive(Clone, PartialEq, Eq)]
 enum ActionMenuCategory {
     Basic,
-    Weapon(usize),    // 武器インデックス
-    Back,             // 戻る
-    StartConsecutive, // 連続コマンド入力開始
+    Weapon(usize), // 武器インデックス
+    Back,          // 戻る
 }
 // 連続コマンド確認画面の選択肢
 #[derive(Clone, PartialEq, Eq)]
@@ -1187,11 +1208,7 @@ fn setup_battle_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
         format!("初期敵行動: {}", first_action.current_step().unwrap().name),
         "行動を選択してください".to_string(),
     ]));
-    commands.insert_resource(CurrentCoomand(None));
     commands.insert_resource(SelectedArt::default());
-    commands.insert_resource(CommandQueue::default());
-    commands.insert_resource(PlayerChainState::default());
-    commands.insert_resource(PendingSelections::default());
     commands.insert_resource(EnemyPlannedAction(None));
     commands.insert_resource(ConsecutiveBatch::default());
     commands.insert_resource(EnemyDamagePopup::default());
@@ -1619,7 +1636,6 @@ fn setup_battle_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
         });
 
     // 行動選択メニュー（クリック可能なボタン式）
-    let equipped_weapons = create_equipped_weapons_with_arts();
     commands
         .spawn((
             UiActionMenu,
@@ -1679,9 +1695,6 @@ fn player_input_system(
     mut phase: ResMut<BattlePhase>,
     mut turn: ResMut<Turn>,
     mut log: ResMut<CombatLog>,
-    mut queue: ResMut<CommandQueue>,
-    mut chain_state: ResMut<PlayerChainState>,
-    mut pending: ResMut<PendingSelections>,
     mut planned: ResMut<EnemyPlannedAction>,
     mut batch: ResMut<ConsecutiveBatch>,
     mut enemy_damage_popup: ResMut<EnemyDamagePopup>,
@@ -1690,7 +1703,7 @@ fn player_input_system(
     mut consecutive: ResMut<ConsecutiveCommands>,
     // Battleモジュール
     mut battle_resource: ResMut<BattleResource>,
-    mut current_command: ResMut<CurrentCoomand>,
+    equipped_weapons: Res<PlayerEquippedWeapons>,
 ) {
     let battle = &mut battle_resource.0;
 
@@ -1703,73 +1716,61 @@ fn player_input_system(
 
             // 連続コマンドが設定されている場合は確認画面へ
             if !consecutive.commands.is_empty() {
-                action_menu.state = ActionMenuState::ConsecutiveConfirm;
+                action_menu.confirm();
                 *phase = BattlePhase::ConfirmQueued;
             } else {
+                action_menu.input();
                 *phase = BattlePhase::AwaitCommand;
             }
         }
         BattlePhase::AwaitCommand => {
-            // Escapeでメニューをカテゴリ選択に戻す
-            if keyboard.just_pressed(KeyCode::Escape) {
-                // 連続コマンド入力中の場合は連続入力をキャンセル
-                if let ActionMenuState::ConsecutiveInput { .. } = action_menu.state {
-                    consecutive.commands.clear();
-                    log.0
-                        .push("連続コマンド入力をキャンセルしました".to_string());
-                }
-                action_menu.state = ActionMenuState::CategorySelect;
-                action_menu.selected_art = None;
-                action_menu.selected_weapon_index = None;
-            }
-
             // クリックでアーツが選択されたら処理
-            if let Some(art) = selected_art.art.take() {
-                let weapon_idx = selected_art.weapon_index.take();
-                let weapon_id = selected_art.battle_weapon_id.take();
-
-                // 連続コマンド入力中かどうか（カテゴリ選択、基本アーツ選択、武器アーツ選択のいずれか）
-                let consecutive_turn = match action_menu.state {
-                    ActionMenuState::ConsecutiveInput { turn } => Some(turn),
-                    ActionMenuState::ConsecutiveBasicArts { turn } => Some(turn),
-                    ActionMenuState::ConsecutiveWeaponArts { turn, .. } => Some(turn),
-                    _ => None,
+            if let CommandSelectionState::SelectedArt(selected) = &action_menu.command_state {
+                let (art, weapon_index) = match selected {
+                    SelectedArtEnum::Basic { art } => {
+                        // 基本アーツ選択時
+                        (Arc::clone(&art), None)
+                    }
+                    SelectedArtEnum::Weapon { art, weapon_index } => {
+                        // 武器アーツ選択時
+                        (Arc::clone(&art), Some(*weapon_index))
+                    }
+                };
+                let weapon_id = if let Some(weapon_idx) = weapon_index {
+                    equipped_weapons
+                        .weapons
+                        .get(weapon_idx)
+                        .map(|w| w.battle_weapon_id.clone())
+                } else {
+                    None
                 };
 
-                if let Some(input_turn) = consecutive_turn {
-                    // 連続コマンドに追加
-                    consecutive.commands.push(ConsecutiveCommandEntry {
-                        art: Arc::clone(&art),
-                        weapon_index: weapon_idx,
-                        battle_weapon_id: weapon_id,
-                    });
-                    log.0
-                        .push(format!("{}ターン目: {}を設定", input_turn, art.name));
+                let input_turn = consecutive.commands.len() + 1;
+                // 連続コマンドに追加
+                consecutive.commands.push(ConsecutiveCommandEntry {
+                    art: Arc::clone(&art),
+                    weapon_index,
+                    battle_weapon_id: weapon_id,
+                });
+                log.0
+                    .push(format!("{}ターン目: {}を設定", input_turn, art.name));
 
-                    // 次のターンへ、または確定
-                    if input_turn < 3 {
-                        action_menu.state = ActionMenuState::ConsecutiveInput {
-                            turn: input_turn + 1,
-                        };
-                        action_menu.selected_art = None;
-                        action_menu.selected_weapon_index = None;
-                    } else {
-                        // 3ターン分入力完了、実行開始
-                        log.0.push("連続コマンド入力完了！ 実行します".to_string());
-                        // 最初のコマンドを実行
-                        if let Some(cmd) = consecutive.commands.first().cloned() {
-                            action_menu.selected_art = Some(cmd.art);
-                            selected_art.weapon_index = cmd.weapon_index;
-                            selected_art.battle_weapon_id = cmd.battle_weapon_id;
-                            consecutive.commands.remove(0);
-                        }
-                        action_menu.state = ActionMenuState::CategorySelect;
-                        *phase = BattlePhase::InBattle;
-                    }
+                // 次のターンへ、または確定
+                if input_turn < 3 {
+                    action_menu.input();
                 } else {
-                    // 通常のコマンド選択
-                    log.0.push(format!("{}を選択", art.name));
-                    action_menu.selected_art = Some(Arc::clone(&art));
+                    // 3ターン分入力完了、実行開始
+                    log.0.push("連続コマンド入力完了！ 実行します".to_string());
+
+                    // 最初のコマンドを実行
+                    if let Some(cmd) = consecutive.commands.first().cloned() {
+                        selected_art.art = Some(cmd.art);
+                        selected_art.weapon_index = cmd.weapon_index;
+                        selected_art.battle_weapon_id = cmd.battle_weapon_id;
+                        consecutive.commands.remove(0);
+                    }
+
+                    action_menu.input();
                     *phase = BattlePhase::InBattle;
                 }
             }
@@ -1781,7 +1782,7 @@ fn player_input_system(
         }
         BattlePhase::InBattle => {
             // 選択されたアーツを取得
-            let art = if let Some(art) = action_menu.selected_art.take() {
+            let art = if let Some(art) = selected_art.art.take() {
                 art
             } else {
                 // アーツが無い場合は待機に戻る
@@ -1924,7 +1925,7 @@ fn player_input_system(
 
             // ターン終了
             turn.0 += 1;
-            action_menu.state = ActionMenuState::CategorySelect;
+            // action_menu.menu_state = ActionMenuState::ConsecutiveInput;
             *phase = BattlePhase::TurnEnd;
         }
         BattlePhase::TurnEnd => {
@@ -1965,82 +1966,35 @@ fn action_menu_click_system(
             match &menu_item.item_type {
                 ActionMenuItemType::Category(category) => match category {
                     ActionMenuCategory::Basic => {
-                        // 連続コマンド入力中かどうかで遷移先を変える
-                        if let ActionMenuState::ConsecutiveInput { turn } = action_menu.state {
-                            action_menu.state = ActionMenuState::ConsecutiveBasicArts { turn };
-                        } else {
-                            action_menu.state = ActionMenuState::BasicArtsSelect;
-                        }
+                        // 基本を選択時
+                        action_menu.select_category_basic();
                     }
                     ActionMenuCategory::Weapon(idx) => {
-                        // 連続コマンド入力中かどうかで遷移先を変える
-                        if let ActionMenuState::ConsecutiveInput { turn } = action_menu.state {
-                            action_menu.state = ActionMenuState::ConsecutiveWeaponArts {
-                                turn,
-                                weapon_idx: *idx,
-                            };
-                            action_menu.selected_weapon_index = Some(*idx);
-                        } else {
-                            action_menu.state = ActionMenuState::WeaponArtsSelect(*idx);
-                            action_menu.selected_weapon_index = Some(*idx);
-                        }
+                        // 武器を選択時
+                        action_menu.select_category_weapon(*idx);
                     }
                     ActionMenuCategory::Back => {
-                        // 連続コマンド入力中の場合
-                        match action_menu.state.clone() {
-                            ActionMenuState::ConsecutiveInput { turn } => {
-                                if turn > 1 {
-                                    // 前のターンに戻る（最後の入力を削除）
-                                    consecutive.commands.pop();
-                                    action_menu.state =
-                                        ActionMenuState::ConsecutiveInput { turn: turn - 1 };
-                                } else {
-                                    // 1ターン目の場合は通常のカテゴリ選択に戻る
-                                    consecutive.commands.clear();
-                                    action_menu.state = ActionMenuState::CategorySelect;
-                                }
-                            }
-                            ActionMenuState::ConsecutiveBasicArts { turn }
-                            | ActionMenuState::ConsecutiveWeaponArts { turn, .. } => {
-                                // アーツ選択からカテゴリ選択に戻る
-                                action_menu.state = ActionMenuState::ConsecutiveInput { turn };
-                            }
-                            _ => {
-                                action_menu.state = ActionMenuState::CategorySelect;
+                        // 戻るを選択時
+
+                        if let ActionMenuState::ConsecutiveInput = action_menu.menu_state {
+                            // コマンド取り消し時
+                            if !consecutive.commands.is_empty() {
+                                consecutive.commands.pop();
                             }
                         }
-                        action_menu.selected_weapon_index = None;
-                    }
-                    ActionMenuCategory::StartConsecutive => {
-                        // 連続コマンド入力開始
-                        consecutive.commands.clear();
-                        action_menu.state = ActionMenuState::ConsecutiveInput { turn: 1 };
-                        log.0
-                            .push("連続コマンド入力開始（最大3ターン）".to_string());
+                        action_menu.menu_state = ActionMenuState::ConsecutiveInput;
                     }
                 },
                 ActionMenuItemType::Art(art) => {
-                    // アーツを選択
-                    selected_art.art = Some(Arc::clone(art));
-                    // 連続コマンド入力中の武器選択の場合
-                    if let ActionMenuState::ConsecutiveWeaponArts { weapon_idx, .. } =
-                        action_menu.state
+                    if let CommandSelectionState::SelectWeaponArt { weapon_idx } =
+                        action_menu.command_state.clone()
                     {
-                        selected_art.weapon_index = Some(weapon_idx);
-                        selected_art.battle_weapon_id = equipped_weapons
-                            .weapons
-                            .get(weapon_idx)
-                            .map(|w| w.battle_weapon_id.clone());
-                    } else {
-                        selected_art.weapon_index = action_menu.selected_weapon_index;
-                        // 武器が選択されている場合、BattleWeaponIdを設定
-                        selected_art.battle_weapon_id =
-                            action_menu.selected_weapon_index.and_then(|idx| {
-                                equipped_weapons
-                                    .weapons
-                                    .get(idx)
-                                    .map(|w| w.battle_weapon_id.clone())
-                            });
+                        // 武器アーツ選択時
+                        action_menu.select_weapon_art(Arc::clone(art), weapon_idx);
+                    } else if let CommandSelectionState::SelectBasicArt = action_menu.command_state
+                    {
+                        // 基本アーツ選択時
+                        action_menu.select_basic_art(Arc::clone(art));
                     }
                 }
                 ActionMenuItemType::ConsecutiveAction(action_type) => {
@@ -2049,24 +2003,27 @@ fn action_menu_click_system(
                             // 連続コマンドを実行
                             if let Some(cmd) = consecutive.commands.first().cloned() {
                                 log.0.push(format!("連続コマンド実行: {}", cmd.art.name));
-                                action_menu.selected_art = Some(cmd.art);
+
+                                selected_art.art = Some(cmd.art);
                                 selected_art.weapon_index = cmd.weapon_index;
                                 selected_art.battle_weapon_id = cmd.battle_weapon_id;
-                                consecutive.commands.remove(0);
-                                action_menu.state = ActionMenuState::CategorySelect;
-                                *phase = BattlePhase::InBattle;
 
                                 // プレイヤーのコンビネーション発動
                                 // TODO: 消費スタミナを渡す
                                 // TODO: インシデント
                                 battle.player.combination(100);
+
+                                consecutive.commands.remove(0);
+
+                                *phase = BattlePhase::InBattle;
                             }
                         }
                         ConsecutiveActionType::Reenter => {
                             // コマンド入力しなおし
                             consecutive.commands.clear();
-                            action_menu.state = ActionMenuState::CategorySelect;
+                            action_menu.input();
                             log.0.push("連続コマンドを破棄しました".to_string());
+
                             *phase = BattlePhase::AwaitCommand;
                         }
                         ConsecutiveActionType::FinishInput => {
@@ -2077,13 +2034,14 @@ fn action_menu_click_system(
                                     .push(format!("連続コマンド入力完了（{}ターン分）", count));
                                 // 最初のコマンドを実行
                                 if let Some(cmd) = consecutive.commands.first().cloned() {
-                                    action_menu.selected_art = Some(cmd.art);
+                                    selected_art.art = Some(cmd.art);
                                     selected_art.weapon_index = cmd.weapon_index;
                                     selected_art.battle_weapon_id = cmd.battle_weapon_id;
+
                                     consecutive.commands.remove(0);
+
+                                    *phase = BattlePhase::InBattle;
                                 }
-                                action_menu.state = ActionMenuState::CategorySelect;
-                                *phase = BattlePhase::InBattle;
                             }
                         }
                     }
@@ -2140,37 +2098,7 @@ fn action_menu_update_system(
     let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
 
     // メニュー状態に応じてボタンを生成
-    match &action_menu.state {
-        ActionMenuState::CategorySelect => {
-            // カテゴリ選択: 基本 + 装備武器 + 連続コマンド
-            commands.entity(container_entity).with_children(|parent| {
-                // 基本ボタン
-                spawn_menu_button(
-                    parent,
-                    &font,
-                    "基本",
-                    ActionMenuItemType::Category(ActionMenuCategory::Basic),
-                );
-
-                // 装備武器ボタン
-                for (idx, weapon) in equipped_weapons.weapons.iter().enumerate() {
-                    spawn_menu_button(
-                        parent,
-                        &font,
-                        &weapon.weapon.name,
-                        ActionMenuItemType::Category(ActionMenuCategory::Weapon(idx)),
-                    );
-                }
-
-                // 連続コマンド入力ボタン
-                spawn_menu_button(
-                    parent,
-                    &font,
-                    "連続コマンド入力",
-                    ActionMenuItemType::Category(ActionMenuCategory::StartConsecutive),
-                );
-            });
-        }
+    match &action_menu.menu_state {
         ActionMenuState::ConsecutiveConfirm => {
             // 連続コマンド確認画面
             commands.entity(container_entity).with_children(|parent| {
@@ -2197,9 +2125,10 @@ fn action_menu_update_system(
                 );
             });
         }
-        ActionMenuState::ConsecutiveInput { turn } => {
+        ActionMenuState::ConsecutiveInput => {
             // 連続コマンド入力画面 - カテゴリ選択
             commands.entity(container_entity).with_children(|parent| {
+                let turn = consecutive.commands.len() + 1;
                 let title = format!("【連続コマンド入力 - {}ターン目】", turn);
                 spawn_menu_label(parent, &font, &title);
 
@@ -2249,9 +2178,10 @@ fn action_menu_update_system(
                 }
             });
         }
-        ActionMenuState::ConsecutiveBasicArts { turn } => {
+        ActionMenuState::ConsecutiveBasicArts => {
             // 連続コマンド入力画面 - 基本アーツ選択
             commands.entity(container_entity).with_children(|parent| {
+                let turn = consecutive.commands.len() + 1;
                 let title = format!("【連続コマンド - {}ターン目 - 基本】", turn);
                 spawn_menu_label(parent, &font, &title);
 
@@ -2283,10 +2213,11 @@ fn action_menu_update_system(
                 }
             });
         }
-        ActionMenuState::ConsecutiveWeaponArts { turn, weapon_idx } => {
+        ActionMenuState::ConsecutiveWeaponArts { weapon_idx } => {
             // 連続コマンド入力画面 - 武器アーツ選択
             if let Some(weapon_data) = equipped_weapons.weapons.get(*weapon_idx) {
                 commands.entity(container_entity).with_children(|parent| {
+                    let turn = consecutive.commands.len() + 1;
                     let title = format!(
                         "【連続コマンド - {}ターン目 - {}】",
                         turn, weapon_data.weapon.name
@@ -2301,77 +2232,6 @@ fn action_menu_update_system(
 
                     spawn_menu_label(parent, &font, "");
 
-                    // 戻るボタン
-                    spawn_menu_button(
-                        parent,
-                        &font,
-                        "← 戻る",
-                        ActionMenuItemType::Category(ActionMenuCategory::Back),
-                    );
-
-                    // 技
-                    if !weapon_data.skills.is_empty() {
-                        spawn_menu_label(parent, &font, "【技】");
-                        for art in weapon_data.skills.iter() {
-                            let label = format!("{} (ST{})", art.name, art.stamina_cost);
-                            spawn_menu_button(
-                                parent,
-                                &font,
-                                &label,
-                                ActionMenuItemType::Art(Arc::clone(art)),
-                            );
-                        }
-                    }
-
-                    // 術
-                    if !weapon_data.sorceries.is_empty() {
-                        spawn_menu_label(parent, &font, "【術】");
-                        for art in weapon_data.sorceries.iter() {
-                            let label =
-                                format!("{} (SP{}/ST{})", art.name, art.sp_cost, art.stamina_cost);
-                            spawn_menu_button(
-                                parent,
-                                &font,
-                                &label,
-                                ActionMenuItemType::Art(Arc::clone(art)),
-                            );
-                        }
-                    }
-
-                    // 技も術もない場合
-                    if weapon_data.skills.is_empty() && weapon_data.sorceries.is_empty() {
-                        spawn_menu_label(parent, &font, "(この武器には技・術がありません)");
-                    }
-                });
-            }
-        }
-        ActionMenuState::BasicArtsSelect => {
-            // 基本アーツ選択
-            commands.entity(container_entity).with_children(|parent| {
-                // 戻るボタン
-                spawn_menu_button(
-                    parent,
-                    &font,
-                    "← 戻る",
-                    ActionMenuItemType::Category(ActionMenuCategory::Back),
-                );
-
-                // 基本アーツ
-                for art in basic_arts.0.iter() {
-                    let label = format!("{} (ST{})", art.name, art.stamina_cost);
-                    spawn_menu_button(
-                        parent,
-                        &font,
-                        &label,
-                        ActionMenuItemType::Art(Arc::clone(art)),
-                    );
-                }
-            });
-        }
-        ActionMenuState::WeaponArtsSelect(weapon_idx) => {
-            // 武器の技・術選択
-            if let Some(weapon_data) = equipped_weapons.weapons.get(*weapon_idx) {
-                commands.entity(container_entity).with_children(|parent| {
                     // 戻るボタン
                     spawn_menu_button(
                         parent,
@@ -2671,8 +2531,6 @@ fn battle_end_check_system(
 fn ui_update_system(
     phase: Res<BattlePhase>,
     log: Res<CombatLog>,
-    pending: Res<PendingSelections>,
-    queue: Res<CommandQueue>,
     // mut ui_q: Query<&mut Children, With<UiRoot>>,
     planned: Res<EnemyPlannedAction>,
     battle_resource: Res<BattleResource>,
@@ -2780,23 +2638,7 @@ fn ui_update_system(
     } else {
         "不明".to_string()
     };
-    // 選択中コマンド表示用の文字列
-    let selected_str = if pending.0.is_empty() {
-        "(なし)".to_string()
-    } else {
-        pending
-            .0
-            .iter()
-            .map(|c| match c {
-                CommandKind::Attack => "攻撃",
-                CommandKind::Skill => "強攻撃",
-                CommandKind::Heal => "回復",
-                CommandKind::Defend => "防御",
-                CommandKind::Wait => "待機",
-            })
-            .collect::<Vec<_>>()
-            .join(", ")
-    };
+
     let phase_str = match *phase {
         BattlePhase::DecideEnemyConduct => {
             format!("敵の行動決定中... 次の行動: {}", enemy_action_str)
