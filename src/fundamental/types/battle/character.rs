@@ -2,8 +2,6 @@ use super::Ability;
 
 use super::*;
 
-use std::sync::Arc;
-
 pub struct BattleCharacter {
     pub character_id: BattleCharacterId,
 

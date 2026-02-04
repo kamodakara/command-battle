@@ -1,5 +1,4 @@
-use super::partial::BattleTrancePartialTrait;
-use super::*;
+use super::uses::*;
 
 pub trait BattleTranceController {
     fn trance_level(&self) -> u32;

@@ -1,6 +1,6 @@
 use crate::battle::{
-    BattleController, BattleDecideOrderRequest, BattleExecuteConductRequest,
-    BattleTranceController, DecideEnemyConductRequest,
+    BattleCharacterController, BattleController, BattleDecideOrderRequest,
+    BattleExecuteConductRequest, BattleTranceController, DecideEnemyConductRequest,
 };
 use crate::fundamental::*;
 
@@ -1951,11 +1951,14 @@ fn action_menu_click_system(
         (&Interaction, &ActionMenuItem),
         (Changed<Interaction>, With<Button>),
     >,
+    mut battle_resource: ResMut<BattleResource>,
 ) {
     // AwaitCommand または ConfirmQueued フェーズで処理
     if *phase != BattlePhase::AwaitCommand && *phase != BattlePhase::ConfirmQueued {
         return;
     }
+
+    let battle = &mut battle_resource.0;
 
     for (interaction, menu_item) in interaction_query.iter_mut() {
         if *interaction == Interaction::Pressed {
@@ -2052,6 +2055,11 @@ fn action_menu_click_system(
                                 consecutive.commands.remove(0);
                                 action_menu.state = ActionMenuState::CategorySelect;
                                 *phase = BattlePhase::InBattle;
+
+                                // プレイヤーのコンビネーション発動
+                                // TODO: 消費スタミナを渡す
+                                // TODO: インシデント
+                                battle.player.combination(100);
                             }
                         }
                         ConsecutiveActionType::Reenter => {

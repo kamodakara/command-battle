@@ -12,6 +12,11 @@ pub fn turn_end(battle: &mut Battle) -> Vec<BattleIncidentCharacter> {
         // コンビネーションのターン終了処理
         combination_skill.finalize_current_conduct();
     }
+    if let Some(trance) = &mut player.trance {
+        // トランスのターン終了の減少処理
+        // 現在、減少量は30固定
+        trance.reduce_trance(30);
+    }
 
     // プレイヤーの状態変化更新
     incident_characters.push(update_status_condition(player));
