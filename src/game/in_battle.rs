@@ -1715,6 +1715,11 @@ fn player_input_system(
 
     match *phase {
         BattlePhase::DecideEnemyConduct => {
+            // カルマドロー
+            battle.karma_draw_card();
+            // TODO: インシデント
+
+            // 敵の行動決定
             let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
             planned.0 = Some(battle.decide_enemy_conduct(DecideEnemyConductRequest {
                 enemy_character_id: enemy_id,

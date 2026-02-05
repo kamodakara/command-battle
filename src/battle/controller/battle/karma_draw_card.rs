@@ -15,7 +15,7 @@ pub fn karma_draw_card(battle: &mut Battle) {
     // 山札からカードを引く処理
     let draw_card = if let Some(drawn_card) = karma.draw_pile.pop() {
         // 引いたカードを場に出す
-        drawn_card
+        Some(drawn_card)
     } else {
         // 山札が空の場合、捨て札をシャッフルして山札に戻す
         karma.draw_pile.append(&mut karma.discard_pile);
@@ -25,15 +25,18 @@ pub fn karma_draw_card(battle: &mut Battle) {
 
         // 再度カードを引く
         if let Some(drawn_card) = karma.draw_pile.pop() {
-            drawn_card
+            Some(drawn_card)
         } else {
             // 山札も捨て札も空の場合は何もしない
-            // TDO: エラーハンドリングを追加
-            panic!("No cards available to draw");
+            None
         }
     };
+
     // 場にカードを追加
-    karma.field_cards.push(draw_card);
+    if let Some(draw_card) = draw_card {
+        // 引いたカードを場に出す
+        karma.field_cards.push(draw_card);
+    }
 
     // TODO: カードドローのインシデント
 }
