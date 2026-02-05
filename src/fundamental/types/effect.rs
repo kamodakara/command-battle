@@ -18,58 +18,58 @@ pub enum Effect {
     UnableToAct, // 行動不能効果 TODO: 何で行動不能なのか情報を持たせるべきか？
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EffectHpPercentageDamage {
     pub percentage: f32, // HP最大値の割合ダメージ
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EffectSpPercentageDamage {
     pub percentage: f32, // SP最大値の割合ダメージ
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EffectAttackDamageModifier {
     pub modifier: f32, // 与ダメージ補正
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EffectReceiveDamageModifier {
     pub modifier: f32, // 被ダメージ補正
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EffectAttackBreakDamageModifier {
     pub modifier: f32, // 与ブレイクダメージ補正
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EffectRemoveStatusAilment {
     pub status_ailments: Vec<StatusAilment>,
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EffectAbilityIncrease {
     pub ability_type: AbilityType,
     pub amount: u32,
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EffectAbilityModifier {
     pub ability_type: AbilityType,
     pub modifier: f32,
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EffectPhysicalDefenseModifier {
     pub modifier: f32,
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EffectMagicalDefenseModifier {
     pub modifier: f32,
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EffectPhysicalAttackModifier {
     pub modifier: f32,
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EffectMagicalAttackModifier {
     pub modifier: f32,
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EffectStaminaRecoveryModifier {
     pub modifier: f32,
 }

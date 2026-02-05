@@ -59,6 +59,10 @@ impl Plugin for InBattlePlugin {
             )
             .add_systems(
                 Update,
+                ui_update_karma_cards_system.run_if(in_state(GameState::Battle)),
+            )
+            .add_systems(
+                Update,
                 boss_slain_banner_system.run_if(in_state(GameState::Battle)),
             );
     }
@@ -92,6 +96,10 @@ struct ConsecutiveBatch {
     total: usize,    // このバッチの総選択数
     executed: usize, // このバッチで既に実行した数
 }
+
+// カルマカードUIの初期描画フラグ
+#[derive(Resource, Default)]
+struct KarmaCardsNeedsRedraw(bool);
 
 fn player_arts() -> Vec<Arc<Art>> {
     vec![
@@ -866,7 +874,33 @@ fn create_mock_battle() -> Battle {
                 breaking: BattleStatusAilmentStatus::new_breaking(),
             },
             karma: Some(BattleKarma {
-                draw_pile: vec![],
+                draw_pile: vec![
+                    KarmaCard {
+                        name: "猛攻の刻印".to_string(),
+                        cost: 2,
+                        max_turn: 3,
+                        effects: vec![KarmaEffect::AttackDamageModifier(
+                            EffectAttackDamageModifier { modifier: 1.3 },
+                        )],
+                    },
+                    KarmaCard {
+                        name: "鉄壁の守護".to_string(),
+                        cost: 3,
+                        max_turn: 2,
+                        effects: vec![KarmaEffect::ReceiveDamageModifier(
+                            EffectReceiveDamageModifier { modifier: 0.7 },
+                        )],
+                    },
+                    KarmaCard {
+                        name: "力の祝福".to_string(),
+                        cost: 1,
+                        max_turn: 5,
+                        effects: vec![KarmaEffect::AbilityIncrease(EffectAbilityIncrease {
+                            ability_type: AbilityType::Strength,
+                            amount: 10,
+                        })],
+                    },
+                ],
                 discard_pile: vec![],
                 field_cards: vec![],
             }),
@@ -1113,6 +1147,8 @@ struct UiTranceGaugeFill;
 struct UiTranceLevelText;
 #[derive(Component)]
 struct UiTranceEffectText;
+#[derive(Component)]
+struct UiKarmaCardsContainer;
 
 #[derive(Component)]
 struct UiEnemy;
@@ -1219,6 +1255,7 @@ fn setup_battle_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(ConsecutiveBatch::default());
     commands.insert_resource(EnemyDamagePopup::default());
     commands.insert_resource(ConsecutiveCommands::default());
+    commands.insert_resource(KarmaCardsNeedsRedraw(true)); // 初回描画用フラグ
     // プレイヤー行動定義をリソースとして挿入
     // 基本アーツと武器データをリソースとして挿入
     commands.insert_resource(PlayerBasicArts(create_basic_arts()));
@@ -1639,6 +1676,38 @@ fn setup_battle_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
                     alpha: 1.0,
                 })),
             ));
+
+            // カルマカードセクションタイトル
+            col.spawn((
+                Node {
+                    margin: UiRect::top(Val::Px(8.0)),
+                    ..default()
+                },
+                Text::new("[フィールドカルマ]"),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextColor(Color::from(LinearRgba {
+                    red: 0.95,
+                    green: 0.80,
+                    blue: 0.40,
+                    alpha: 1.0,
+                })),
+            ));
+
+            // カルマカードコンテナ（動的に中身が変わる）
+            col.spawn((
+                UiKarmaCardsContainer,
+                Node {
+                    width: percent(100),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(4.0),
+                    margin: UiRect::top(Val::Px(4.0)),
+                    ..default()
+                },
+            ));
         });
 
     // 行動選択メニュー（クリック可能なボタン式）
@@ -1717,6 +1786,10 @@ fn player_input_system(
         BattlePhase::DecideEnemyConduct => {
             // カルマドロー
             battle.karma_draw_card();
+            println!(
+                "カルマドロー処理実行 {:?}",
+                battle.player.karma.as_ref().map(|k| &k.field_cards)
+            );
             // TODO: インシデント
 
             // 敵の行動決定
@@ -2853,6 +2926,183 @@ fn format_heart_effect(effect: &HeartEffect) -> String {
         HeartEffect::StaminaRecoveryModifier(m) => {
             format!("スタミナ回復+{:.0}%", (m.modifier - 1.0) * 100.0)
         }
+    }
+}
+
+// KarmaEffectを表示用文字列に変換するヘルパー関数
+fn format_karma_effect(effect: &KarmaEffect) -> String {
+    match effect {
+        KarmaEffect::AttackDamageModifier(m) => {
+            format!("与ダメ+{:.0}%", (m.modifier - 1.0) * 100.0)
+        }
+        KarmaEffect::ReceiveDamageModifier(m) => {
+            let diff = (m.modifier - 1.0) * 100.0;
+            if diff < 0.0 {
+                format!("被ダメ{:.0}%", diff)
+            } else {
+                format!("被ダメ+{:.0}%", diff)
+            }
+        }
+        KarmaEffect::AbilityIncrease(e) => {
+            let ability_name = match e.ability_type {
+                AbilityType::Strength => "筋力",
+                AbilityType::Dexterity => "技量",
+                AbilityType::Intelligence => "知力",
+                AbilityType::Faith => "信仰",
+                AbilityType::Arcane => "神秘",
+                AbilityType::Agility => "便捷",
+                AbilityType::Vitality => "生命力",
+                AbilityType::Spirit => "精神力",
+                AbilityType::Endurance => "持久力",
+            };
+            format!("{}+{}", ability_name, e.amount)
+        }
+    }
+}
+
+// カルマカードのUI更新システム
+fn ui_update_karma_cards_system(
+    mut commands: Commands,
+    battle_resource: Res<BattleResource>,
+    asset_server: Res<AssetServer>,
+    container_q: Query<Entity, With<UiKarmaCardsContainer>>,
+    children_q: Query<&Children>,
+    mut redraw_flag: ResMut<KarmaCardsNeedsRedraw>,
+) {
+    // // 初回のみ描画（カルマカードの変更があった時は別途フラグを立てる）
+    // if !redraw_flag.0 {
+    //     return;
+    // }
+    // redraw_flag.0 = false;
+
+    let battle = &battle_resource.0;
+    let player = &battle.player;
+
+    let Ok(container_entity) = container_q.single() else {
+        return;
+    };
+
+    // 既存の子要素を削除
+    if let Ok(children) = children_q.get(container_entity) {
+        for child in children.iter() {
+            commands.entity(child).despawn();
+        }
+    }
+
+    let font: Handle<Font> = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
+
+    // カルマカードを表示
+    if let Some(karma) = &player.karma {
+        if karma.field_cards.is_empty() {
+            // カードがない場合
+            commands.entity(container_entity).with_children(|parent| {
+                parent.spawn((
+                    Text::new("なし"),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 12.0,
+                        ..default()
+                    },
+                    TextColor(Color::from(LinearRgba {
+                        red: 0.6,
+                        green: 0.6,
+                        blue: 0.6,
+                        alpha: 1.0,
+                    })),
+                ));
+            });
+        } else {
+            // 各カードを表示
+            for card in &karma.field_cards {
+                let effect_strs: Vec<String> = card
+                    .effects
+                    .iter()
+                    .map(|e| format_karma_effect(e))
+                    .collect();
+                let effect_text = if effect_strs.is_empty() {
+                    "効果なし".to_string()
+                } else {
+                    effect_strs.join(", ")
+                };
+
+                commands.entity(container_entity).with_children(|parent| {
+                    // カード枠
+                    parent
+                        .spawn((
+                            Node {
+                                width: percent(100),
+                                padding: UiRect::all(Val::Px(4.0)),
+                                border: UiRect::all(Val::Px(1.0)),
+                                flex_direction: FlexDirection::Column,
+                                row_gap: Val::Px(2.0),
+                                ..default()
+                            },
+                            BackgroundColor(Color::from(LinearRgba {
+                                red: 0.12,
+                                green: 0.10,
+                                blue: 0.18,
+                                alpha: 1.0,
+                            })),
+                            BorderColor::all(Color::from(LinearRgba {
+                                red: 0.70,
+                                green: 0.55,
+                                blue: 0.30,
+                                alpha: 1.0,
+                            })),
+                        ))
+                        .with_children(|card_box| {
+                            // カード名
+                            card_box.spawn((
+                                Text::new(&card.name),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 13.0,
+                                    ..default()
+                                },
+                                TextColor(Color::from(LinearRgba {
+                                    red: 1.0,
+                                    green: 0.90,
+                                    blue: 0.60,
+                                    alpha: 1.0,
+                                })),
+                            ));
+                            // 効果
+                            card_box.spawn((
+                                Text::new(format!("  {}", effect_text)),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 11.0,
+                                    ..default()
+                                },
+                                TextColor(Color::from(LinearRgba {
+                                    red: 0.80,
+                                    green: 0.80,
+                                    blue: 0.95,
+                                    alpha: 1.0,
+                                })),
+                            ));
+                        });
+                });
+            }
+        }
+    } else {
+        // karmaがない場合
+        commands.entity(container_entity).with_children(|parent| {
+            parent.spawn((
+                Text::new("-"),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 12.0,
+                    ..default()
+                },
+                TextColor(Color::from(LinearRgba {
+                    red: 0.5,
+                    green: 0.5,
+                    blue: 0.5,
+                    alpha: 1.0,
+                })),
+            ));
+        });
     }
 }
 

@@ -40,7 +40,7 @@ pub struct Ability {
     pub arcane: u32,       // 神秘
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum AbilityType {
     Vitality,     // 生命力
     Spirit,       // 精神力

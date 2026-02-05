@@ -1,7 +1,7 @@
 use super::*;
 
 // 状態異常
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum StatusAilment {
     Poison, // 毒
     Sleep,  // 眠気
