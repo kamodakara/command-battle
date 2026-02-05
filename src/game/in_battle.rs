@@ -3023,15 +3023,17 @@ fn ui_update_karma_cards_system(
                 };
 
                 commands.entity(container_entity).with_children(|parent| {
-                    // カード枠
+                    // カード枠（横一列表示）
                     parent
                         .spawn((
                             Node {
                                 width: percent(100),
-                                padding: UiRect::all(Val::Px(4.0)),
+                                padding: UiRect::axes(Val::Px(6.0), Val::Px(3.0)),
                                 border: UiRect::all(Val::Px(1.0)),
-                                flex_direction: FlexDirection::Column,
-                                row_gap: Val::Px(2.0),
+                                flex_direction: FlexDirection::Row,
+                                justify_content: JustifyContent::SpaceBetween,
+                                align_items: AlignItems::Center,
+                                column_gap: Val::Px(8.0),
                                 ..default()
                             },
                             BackgroundColor(Color::from(LinearRgba {
@@ -3053,7 +3055,7 @@ fn ui_update_karma_cards_system(
                                 Text::new(&card.card.name),
                                 TextFont {
                                     font: font.clone(),
-                                    font_size: 13.0,
+                                    font_size: 12.0,
                                     ..default()
                                 },
                                 TextColor(Color::from(LinearRgba {
@@ -3065,7 +3067,11 @@ fn ui_update_karma_cards_system(
                             ));
                             // 効果
                             card_box.spawn((
-                                Text::new(format!("  {}", effect_text)),
+                                Node {
+                                    flex_grow: 1.0,
+                                    ..default()
+                                },
+                                Text::new(&effect_text),
                                 TextFont {
                                     font: font.clone(),
                                     font_size: 11.0,
@@ -3075,6 +3081,21 @@ fn ui_update_karma_cards_system(
                                     red: 0.80,
                                     green: 0.80,
                                     blue: 0.95,
+                                    alpha: 1.0,
+                                })),
+                            ));
+                            // 残りターン数
+                            card_box.spawn((
+                                Text::new(format!("{}T", card.remaining_turns)),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 11.0,
+                                    ..default()
+                                },
+                                TextColor(Color::from(LinearRgba {
+                                    red: 0.60,
+                                    green: 0.85,
+                                    blue: 0.60,
                                     alpha: 1.0,
                                 })),
                             ));
