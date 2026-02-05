@@ -6,7 +6,7 @@ impl BattleKarma {
         let effects: Vec<KarmaEffect> = self
             .field_cards
             .iter()
-            .map(|card| card.effects.clone())
+            .map(|card| card.card.effects.clone())
             .flatten()
             .collect();
         effects

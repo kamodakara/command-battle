@@ -109,19 +109,20 @@ fn karma(player: &mut BattleCharacter) {
 
     // 場のカルマカードのターン経過処理
     for card in &mut karma.field_cards {
-        if card.max_turn > 0 {
-            card.max_turn -= 1;
+        if card.remaining_turns > 0 {
+            card.remaining_turns -= 1;
         }
     }
 
     // ターン終了時にターン数が0になったカードを捨て札に移動
-    let (to_discard, to_keep): (Vec<KarmaCard>, Vec<KarmaCard>) = karma
+    let (to_discard, to_keep): (Vec<BattleKarmaCard>, Vec<BattleKarmaCard>) = karma
         .field_cards
         .drain(..)
-        .partition(|card| card.max_turn == 0);
+        .partition(|card| card.remaining_turns == 0);
 
     // 捨て札に移動
-    karma.discard_pile.extend(to_discard);
+    let discard_cards = to_discard.into_iter().map(|card| card.card);
+    karma.discard_pile.extend(discard_cards);
     // TODO: カルマカードが捨て札に移動したインシデントの追加
 
     // 残りのカードを場に戻す
@@ -129,7 +130,7 @@ fn karma(player: &mut BattleCharacter) {
 
     // カルマコストを超えている場合ペナルティ処理
     // 場のカルマコストの総数
-    let total_karma_cost: u32 = karma.field_cards.iter().map(|card| card.cost).sum();
+    let total_karma_cost: u32 = karma.field_cards.iter().map(|card| card.card.cost).sum();
     let max_karma = player.max_karma();
     if total_karma_cost > max_karma {
         // HP、SPに最大値の4分の1のダメージを与える

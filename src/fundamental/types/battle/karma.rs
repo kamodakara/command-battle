@@ -7,7 +7,7 @@ pub struct BattleKarma {
     pub discard_pile: Vec<KarmaCard>,
 
     // 場の札
-    pub field_cards: Vec<KarmaCard>,
+    pub field_cards: Vec<BattleKarmaCard>,
 }
 
 pub struct BattleKarmaCard {

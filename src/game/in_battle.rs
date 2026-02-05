@@ -1786,10 +1786,6 @@ fn player_input_system(
         BattlePhase::DecideEnemyConduct => {
             // カルマドロー
             battle.karma_draw_card();
-            println!(
-                "カルマドロー処理実行 {:?}",
-                battle.player.karma.as_ref().map(|k| &k.field_cards)
-            );
             // TODO: インシデント
 
             // 敵の行動決定
@@ -3015,6 +3011,7 @@ fn ui_update_karma_cards_system(
             // 各カードを表示
             for card in &karma.field_cards {
                 let effect_strs: Vec<String> = card
+                    .card
                     .effects
                     .iter()
                     .map(|e| format_karma_effect(e))
@@ -3053,7 +3050,7 @@ fn ui_update_karma_cards_system(
                         .with_children(|card_box| {
                             // カード名
                             card_box.spawn((
-                                Text::new(&card.name),
+                                Text::new(&card.card.name),
                                 TextFont {
                                     font: font.clone(),
                                     font_size: 13.0,

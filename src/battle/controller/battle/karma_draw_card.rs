@@ -1,3 +1,5 @@
+use std::ops::RemAssign;
+
 use super::*;
 
 // カルマカードを引く処理
@@ -35,7 +37,11 @@ pub fn karma_draw_card(battle: &mut Battle) {
     // 場にカードを追加
     if let Some(draw_card) = draw_card {
         // 引いたカードを場に出す
-        karma.field_cards.push(draw_card);
+        let remaining_turns = draw_card.max_turn;
+        karma.field_cards.push(BattleKarmaCard {
+            card: draw_card,
+            remaining_turns,
+        });
     }
 
     // TODO: カードドローのインシデント
