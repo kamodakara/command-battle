@@ -874,9 +874,15 @@ fn create_mock_battle() -> Battle {
                 max_trance: 1000,
                 heart: Heart {
                     name: "烈火の心臓".to_string(),
-                    level1_effects: vec![],
-                    level2_effects: vec![],
-                    level3_effects: vec![],
+                    level1_effects: vec![HeartEffect::PhysicalDefenseModifier(
+                        EffectPhysicalDefenseModifier { modifier: 1.2 },
+                    )],
+                    level2_effects: vec![HeartEffect::StaminaRecoveryModifier(
+                        EffectStaminaRecoveryModifier { modifier: 1.5 },
+                    )],
+                    level3_effects: vec![HeartEffect::PhysicalAttackModifier(
+                        EffectPhysicalAttackModifier { modifier: 1.2 },
+                    )],
                     combination: None,
                 },
                 current_trance: 0,
@@ -2007,14 +2013,15 @@ fn action_menu_click_system(
                             if let Some(cmd) = consecutive.commands.first().cloned() {
                                 log.0.push(format!("連続コマンド実行: {}", cmd.art.name));
 
+                                let stamina_cost = cmd.art.stamina_cost;
+
                                 selected_art.art = Some(cmd.art);
                                 selected_art.weapon_index = cmd.weapon_index;
                                 selected_art.battle_weapon_id = cmd.battle_weapon_id;
 
                                 // プレイヤーのコンビネーション発動
-                                // TODO: 消費スタミナを渡す
                                 // TODO: インシデント
-                                battle.player.combination(100);
+                                battle.player.combination(stamina_cost);
 
                                 consecutive.commands.remove(0);
 

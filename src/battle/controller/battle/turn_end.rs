@@ -14,8 +14,9 @@ pub fn turn_end(battle: &mut Battle) -> Vec<BattleIncidentCharacter> {
     }
     if let Some(trance) = &mut player.trance {
         // トランスのターン終了の減少処理
-        // 現在、減少量は30固定
-        trance.reduce_trance(30);
+        // 現在、減少量はトランス値の10分の1(切り捨て)
+        let reduce = (trance.current_trance as f32 / 10.0) as u32;
+        trance.reduce_trance(reduce);
     }
 
     // プレイヤーの状態変化更新
