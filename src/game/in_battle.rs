@@ -1720,6 +1720,10 @@ fn player_input_system(
                 *phase = BattlePhase::ConfirmQueued;
             } else {
                 action_menu.input();
+
+                // プレイヤーのコンビネーション終了
+                battle.player.reset_combination();
+
                 *phase = BattlePhase::AwaitCommand;
             }
         }
@@ -1925,7 +1929,6 @@ fn player_input_system(
 
             // ターン終了
             turn.0 += 1;
-            // action_menu.menu_state = ActionMenuState::ConsecutiveInput;
             *phase = BattlePhase::TurnEnd;
         }
         BattlePhase::TurnEnd => {
@@ -2023,6 +2026,9 @@ fn action_menu_click_system(
                             consecutive.commands.clear();
                             action_menu.input();
                             log.0.push("連続コマンドを破棄しました".to_string());
+
+                            // プレイヤーのコンビネーション終了
+                            battle.player.reset_combination();
 
                             *phase = BattlePhase::AwaitCommand;
                         }
