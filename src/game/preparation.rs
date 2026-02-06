@@ -6,7 +6,7 @@ use crate::fundamental::{
     ArtPotency, ArtPotencyAttack, ArtRank, ArtRequirement, ArtTarget, ArtType, ArtUsableWeapon,
     AttackPower, AttackPowerScaling, DefensePower, Equipment, GuardCutRate, Weapon,
     WeaponAbilityRequirement, WeaponAttackPower, WeaponAttackPowerAbilityScaling, WeaponBreakPower,
-    WeaponGuard, WeaponKind, WeaponSorceryPower,
+    WeaponGuard, WeaponKind, WeaponPerformance, WeaponSorceryPower,
 };
 
 // ================== Components ==================
@@ -449,7 +449,7 @@ pub fn update_content_panel(
             .entity(panel_entity)
             .with_children(|parent| match current_menu {
                 MenuType::Status => {
-                    build_status_content(parent, font_clone.clone(), &prep_state);
+                    build_status_content(parent, font_clone.clone(), &prep_state, &equipment_db);
                 }
                 MenuType::Equipment => {
                     build_equipment_content(parent, font_clone.clone(), &prep_state, &equipment_db);
@@ -469,6 +469,7 @@ fn build_status_content(
     parent: &mut RelatedSpawnerCommands<ChildOf>,
     font: Handle<Font>,
     prep_state: &PreparationState,
+    equipment_db: &EquipmentDatabase,
 ) {
     parent.spawn((
         Text::new("ステータス"),
@@ -769,6 +770,159 @@ fn build_status_content(
                         },
                     ));
                 }
+            });
+
+            // 右端：攻撃力と術力
+            row.spawn(Node {
+                flex_direction: FlexDirection::Column,
+                ..default()
+            })
+            .with_children(|attack_col| {
+                // 攻撃力表示
+                attack_col.spawn((
+                    Text::new("■ 攻撃力"),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 22.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.5, 1.0, 0.8)),
+                    Node {
+                        margin: UiRect::bottom(Val::Px(10.0)),
+                        ..default()
+                    },
+                ));
+
+                // 武器1の攻撃力を計算
+                let weapon1_attack_power = if let Some(weapon_id) = prep_state.equipped_weapon1 {
+                    if let Some(weapon_data) = equipment_db.weapons.get(weapon_id) {
+                        let weapon_performance = weapon_data.weapon.performance(&current_ability);
+                        weapon_performance.final_attack_power().total_power()
+                    } else {
+                        WeaponPerformance::unarmed_weapon_performance()
+                            .final_attack_power()
+                            .total_power()
+                    }
+                } else {
+                    WeaponPerformance::unarmed_weapon_performance()
+                        .final_attack_power()
+                        .total_power()
+                };
+
+                // 武器2の攻撃力を計算
+                let weapon2_attack_power = if let Some(weapon_id) = prep_state.equipped_weapon2 {
+                    if let Some(weapon_data) = equipment_db.weapons.get(weapon_id) {
+                        let weapon_performance = weapon_data.weapon.performance(&current_ability);
+                        weapon_performance.final_attack_power().total_power()
+                    } else {
+                        WeaponPerformance::unarmed_weapon_performance()
+                            .final_attack_power()
+                            .total_power()
+                    }
+                } else {
+                    WeaponPerformance::unarmed_weapon_performance()
+                        .final_attack_power()
+                        .total_power()
+                };
+
+                attack_col.spawn((
+                    Text::new(format!("  武器1: {}", weapon1_attack_power)),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 17.0,
+                        ..default()
+                    },
+                    TextColor(Color::WHITE),
+                    Node {
+                        margin: UiRect::bottom(Val::Px(5.0)),
+                        ..default()
+                    },
+                ));
+
+                attack_col.spawn((
+                    Text::new(format!("  武器2: {}", weapon2_attack_power)),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 17.0,
+                        ..default()
+                    },
+                    TextColor(Color::WHITE),
+                    Node {
+                        margin: UiRect::bottom(Val::Px(5.0)),
+                        ..default()
+                    },
+                ));
+
+                // 術力表示
+                attack_col.spawn((
+                    Text::new("■ 術力"),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 22.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.5, 1.0, 0.8)),
+                    Node {
+                        margin: UiRect {
+                            top: Val::Px(15.0),
+                            bottom: Val::Px(10.0),
+                            ..default()
+                        },
+                        ..default()
+                    },
+                ));
+
+                // 武器1の術力を計算
+                let weapon1_sorcery_power = if let Some(weapon_id) = prep_state.equipped_weapon1 {
+                    if let Some(weapon_data) = equipment_db.weapons.get(weapon_id) {
+                        let weapon_performance = weapon_data.weapon.performance(&current_ability);
+                        weapon_performance.final_sorcery_power()
+                    } else {
+                        WeaponPerformance::unarmed_weapon_performance().final_sorcery_power()
+                    }
+                } else {
+                    WeaponPerformance::unarmed_weapon_performance().final_sorcery_power()
+                };
+
+                // 武器2の術力を計算
+                let weapon2_sorcery_power = if let Some(weapon_id) = prep_state.equipped_weapon2 {
+                    if let Some(weapon_data) = equipment_db.weapons.get(weapon_id) {
+                        let weapon_performance = weapon_data.weapon.performance(&current_ability);
+                        weapon_performance.final_sorcery_power()
+                    } else {
+                        WeaponPerformance::unarmed_weapon_performance().final_sorcery_power()
+                    }
+                } else {
+                    WeaponPerformance::unarmed_weapon_performance().final_sorcery_power()
+                };
+
+                attack_col.spawn((
+                    Text::new(format!("  武器1: {}", weapon1_sorcery_power)),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 17.0,
+                        ..default()
+                    },
+                    TextColor(Color::WHITE),
+                    Node {
+                        margin: UiRect::bottom(Val::Px(5.0)),
+                        ..default()
+                    },
+                ));
+
+                attack_col.spawn((
+                    Text::new(format!("  武器2: {}", weapon2_sorcery_power)),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 17.0,
+                        ..default()
+                    },
+                    TextColor(Color::WHITE),
+                    Node {
+                        margin: UiRect::bottom(Val::Px(5.0)),
+                        ..default()
+                    },
+                ));
             });
         });
 }
