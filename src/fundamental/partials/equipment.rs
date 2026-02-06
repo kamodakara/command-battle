@@ -147,6 +147,30 @@ impl WeaponAttackPower {
 }
 
 impl WeaponPerformance {
+    // 素手の攻撃性能取得
+    pub fn unarmed_weapon_performance() -> WeaponPerformance {
+        // TODO: 仮
+        WeaponPerformance {
+            attack_power: AttackPower {
+                slash: 0,
+                strike: 10,
+                thrust: 0,
+                impact: 0,
+                magic: 0,
+                fire: 0,
+                lightning: 0,
+                chaos: 0,
+            },
+            ability_attack_power: AttackPower::default(),
+            sorcery_power: 0,
+            ability_sorcery_power: 0,
+            break_power: 0,
+            ability_break_power: 0,
+            guard_strength: 10,
+            penalty: None,
+        }
+    }
+
     // 最終的な攻撃性能を取得する
     pub fn final_attack_power(&self) -> AttackPower {
         let mut attack_power = self.attack_power.clone();

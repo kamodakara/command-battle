@@ -70,7 +70,7 @@ pub fn execute_conduct(
         }
     } else {
         // 武器なし
-        unarmed_weapon_performance()
+        WeaponPerformance::unarmed_weapon_performance()
     };
 
     let sorcery_power = attacker_weapon_performance.final_sorcery_power();
@@ -434,30 +434,6 @@ fn determine_targets(
     };
 
     target_character_ids
-}
-
-// 素手の攻撃性能取得
-fn unarmed_weapon_performance() -> WeaponPerformance {
-    // TODO: 仮
-    WeaponPerformance {
-        attack_power: AttackPower {
-            slash: 0,
-            strike: 10,
-            thrust: 0,
-            impact: 0,
-            magic: 0,
-            fire: 0,
-            lightning: 0,
-            chaos: 0,
-        },
-        ability_attack_power: AttackPower::default(),
-        sorcery_power: 0,
-        ability_sorcery_power: 0,
-        break_power: 0,
-        ability_break_power: 0,
-        guard_strength: 10,
-        penalty: None,
-    }
 }
 
 fn create_battle_status_condition(status_condition: &StatusCondition) -> BattleStatusCondition {
