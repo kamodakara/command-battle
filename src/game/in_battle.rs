@@ -925,12 +925,12 @@ fn create_mock_battle() -> Battle {
                 combination_skill: CombinationSkill {
                     name: "烈火の連撃".to_string(),
                     effect: HeartCombinationEffect::AttackDamageModifier(
-                        EffectAttackDamageModifier { modifier: 1.5 },
+                        EffectAttackDamageModifier { modifier: 10.0 },
                     ),
                     condition: CombinationSkillCondition {
                         current_requirements: CombinationSkillConditionRequirements {
                             categories: vec![CombinationConductCategory::Attack],
-                            results: vec![CombinationConductResult::Success],
+                            results: vec![],
                         },
                         previous_requirements: Some(CombinationSkillConditionRequirements {
                             categories: vec![CombinationConductCategory::Attack],
@@ -1801,9 +1801,6 @@ fn player_input_system(
             } else {
                 action_menu.input();
 
-                // プレイヤーのコンビネーション終了
-                battle.player.reset_combination();
-
                 *phase = BattlePhase::AwaitCommand;
             }
         }
@@ -1842,20 +1839,18 @@ fn player_input_system(
                 // 次のターンへ、または確定
                 if input_turn < 3 {
                     action_menu.input();
-                } else {
+                } else if let Some(cmd) = consecutive.commands.first().cloned() {
                     // 3ターン分入力完了、実行開始
                     log.0.push("連続コマンド入力完了！ 実行します".to_string());
 
-                    // 最初のコマンドを実行
-                    if let Some(cmd) = consecutive.commands.first().cloned() {
-                        selected_art.art = Some(cmd.art);
-                        selected_art.weapon_index = cmd.weapon_index;
-                        selected_art.battle_weapon_id = cmd.battle_weapon_id;
-                        consecutive.commands.remove(0);
-                    }
+                    // コマンド実行
+                    execute_consecutive_command(cmd, &mut selected_art, battle, false);
+
+                    *phase = BattlePhase::InBattle;
+
+                    consecutive.commands.remove(0);
 
                     action_menu.input();
-                    *phase = BattlePhase::InBattle;
                 }
             }
         }
@@ -2022,6 +2017,29 @@ fn player_input_system(
     }
 }
 
+// 連続コマンド実行ヘルパー
+fn execute_consecutive_command(
+    cmd: ConsecutiveCommandEntry,
+    selected_art: &mut SelectedArt,
+    battle: &mut Battle,
+    is_combination: bool, // コンビネーション発動
+) {
+    // プレイヤーの現行行動ログを初期化
+    battle.player.initialize_current_conduct_log();
+
+    if is_combination {
+        // プレイヤーのコンビネーション発動
+        let stamina_cost = cmd.art.stamina_cost;
+        battle.player.combination(stamina_cost);
+
+        // TODO: インシデント
+    }
+
+    selected_art.art = Some(cmd.art);
+    selected_art.weapon_index = cmd.weapon_index;
+    selected_art.battle_weapon_id = cmd.battle_weapon_id;
+}
+
 // ================== Action Menu Click System ==================
 fn action_menu_click_system(
     mut phase: ResMut<BattlePhase>,
@@ -2087,15 +2105,8 @@ fn action_menu_click_system(
                             if let Some(cmd) = consecutive.commands.first().cloned() {
                                 log.0.push(format!("連続コマンド実行: {}", cmd.art.name));
 
-                                let stamina_cost = cmd.art.stamina_cost;
-
-                                selected_art.art = Some(cmd.art);
-                                selected_art.weapon_index = cmd.weapon_index;
-                                selected_art.battle_weapon_id = cmd.battle_weapon_id;
-
-                                // プレイヤーのコンビネーション発動
-                                // TODO: インシデント
-                                battle.player.combination(stamina_cost);
+                                // コマンド実行
+                                execute_consecutive_command(cmd, &mut selected_art, battle, true);
 
                                 consecutive.commands.remove(0);
 
@@ -2108,22 +2119,23 @@ fn action_menu_click_system(
                             action_menu.input();
                             log.0.push("連続コマンドを破棄しました".to_string());
 
-                            // プレイヤーのコンビネーション終了
-                            battle.player.reset_combination();
-
                             *phase = BattlePhase::AwaitCommand;
                         }
                         ConsecutiveActionType::FinishInput => {
                             // 入力完了（1〜2ターン分で終了）
                             if !consecutive.commands.is_empty() {
-                                let count = consecutive.commands.len();
-                                log.0
-                                    .push(format!("連続コマンド入力完了（{}ターン分）", count));
-                                // 最初のコマンドを実行
                                 if let Some(cmd) = consecutive.commands.first().cloned() {
-                                    selected_art.art = Some(cmd.art);
-                                    selected_art.weapon_index = cmd.weapon_index;
-                                    selected_art.battle_weapon_id = cmd.battle_weapon_id;
+                                    let count = consecutive.commands.len();
+                                    log.0
+                                        .push(format!("連続コマンド入力完了（{}ターン分）", count));
+
+                                    // 最初のコマンドを実行
+                                    execute_consecutive_command(
+                                        cmd,
+                                        &mut selected_art,
+                                        battle,
+                                        false,
+                                    );
 
                                     consecutive.commands.remove(0);
 

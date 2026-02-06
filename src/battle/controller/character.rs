@@ -1,15 +1,23 @@
 use super::uses::*;
 
 pub trait BattleCharacterController {
+    fn initialize_current_conduct_log(&mut self);
     fn combination(&mut self, base: u32);
-    fn reset_combination(&mut self);
 }
 
 impl BattleCharacterController for BattleCharacter {
+    // 現在の行動ログを初期化する、毎ターンする
+    fn initialize_current_conduct_log(&mut self) {
+        if let Some(combination_skill) = &mut self.combination_skill {
+            combination_skill.initialize_current_conduct();
+        }
+    }
+
+    // コンビネーション発動
     fn combination(&mut self, base: u32) {
         let combination_level = if let Some(combination_skill) = &mut self.combination_skill {
-            // 現ターンのコンビネーションログの初期化
-            combination_skill.initialize_current_conduct();
+            // コンビネーション発動時にログを残す
+            combination_skill.mark_current_conduct_as_combination_activated();
 
             combination_skill.combination_logs.len() as u32 + 1
         } else {
@@ -26,14 +34,6 @@ impl BattleCharacterController for BattleCharacter {
             let (_before, _after) = trance.add_trance(increase);
 
             // TODO: インシデント
-        }
-    }
-
-    fn reset_combination(&mut self) {
-        // コンビネーションの初期化
-        if let Some(combination_skill) = &mut self.combination_skill {
-            combination_skill.combination_logs.clear();
-            combination_skill.current_combination_conduct_log = None;
         }
     }
 }

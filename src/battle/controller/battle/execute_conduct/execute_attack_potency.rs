@@ -72,6 +72,10 @@ pub fn execute_attack_potency(
     // 攻撃側の効果から攻撃力補正を反映する
     attacker_data.effects.iter().for_each(|effect| {
         match effect {
+            Effect::AttackDamageModifier(rate) => {
+                // ダメージ率増加効果
+                attack_power.multiply(rate.modifier);
+            }
             Effect::PhysicalAttackModifier(modifier) => {
                 // 物理攻撃力補正
                 attack_power.multiply_attribute(&Attribute::Slash, modifier.modifier);

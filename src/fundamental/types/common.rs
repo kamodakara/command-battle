@@ -1,7 +1,7 @@
 use super::Ability;
 
 // 属性
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum Attribute {
     Slash,     // 斬撃
     Strike,    // 打撃

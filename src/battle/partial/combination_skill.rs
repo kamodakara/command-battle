@@ -1,15 +1,23 @@
 use super::*;
 
 impl BattleCombinationSkill {
-    // コンビネーション発動時にログを残すための初期化
-    // プレイヤーは連続コマンド入力実行時、コンビネーションは発動時にこの関数を呼び出す
+    // 現在の行動ログを初期化する、毎ターンする
     pub fn initialize_current_conduct(&mut self) {
         self.current_combination_conduct_log = Some(BattleCombinationConductLog {
             categories: Vec::new(),
             results: Vec::new(),
+            combination_activated: false,
         });
     }
 
+    // 現在の行動がコンビネーション発動
+    pub fn mark_current_conduct_as_combination_activated(&mut self) {
+        if let Some(current_log) = &mut self.current_combination_conduct_log {
+            current_log.combination_activated = true;
+        }
+    }
+
+    // 行動実行直後に確定した行動のカテゴリを現在の行動ログに追加する
     pub fn add_current_conduct_categories(&mut self, categories: Vec<CombinationConductCategory>) {
         if let Some(current_log) = &mut self.current_combination_conduct_log {
             // 現在の行動ログにカテゴリを追加
@@ -19,6 +27,7 @@ impl BattleCombinationSkill {
         // 現在の行動ログが存在しない場合は何もしない
     }
 
+    // 行動の結果を現在の行動ログに追加する
     pub fn add_current_conduct_result(&mut self, result: CombinationConductResult) {
         if let Some(current_log) = &mut self.current_combination_conduct_log {
             // 現在の行動ログに結果を追加
@@ -34,12 +43,22 @@ impl BattleCombinationSkill {
             self.combination_logs.push(current_log);
         }
         self.current_combination_conduct_log = None;
+
+        // ログが4つを超えたら古いものを削除する
+        while self.combination_logs.len() > 4 {
+            self.combination_logs.remove(0);
+        }
     }
 
     // コンビネーション技が発動可能か判定する
     pub fn can_activate_combination_skill(&self) -> bool {
         // 発動条件の判定ロジックを実装
         if let Some(current_log) = &self.current_combination_conduct_log {
+            if !current_log.combination_activated {
+                // コンビネーションが発動していない場合なので発動しない
+                return false;
+            }
+
             let condition = &self.combination_skill.condition;
 
             // 現在の行動の条件をチェック

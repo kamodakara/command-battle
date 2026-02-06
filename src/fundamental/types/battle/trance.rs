@@ -14,7 +14,9 @@ pub struct BattleCombinationSkill {
     pub combination_logs: Vec<BattleCombinationConductLog>,
 }
 
+#[derive(Debug)]
 pub struct BattleCombinationConductLog {
     pub categories: Vec<CombinationConductCategory>,
     pub results: Vec<CombinationConductResult>,
+    pub combination_activated: bool, // コンビネーションが発動したかどうか
 }

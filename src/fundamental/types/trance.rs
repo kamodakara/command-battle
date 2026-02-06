@@ -41,7 +41,7 @@ pub struct CombinationSkillConditionRequirements {
 }
 
 // コンビネーション用技判定用行動カテゴリ
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum CombinationConductCategory {
     Attack,                     // 攻撃
     Support,                    // 支援
@@ -51,7 +51,7 @@ pub enum CombinationConductCategory {
     AttackAttribute(Attribute), // 攻撃属性
     Guard,                      // ガード
 }
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum CombinationConductResult {
     Success,      // 行動成功
     Failed,       // 行動失敗
