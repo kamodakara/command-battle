@@ -458,7 +458,7 @@ fn player_arts() -> Vec<Arc<Art>> {
 fn create_basic_arts() -> Vec<Arc<Art>> {
     player_arts()
         .into_iter()
-        .filter(|art| art.art_type == ArtType::Basic)
+        .filter(|art| art.art_type == ArtType::Basic || art.art_type == ArtType::Sorcery)
         .map(|art| Arc::clone(&art))
         .collect()
 }
