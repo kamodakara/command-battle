@@ -122,6 +122,7 @@ impl Plugin for PreparationPlugin {
                     update_content_panel,
                     status_allocation_system,
                     equipment_selection_system,
+                    unequip_system,
                     arts_slot_button_system,
                     start_battle_system,
                     equipment_list_button_system,
@@ -797,6 +798,10 @@ fn build_status_content(
                 let weapon1_attack_power = if let Some(weapon_id) = prep_state.equipped_weapon1 {
                     if let Some(weapon_data) = equipment_db.weapons.get(weapon_id) {
                         let weapon_performance = weapon_data.weapon.performance(&current_ability);
+                        println!(
+                            "Weapon 1 Attack Power Calculation: {:?}",
+                            weapon_performance.final_attack_power()
+                        );
                         weapon_performance.final_attack_power().total_power()
                     } else {
                         WeaponPerformance::unarmed_weapon_performance()
@@ -1125,6 +1130,9 @@ fn build_equipment_content(
             })))
             .insert(BorderColor::all(Color::srgb(0.5, 0.5, 0.5)))
             .with_children(|row| {
+                // 装備があるかどうかを先に確認
+                let has_equipment = equipped_name.is_some();
+
                 // スロット名と装備名
                 row.spawn(Node {
                     flex_direction: FlexDirection::Column,
@@ -1171,36 +1179,80 @@ fn build_equipment_content(
                     }
                 });
 
-                // 変更ボタン
-                row.spawn((
-                    EquipmentButton { slot },
-                    Button,
-                    Node {
-                        width: Val::Px(90.0),
-                        height: Val::Px(35.0),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        border: UiRect::all(Val::Px(2.0)),
-                        ..default()
-                    },
-                    BackgroundColor(Color::from(LinearRgba {
-                        red: 0.3,
-                        green: 0.3,
-                        blue: 0.4,
-                        alpha: 1.0,
-                    })),
-                    BorderColor::all(Color::WHITE),
-                ))
-                .with_children(|btn| {
-                    btn.spawn((
-                        Text::new("変更"),
-                        TextFont {
-                            font: font.clone(),
-                            font_size: 16.0,
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                    ));
+                // ボタンコンテナ
+                row.spawn(Node {
+                    flex_direction: FlexDirection::Row,
+                    column_gap: Val::Px(8.0),
+                    ..default()
+                })
+                .with_children(|btn_row| {
+                    // 変更ボタン
+                    btn_row
+                        .spawn((
+                            EquipmentButton { slot },
+                            Button,
+                            Node {
+                                width: Val::Px(70.0),
+                                height: Val::Px(35.0),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                border: UiRect::all(Val::Px(2.0)),
+                                ..default()
+                            },
+                            BackgroundColor(Color::from(LinearRgba {
+                                red: 0.3,
+                                green: 0.3,
+                                blue: 0.4,
+                                alpha: 1.0,
+                            })),
+                            BorderColor::all(Color::WHITE),
+                        ))
+                        .with_children(|btn| {
+                            btn.spawn((
+                                Text::new("変更"),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 16.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                            ));
+                        });
+
+                    // 外すボタン（装備がある場合のみ表示）
+                    if has_equipment {
+                        btn_row
+                            .spawn((
+                                UnequipButton { slot },
+                                Button,
+                                Node {
+                                    width: Val::Px(70.0),
+                                    height: Val::Px(35.0),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    border: UiRect::all(Val::Px(2.0)),
+                                    ..default()
+                                },
+                                BackgroundColor(Color::from(LinearRgba {
+                                    red: 0.4,
+                                    green: 0.2,
+                                    blue: 0.2,
+                                    alpha: 1.0,
+                                })),
+                                BorderColor::all(Color::WHITE),
+                            ))
+                            .with_children(|btn| {
+                                btn.spawn((
+                                    Text::new("外す"),
+                                    TextFont {
+                                        font: font.clone(),
+                                        font_size: 16.0,
+                                        ..default()
+                                    },
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                    }
                 });
             });
     }
@@ -1535,6 +1587,11 @@ pub struct EquipmentButton {
 }
 
 #[derive(Component, Clone, Copy)]
+pub struct UnequipButton {
+    pub slot: EquipmentSlot,
+}
+
+#[derive(Component, Clone, Copy)]
 pub struct ArtsSlotButton {
     pub slot_index: usize,
 }
@@ -1691,6 +1748,51 @@ pub fn equipment_selection_system(
                     red: 0.3,
                     green: 0.3,
                     blue: 0.4,
+                    alpha: 1.0,
+                }));
+            }
+        }
+    }
+}
+
+/// 装備を外すシステム
+pub fn unequip_system(
+    mut interaction_query: Query<
+        (&Interaction, &UnequipButton, &mut BackgroundColor),
+        (Changed<Interaction>, With<Button>),
+    >,
+    mut prep_state: ResMut<PreparationState>,
+) {
+    for (interaction, unequip_button, mut color) in &mut interaction_query {
+        match *interaction {
+            Interaction::Pressed => {
+                // 選択されたスロットの装備を外す
+                match unequip_button.slot {
+                    EquipmentSlot::Weapon1 => prep_state.equipped_weapon1 = None,
+                    EquipmentSlot::Weapon2 => prep_state.equipped_weapon2 = None,
+                    EquipmentSlot::Armor1 => prep_state.equipped_armor1 = None,
+                    EquipmentSlot::Armor2 => prep_state.equipped_armor2 = None,
+                    EquipmentSlot::Armor3 => prep_state.equipped_armor3 = None,
+                    EquipmentSlot::Armor4 => prep_state.equipped_armor4 = None,
+                    EquipmentSlot::Armor5 => prep_state.equipped_armor5 = None,
+                    EquipmentSlot::Armor6 => prep_state.equipped_armor6 = None,
+                    EquipmentSlot::Armor7 => prep_state.equipped_armor7 = None,
+                    EquipmentSlot::Armor8 => prep_state.equipped_armor8 = None,
+                }
+            }
+            Interaction::Hovered => {
+                *color = BackgroundColor(Color::from(LinearRgba {
+                    red: 0.5,
+                    green: 0.3,
+                    blue: 0.3,
+                    alpha: 1.0,
+                }));
+            }
+            Interaction::None => {
+                *color = BackgroundColor(Color::from(LinearRgba {
+                    red: 0.4,
+                    green: 0.2,
+                    blue: 0.2,
                     alpha: 1.0,
                 }));
             }
