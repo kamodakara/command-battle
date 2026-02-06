@@ -18,7 +18,7 @@ pub fn decide_enemy_conduct(battle: &Battle, request: DecideEnemyConductRequest)
         actor_character_id: request.enemy_character_id,
         target: BattleConductTargetType::Player,
         art: Arc::new(Art {
-            name: "敵の攻撃".to_string(),
+            name: "爪".to_string(),
             sp_cost: 0,
             stamina_cost: 0,
             perks: vec![],
