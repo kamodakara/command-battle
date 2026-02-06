@@ -14,7 +14,7 @@ pub enum Attribute {
 }
 
 // 攻撃力
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AttackPower {
     pub slash: u32,     // 斬撃
     pub strike: u32,    // 打撃
