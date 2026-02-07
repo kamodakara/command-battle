@@ -66,8 +66,8 @@ pub struct PreparationState {
     pub equipped_armor7: Option<usize>,
     pub equipped_armor8: Option<usize>,
     pub selecting_slot: Option<EquipmentSlot>,
-    pub selected_arts: Vec<usize>, // 選択された技術のID (最大4つ)
-    pub selecting_arts_slot: Option<usize>, // 選択中のスロット (0-3)
+    pub selected_arts: Vec<usize>, // 選択された技術のID (最大8つ)
+    pub selecting_arts_slot: Option<usize>, // 選択中のスロット (0-7)
     pub error_message: Option<String>,
     pub error_message_timer: f32,
 }
@@ -2101,7 +2101,7 @@ fn build_arts_content(
                 .spawn(Node {
                     width: Val::Percent(30.0),
                     flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(15.0),
+                    row_gap: Val::Px(8.0),
                     ..default()
                 })
                 .with_children(|slots_parent| {
@@ -2119,8 +2119,8 @@ fn build_arts_content(
                         },
                     ));
 
-                    // 4つのスロット
-                    for slot_index in 0..4 {
+                    // 8つのスロット
+                    for slot_index in 0..8 {
                         let selected_art = prep_state
                             .selected_arts
                             .get(slot_index)
@@ -2132,9 +2132,9 @@ fn build_arts_content(
                                 Button,
                                 Node {
                                     width: Val::Percent(100.0),
-                                    height: Val::Px(80.0),
+                                    height: Val::Px(50.0),
                                     flex_direction: FlexDirection::Column,
-                                    padding: UiRect::all(Val::Px(12.0)),
+                                    padding: UiRect::all(Val::Px(8.0)),
                                     border: UiRect::all(Val::Px(2.0)),
                                     justify_content: JustifyContent::Center,
                                     ..default()
