@@ -2,11 +2,11 @@ use bevy::{ecs::relationship::RelatedSpawnerCommands, prelude::*};
 
 use super::*;
 use crate::fundamental::{
-    Ability, AbilityScaling, Armor, ArmorKind, ArmorResistance, ArmorSlot, Art, ArtPerk,
-    ArtPotency, ArtPotencyAttack, ArtRank, ArtRequirement, ArtTarget, ArtType, ArtUsableWeapon,
-    AttackPower, AttackPowerScaling, DefensePower, Equipment, GuardCutRate, Weapon,
-    WeaponAbilityRequirement, WeaponAttackPower, WeaponAttackPowerAbilityScaling, WeaponBreakPower,
-    WeaponGuard, WeaponKind, WeaponPerformance, WeaponSorceryPower,
+    Ability, AbilityScaling, AbilityType, Armor, ArmorKind, ArmorResistance, ArmorSlot, Art,
+    ArtPerk, ArtPotency, ArtPotencyAttack, ArtRank, ArtRequirement, ArtTarget, ArtType,
+    ArtUsableWeapon, AttackPower, AttackPowerScaling, DefensePower, Equipment, GuardCutRate,
+    Weapon, WeaponAbilityRequirement, WeaponAttackPower, WeaponAttackPowerAbilityScaling,
+    WeaponBreakPower, WeaponGuard, WeaponKind, WeaponPerformance, WeaponSorceryPower,
 };
 
 // ================== Components ==================
@@ -932,6 +932,411 @@ fn build_status_content(
         });
 }
 
+/// 武器種類を日本語に変換
+fn weapon_kind_to_japanese(kind: &WeaponKind) -> &'static str {
+    match kind {
+        WeaponKind::StraightSword => "直剣",
+        WeaponKind::Greatsword => "大剣",
+        WeaponKind::Spear => "槍",
+        WeaponKind::Axe => "斧",
+        WeaponKind::Hammer => "ハンマー",
+        WeaponKind::Bow => "弓",
+        WeaponKind::Crossbow => "クロスボウ",
+        WeaponKind::Staff => "杖",
+        WeaponKind::Shield => "盾",
+    }
+}
+
+/// 能力タイプを日本語に変換
+fn ability_type_to_japanese(ability_type: &AbilityType) -> &'static str {
+    match ability_type {
+        AbilityType::Vitality => "生命力",
+        AbilityType::Spirit => "精神力",
+        AbilityType::Endurance => "持久力",
+        AbilityType::Agility => "敏捷性",
+        AbilityType::Strength => "筋力",
+        AbilityType::Dexterity => "技量",
+        AbilityType::Intelligence => "知力",
+        AbilityType::Faith => "信仰",
+        AbilityType::Arcane => "神秘",
+    }
+}
+
+/// 攻撃力の値をフォーマットする（基礎値 + 能力補正、ペナルティがある場合は別表示）
+fn format_attack_power_value(base: u32, ability_bonus: u32, penalty: Option<u32>) -> String {
+    if let Some(penalty_value) = penalty {
+        // ペナルティがある場合
+        format!("{} (-{})", base, penalty_value)
+    } else if ability_bonus > 0 {
+        // 能力補正がある場合
+        format!("{} (+{})", base, ability_bonus)
+    } else {
+        // 基礎値のみ
+        format!("{}", base)
+    }
+}
+
+/// 武器性能を表示するUI構築ヘルパー
+fn build_weapon_performance_display(
+    parent: &mut RelatedSpawnerCommands<ChildOf>,
+    font: Handle<Font>,
+    title: &str,
+    weapon: &Weapon,
+    performance: &WeaponPerformance,
+) {
+    // タイトル（右手武器/左手武器）
+    parent.spawn((
+        Text::new(format!("■ {}性能", title)),
+        TextFont {
+            font: font.clone(),
+            font_size: 18.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.5, 1.0, 0.8)),
+        Node {
+            margin: UiRect::bottom(Val::Px(5.0)),
+            ..default()
+        },
+    ));
+
+    // 武器名
+    parent.spawn((
+        Text::new(format!("  {}", weapon.name)),
+        TextFont {
+            font: font.clone(),
+            font_size: 16.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.9, 0.9, 0.5)),
+        Node {
+            margin: UiRect::bottom(Val::Px(3.0)),
+            ..default()
+        },
+    ));
+
+    // 基本情報（重量、武器種）
+    parent.spawn((
+        Text::new(format!(
+            "  重量: {}  武器種: {}",
+            weapon.weight,
+            weapon_kind_to_japanese(&weapon.kind)
+        )),
+        TextFont {
+            font: font.clone(),
+            font_size: 14.0,
+            ..default()
+        },
+        TextColor(Color::WHITE),
+        Node {
+            margin: UiRect::bottom(Val::Px(2.0)),
+            ..default()
+        },
+    ));
+
+    // 必要能力の表示
+    let mut req_parts = vec![];
+    if weapon.ability_requirement.strength > 0 {
+        req_parts.push(format!("筋力{}", weapon.ability_requirement.strength));
+    }
+    if weapon.ability_requirement.dexterity > 0 {
+        req_parts.push(format!("技量{}", weapon.ability_requirement.dexterity));
+    }
+    if weapon.ability_requirement.intelligence > 0 {
+        req_parts.push(format!("知力{}", weapon.ability_requirement.intelligence));
+    }
+    if weapon.ability_requirement.faith > 0 {
+        req_parts.push(format!("信仰{}", weapon.ability_requirement.faith));
+    }
+    if weapon.ability_requirement.arcane > 0 {
+        req_parts.push(format!("神秘{}", weapon.ability_requirement.arcane));
+    }
+    if weapon.ability_requirement.agility > 0 {
+        req_parts.push(format!("敏捷{}", weapon.ability_requirement.agility));
+    }
+    let req_text = if req_parts.is_empty() {
+        "なし".to_string()
+    } else {
+        req_parts.join(" ")
+    };
+
+    // ペナルティがある場合、不足能力を赤で表示
+    let (req_color, req_suffix) = if let Some(ref penalty) = performance.penalty {
+        let not_enough: Vec<String> = penalty
+            .not_enough_abilities
+            .iter()
+            .map(|a| ability_type_to_japanese(a).to_string())
+            .collect();
+        (
+            Color::srgb(1.0, 0.4, 0.4),
+            format!(" [不足: {}]", not_enough.join(", ")),
+        )
+    } else {
+        (Color::WHITE, String::new())
+    };
+
+    parent.spawn((
+        Text::new(format!("  必要能力: {}{}", req_text, req_suffix)),
+        TextFont {
+            font: font.clone(),
+            font_size: 14.0,
+            ..default()
+        },
+        TextColor(req_color),
+        Node {
+            margin: UiRect::bottom(Val::Px(3.0)),
+            ..default()
+        },
+    ));
+
+    // 攻撃力セクション
+    parent.spawn((
+        Text::new("  【攻撃力・術力】"),
+        TextFont {
+            font: font.clone(),
+            font_size: 14.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.8, 0.8, 0.5)),
+        Node {
+            margin: UiRect::bottom(Val::Px(1.0)),
+            ..default()
+        },
+    ));
+
+    // 各属性攻撃力
+    let attack_info = [
+        (
+            "斬撃",
+            performance.attack_power.slash,
+            performance.ability_attack_power.slash,
+        ),
+        (
+            "打撃",
+            performance.attack_power.strike,
+            performance.ability_attack_power.strike,
+        ),
+        (
+            "刺突",
+            performance.attack_power.thrust,
+            performance.ability_attack_power.thrust,
+        ),
+        (
+            "衝撃",
+            performance.attack_power.impact,
+            performance.ability_attack_power.impact,
+        ),
+        (
+            "魔力",
+            performance.attack_power.magic,
+            performance.ability_attack_power.magic,
+        ),
+        (
+            "炎",
+            performance.attack_power.fire,
+            performance.ability_attack_power.fire,
+        ),
+        (
+            "雷",
+            performance.attack_power.lightning,
+            performance.ability_attack_power.lightning,
+        ),
+        (
+            "混濁",
+            performance.attack_power.chaos,
+            performance.ability_attack_power.chaos,
+        ),
+    ];
+
+    // 攻撃力がある属性のみ表示
+    let mut attack_texts = vec![];
+    for (name, base, ability_bonus) in attack_info {
+        if base > 0 || ability_bonus > 0 {
+            let penalty_value = performance
+                .penalty
+                .as_ref()
+                .map(|p| match name {
+                    "斬撃" => p.penalty_attack_power.slash,
+                    "打撃" => p.penalty_attack_power.strike,
+                    "刺突" => p.penalty_attack_power.thrust,
+                    "衝撃" => p.penalty_attack_power.impact,
+                    "魔力" => p.penalty_attack_power.magic,
+                    "炎" => p.penalty_attack_power.fire,
+                    "雷" => p.penalty_attack_power.lightning,
+                    "混濁" => p.penalty_attack_power.chaos,
+                    _ => 0,
+                })
+                .filter(|&v| v > 0);
+
+            attack_texts.push(format!(
+                "{}: {}",
+                name,
+                format_attack_power_value(base, ability_bonus, penalty_value)
+            ));
+        }
+    }
+
+    if !attack_texts.is_empty() {
+        parent.spawn((
+            Text::new(format!("    {}", attack_texts.join("  "))),
+            TextFont {
+                font: font.clone(),
+                font_size: 13.0,
+                ..default()
+            },
+            TextColor(Color::WHITE),
+            Node {
+                margin: UiRect::bottom(Val::Px(2.0)),
+                ..default()
+            },
+        ));
+    }
+
+    // 術力（攻撃力セクション内）
+    let sorcery_text = if let Some(ref penalty) = performance.penalty {
+        if penalty.penalty_sorcery_power > 0 {
+            format!(
+                "術力: {} (-{})",
+                performance.sorcery_power, penalty.penalty_sorcery_power
+            )
+        } else if performance.ability_sorcery_power > 0 {
+            format!(
+                "術力: {} (+{})",
+                performance.sorcery_power, performance.ability_sorcery_power
+            )
+        } else {
+            format!("術力: {}", performance.sorcery_power)
+        }
+    } else if performance.ability_sorcery_power > 0 {
+        format!(
+            "術力: {} (+{})",
+            performance.sorcery_power, performance.ability_sorcery_power
+        )
+    } else {
+        format!("術力: {}", performance.sorcery_power)
+    };
+
+    parent.spawn((
+        Text::new(format!("    {}", sorcery_text)),
+        TextFont {
+            font: font.clone(),
+            font_size: 13.0,
+            ..default()
+        },
+        TextColor(Color::WHITE),
+        Node {
+            margin: UiRect::bottom(Val::Px(3.0)),
+            ..default()
+        },
+    ));
+
+    // ガード性能セクション
+    parent.spawn((
+        Text::new("  【ガード性能】"),
+        TextFont {
+            font: font.clone(),
+            font_size: 14.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.5, 0.8, 1.0)),
+        Node {
+            margin: UiRect::bottom(Val::Px(1.0)),
+            ..default()
+        },
+    ));
+
+    // ガード強度
+    let guard_strength_text = if let Some(ref penalty) = performance.penalty {
+        if penalty.penalty_guard_strength > 0 {
+            format!(
+                "ガード強度: {} (-{})",
+                weapon.guard.guard_strength, penalty.penalty_guard_strength
+            )
+        } else {
+            format!("ガード強度: {}", weapon.guard.guard_strength)
+        }
+    } else {
+        format!("ガード強度: {}", weapon.guard.guard_strength)
+    };
+
+    parent.spawn((
+        Text::new(format!("    {}", guard_strength_text)),
+        TextFont {
+            font: font.clone(),
+            font_size: 13.0,
+            ..default()
+        },
+        TextColor(Color::WHITE),
+        Node {
+            margin: UiRect::bottom(Val::Px(2.0)),
+            ..default()
+        },
+    ));
+
+    // カット率
+    let cut_rate = &weapon.guard.cut_rate;
+
+    // カット率ラベル
+    parent.spawn((
+        Text::new("    カット率:"),
+        TextFont {
+            font: font.clone(),
+            font_size: 13.0,
+            ..default()
+        },
+        TextColor(Color::WHITE),
+        Node {
+            margin: UiRect::bottom(Val::Px(1.0)),
+            ..default()
+        },
+    ));
+
+    // カット率1行目（物理系：斬、打、刺、衝）
+    let cut_rate_line1 = format!(
+        "      斬: {:.0}%  打: {:.0}%  刺: {:.0}%  衝: {:.0}%",
+        (1.0 - cut_rate.slash) * 100.0,
+        (1.0 - cut_rate.strike) * 100.0,
+        (1.0 - cut_rate.thrust) * 100.0,
+        (1.0 - cut_rate.impact) * 100.0
+    );
+
+    parent.spawn((
+        Text::new(cut_rate_line1),
+        TextFont {
+            font: font.clone(),
+            font_size: 13.0,
+            ..default()
+        },
+        TextColor(Color::WHITE),
+        Node {
+            margin: UiRect::bottom(Val::Px(1.0)),
+            ..default()
+        },
+    ));
+
+    // カット率2行目（属性系：魔、炎、雷、濁）
+    let cut_rate_line2 = format!(
+        "      魔: {:.0}%  炎: {:.0}%  雷: {:.0}%  濁: {:.0}%",
+        (1.0 - cut_rate.magic) * 100.0,
+        (1.0 - cut_rate.fire) * 100.0,
+        (1.0 - cut_rate.lightning) * 100.0,
+        (1.0 - cut_rate.chaos) * 100.0
+    );
+
+    parent.spawn((
+        Text::new(cut_rate_line2),
+        TextFont {
+            font: font.clone(),
+            font_size: 13.0,
+            ..default()
+        },
+        TextColor(Color::WHITE),
+        Node {
+            margin: UiRect::bottom(Val::Px(3.0)),
+            ..default()
+        },
+    ));
+}
+
 /// 装備画面のコンテンツを構築
 fn build_equipment_content(
     parent: &mut RelatedSpawnerCommands<ChildOf>,
@@ -1109,153 +1514,269 @@ fn build_equipment_content(
         ),
     ];
 
-    for (name, slot, equipped_name, weapon_data) in equipment_slots {
-        parent
-            .spawn(Node {
-                width: Val::Px(600.0),
-                height: Val::Px(45.0),
-                flex_direction: FlexDirection::Row,
-                align_items: AlignItems::Center,
-                justify_content: JustifyContent::SpaceBetween,
-                margin: UiRect::bottom(Val::Px(8.0)),
-                padding: UiRect::all(Val::Px(10.0)),
-                border: UiRect::all(Val::Px(2.0)),
-                ..default()
-            })
-            .insert(BackgroundColor(Color::from(LinearRgba {
-                red: 0.2,
-                green: 0.2,
-                blue: 0.25,
-                alpha: 1.0,
-            })))
-            .insert(BorderColor::all(Color::srgb(0.5, 0.5, 0.5)))
-            .with_children(|row| {
-                // 装備があるかどうかを先に確認
-                let has_equipment = equipped_name.is_some();
-
-                // スロット名と装備名
-                row.spawn(Node {
+    // メインコンテナ：装備スロット（左）と武器性能（右）を横並びで表示
+    parent
+        .spawn(Node {
+            width: Val::Percent(100.0),
+            flex_direction: FlexDirection::Row,
+            column_gap: Val::Px(30.0),
+            ..default()
+        })
+        .with_children(|main_row| {
+            // 左側：装備スロット一覧
+            main_row
+                .spawn(Node {
                     flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(2.0),
+                    width: Val::Px(380.0),
                     ..default()
                 })
-                .with_children(|col| {
-                    col.spawn((
-                        Text::new(name),
-                        TextFont {
-                            font: font.clone(),
-                            font_size: 18.0,
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                    ));
-
-                    if let Some(eq_name) = equipped_name {
-                        // 武器の場合、使用可能かチェック
-                        let is_usable = if let Some(weapon_data) = weapon_data {
-                            let not_enough_abilities =
-                                weapon_data.weapon.not_enough_abilities(&current_ability);
-                            not_enough_abilities.is_empty()
-                        } else {
-                            true // 防具の場合は常にtrue
-                        };
-
-                        // 武器名の表示（使用不可の場合は「×」を追加）
-                        let display_name = if is_usable {
-                            eq_name
-                        } else {
-                            format!("{} ×", eq_name)
-                        };
-
-                        col.spawn((
-                            Text::new(display_name),
-                            TextFont {
-                                font: font.clone(),
-                                font_size: 14.0,
-                                ..default()
-                            },
-                            TextColor(Color::srgb(0.7, 0.9, 1.0)),
-                        ));
-                    }
-                });
-
-                // ボタンコンテナ
-                row.spawn(Node {
-                    flex_direction: FlexDirection::Row,
-                    column_gap: Val::Px(8.0),
-                    ..default()
-                })
-                .with_children(|btn_row| {
-                    // 変更ボタン
-                    btn_row
-                        .spawn((
-                            EquipmentButton { slot },
-                            Button,
-                            Node {
-                                width: Val::Px(70.0),
-                                height: Val::Px(35.0),
-                                justify_content: JustifyContent::Center,
+                .with_children(|left_col| {
+                    for (name, slot, equipped_name, weapon_data) in equipment_slots {
+                        left_col
+                            .spawn(Node {
+                                width: Val::Px(370.0),
+                                height: Val::Px(40.0),
+                                flex_direction: FlexDirection::Row,
                                 align_items: AlignItems::Center,
-                                border: UiRect::all(Val::Px(2.0)),
+                                justify_content: JustifyContent::SpaceBetween,
+                                margin: UiRect::bottom(Val::Px(5.0)),
+                                padding: UiRect::all(Val::Px(8.0)),
+                                border: UiRect::all(Val::Px(1.0)),
                                 ..default()
-                            },
-                            BackgroundColor(Color::from(LinearRgba {
-                                red: 0.3,
-                                green: 0.3,
-                                blue: 0.4,
+                            })
+                            .insert(BackgroundColor(Color::from(LinearRgba {
+                                red: 0.2,
+                                green: 0.2,
+                                blue: 0.25,
                                 alpha: 1.0,
-                            })),
-                            BorderColor::all(Color::WHITE),
-                        ))
-                        .with_children(|btn| {
-                            btn.spawn((
-                                Text::new("変更"),
-                                TextFont {
-                                    font: font.clone(),
-                                    font_size: 16.0,
-                                    ..default()
-                                },
-                                TextColor(Color::WHITE),
-                            ));
-                        });
+                            })))
+                            .insert(BorderColor::all(Color::srgb(0.5, 0.5, 0.5)))
+                            .with_children(|row| {
+                                // 装備があるかどうかを先に確認
+                                let has_equipment = equipped_name.is_some();
 
-                    // 外すボタン（装備がある場合のみ表示）
-                    if has_equipment {
-                        btn_row
-                            .spawn((
-                                UnequipButton { slot },
-                                Button,
-                                Node {
-                                    width: Val::Px(70.0),
-                                    height: Val::Px(35.0),
-                                    justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
-                                    border: UiRect::all(Val::Px(2.0)),
+                                // スロット名と装備名
+                                row.spawn(Node {
+                                    flex_direction: FlexDirection::Column,
+                                    row_gap: Val::Px(1.0),
                                     ..default()
-                                },
-                                BackgroundColor(Color::from(LinearRgba {
-                                    red: 0.4,
-                                    green: 0.2,
-                                    blue: 0.2,
-                                    alpha: 1.0,
-                                })),
-                                BorderColor::all(Color::WHITE),
-                            ))
-                            .with_children(|btn| {
-                                btn.spawn((
-                                    Text::new("外す"),
-                                    TextFont {
-                                        font: font.clone(),
-                                        font_size: 16.0,
-                                        ..default()
-                                    },
-                                    TextColor(Color::WHITE),
-                                ));
+                                })
+                                .with_children(|col| {
+                                    col.spawn((
+                                        Text::new(name),
+                                        TextFont {
+                                            font: font.clone(),
+                                            font_size: 14.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::WHITE),
+                                    ));
+
+                                    if let Some(eq_name) = equipped_name {
+                                        // 武器の場合、使用可能かチェック
+                                        let is_usable = if let Some(weapon_data) = weapon_data {
+                                            let not_enough_abilities = weapon_data
+                                                .weapon
+                                                .not_enough_abilities(&current_ability);
+                                            not_enough_abilities.is_empty()
+                                        } else {
+                                            true // 防具の場合は常にtrue
+                                        };
+
+                                        // 武器名の表示（使用不可の場合は「×」を追加）
+                                        let display_name = if is_usable {
+                                            eq_name
+                                        } else {
+                                            format!("{} ×", eq_name)
+                                        };
+
+                                        col.spawn((
+                                            Text::new(display_name),
+                                            TextFont {
+                                                font: font.clone(),
+                                                font_size: 12.0,
+                                                ..default()
+                                            },
+                                            TextColor(Color::srgb(0.7, 0.9, 1.0)),
+                                        ));
+                                    }
+                                });
+
+                                // ボタンコンテナ
+                                row.spawn(Node {
+                                    flex_direction: FlexDirection::Row,
+                                    column_gap: Val::Px(5.0),
+                                    ..default()
+                                })
+                                .with_children(|btn_row| {
+                                    // 変更ボタン
+                                    btn_row
+                                        .spawn((
+                                            EquipmentButton { slot },
+                                            Button,
+                                            Node {
+                                                width: Val::Px(50.0),
+                                                height: Val::Px(28.0),
+                                                justify_content: JustifyContent::Center,
+                                                align_items: AlignItems::Center,
+                                                border: UiRect::all(Val::Px(1.0)),
+                                                ..default()
+                                            },
+                                            BackgroundColor(Color::from(LinearRgba {
+                                                red: 0.3,
+                                                green: 0.3,
+                                                blue: 0.4,
+                                                alpha: 1.0,
+                                            })),
+                                            BorderColor::all(Color::WHITE),
+                                        ))
+                                        .with_children(|btn| {
+                                            btn.spawn((
+                                                Text::new("変更"),
+                                                TextFont {
+                                                    font: font.clone(),
+                                                    font_size: 12.0,
+                                                    ..default()
+                                                },
+                                                TextColor(Color::WHITE),
+                                            ));
+                                        });
+
+                                    // 外すボタン（装備がある場合のみ表示）
+                                    if has_equipment {
+                                        btn_row
+                                            .spawn((
+                                                UnequipButton { slot },
+                                                Button,
+                                                Node {
+                                                    width: Val::Px(50.0),
+                                                    height: Val::Px(28.0),
+                                                    justify_content: JustifyContent::Center,
+                                                    align_items: AlignItems::Center,
+                                                    border: UiRect::all(Val::Px(1.0)),
+                                                    ..default()
+                                                },
+                                                BackgroundColor(Color::from(LinearRgba {
+                                                    red: 0.4,
+                                                    green: 0.2,
+                                                    blue: 0.2,
+                                                    alpha: 1.0,
+                                                })),
+                                                BorderColor::all(Color::WHITE),
+                                            ))
+                                            .with_children(|btn| {
+                                                btn.spawn((
+                                                    Text::new("外す"),
+                                                    TextFont {
+                                                        font: font.clone(),
+                                                        font_size: 12.0,
+                                                        ..default()
+                                                    },
+                                                    TextColor(Color::WHITE),
+                                                ));
+                                            });
+                                    }
+                                });
                             });
                     }
                 });
-            });
-    }
+
+            // 右側：武器性能表示（横並び）
+            main_row
+                .spawn(Node {
+                    flex_direction: FlexDirection::Row,
+                    flex_grow: 1.0,
+                    column_gap: Val::Px(20.0),
+                    ..default()
+                })
+                .with_children(|weapons_row| {
+                    // 右手武器の性能表示
+                    weapons_row
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Column,
+                            width: Val::Px(320.0),
+                            ..default()
+                        })
+                        .with_children(|weapon_col| {
+                            if let Some(weapon_data) = weapon1_data {
+                                let performance = weapon_data.weapon.performance(&current_ability);
+                                build_weapon_performance_display(
+                                    weapon_col,
+                                    font.clone(),
+                                    "右手武器",
+                                    &weapon_data.weapon,
+                                    &performance,
+                                );
+                            } else {
+                                weapon_col.spawn((
+                                    Text::new("■ 右手武器性能"),
+                                    TextFont {
+                                        font: font.clone(),
+                                        font_size: 18.0,
+                                        ..default()
+                                    },
+                                    TextColor(Color::srgb(0.5, 1.0, 0.8)),
+                                    Node {
+                                        margin: UiRect::bottom(Val::Px(5.0)),
+                                        ..default()
+                                    },
+                                ));
+                                weapon_col.spawn((
+                                    Text::new("  未装備"),
+                                    TextFont {
+                                        font: font.clone(),
+                                        font_size: 14.0,
+                                        ..default()
+                                    },
+                                    TextColor(Color::srgb(0.6, 0.6, 0.6)),
+                                ));
+                            }
+                        });
+
+                    // 左手武器の性能表示
+                    weapons_row
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Column,
+                            width: Val::Px(320.0),
+                            ..default()
+                        })
+                        .with_children(|weapon_col| {
+                            if let Some(weapon_data) = weapon2_data {
+                                let performance = weapon_data.weapon.performance(&current_ability);
+                                build_weapon_performance_display(
+                                    weapon_col,
+                                    font.clone(),
+                                    "左手武器",
+                                    &weapon_data.weapon,
+                                    &performance,
+                                );
+                            } else {
+                                weapon_col.spawn((
+                                    Text::new("■ 左手武器性能"),
+                                    TextFont {
+                                        font: font.clone(),
+                                        font_size: 18.0,
+                                        ..default()
+                                    },
+                                    TextColor(Color::srgb(0.5, 1.0, 0.8)),
+                                    Node {
+                                        margin: UiRect::bottom(Val::Px(5.0)),
+                                        ..default()
+                                    },
+                                ));
+                                weapon_col.spawn((
+                                    Text::new("  未装備"),
+                                    TextFont {
+                                        font: font.clone(),
+                                        font_size: 14.0,
+                                        ..default()
+                                    },
+                                    TextColor(Color::srgb(0.6, 0.6, 0.6)),
+                                ));
+                            }
+                        });
+                });
+        });
 }
 
 /// 技術設定画面のコンテンツを構築
