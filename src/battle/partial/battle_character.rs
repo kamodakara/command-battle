@@ -61,35 +61,7 @@ impl BattleCharacter {
     }
 
     pub fn armor_defense_power(&self) -> DefensePower {
-        let mut defense_power = DefensePower::default();
-
-        // 装備の防御力を加算
-        if let Some(armor) = &self.raw_equipment.armor1 {
-            defense_power.add(&armor.defense);
-        }
-        if let Some(armor) = &self.raw_equipment.armor2 {
-            defense_power.add(&armor.defense);
-        }
-        if let Some(armor) = &self.raw_equipment.armor3 {
-            defense_power.add(&armor.defense);
-        }
-        if let Some(armor) = &self.raw_equipment.armor4 {
-            defense_power.add(&armor.defense);
-        }
-        if let Some(armor) = &self.raw_equipment.armor5 {
-            defense_power.add(&armor.defense);
-        }
-        if let Some(armor) = &self.raw_equipment.armor6 {
-            defense_power.add(&armor.defense);
-        }
-        if let Some(armor) = &self.raw_equipment.armor7 {
-            defense_power.add(&armor.defense);
-        }
-        if let Some(armor) = &self.raw_equipment.armor8 {
-            defense_power.add(&armor.defense);
-        }
-
-        defense_power
+        self.raw_equipment.armor_defense_power()
     }
 
     // 効果適応済み防御力取得

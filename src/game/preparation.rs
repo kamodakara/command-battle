@@ -1681,99 +1681,372 @@ fn build_equipment_content(
                     }
                 });
 
-            // 右側：武器性能表示（横並び）
+            // 右側：武器性能と防御力表示
             main_row
                 .spawn(Node {
-                    flex_direction: FlexDirection::Row,
+                    flex_direction: FlexDirection::Column,
                     flex_grow: 1.0,
-                    column_gap: Val::Px(20.0),
                     ..default()
                 })
-                .with_children(|weapons_row| {
-                    // 右手武器の性能表示
-                    weapons_row
+                .with_children(|right_section| {
+                    // 武器性能表示（横並び）
+                    right_section
                         .spawn(Node {
-                            flex_direction: FlexDirection::Column,
-                            width: Val::Px(320.0),
+                            flex_direction: FlexDirection::Row,
+                            column_gap: Val::Px(20.0),
                             ..default()
                         })
-                        .with_children(|weapon_col| {
-                            if let Some(weapon_data) = weapon1_data {
-                                let performance = weapon_data.weapon.performance(&current_ability);
-                                build_weapon_performance_display(
-                                    weapon_col,
-                                    font.clone(),
-                                    "右手武器",
-                                    &weapon_data.weapon,
-                                    &performance,
-                                );
-                            } else {
-                                weapon_col.spawn((
-                                    Text::new("■ 右手武器性能"),
-                                    TextFont {
-                                        font: font.clone(),
-                                        font_size: 18.0,
-                                        ..default()
-                                    },
-                                    TextColor(Color::srgb(0.5, 1.0, 0.8)),
-                                    Node {
-                                        margin: UiRect::bottom(Val::Px(5.0)),
-                                        ..default()
-                                    },
-                                ));
-                                weapon_col.spawn((
-                                    Text::new("  未装備"),
-                                    TextFont {
-                                        font: font.clone(),
-                                        font_size: 14.0,
-                                        ..default()
-                                    },
-                                    TextColor(Color::srgb(0.6, 0.6, 0.6)),
-                                ));
-                            }
+                        .with_children(|weapons_row| {
+                            // 右手武器の性能表示
+                            weapons_row
+                                .spawn(Node {
+                                    flex_direction: FlexDirection::Column,
+                                    width: Val::Px(320.0),
+                                    ..default()
+                                })
+                                .with_children(|weapon_col| {
+                                    if let Some(weapon_data) = weapon1_data {
+                                        let performance =
+                                            weapon_data.weapon.performance(&current_ability);
+                                        build_weapon_performance_display(
+                                            weapon_col,
+                                            font.clone(),
+                                            "右手武器",
+                                            &weapon_data.weapon,
+                                            &performance,
+                                        );
+                                    } else {
+                                        weapon_col.spawn((
+                                            Text::new("■ 右手武器性能"),
+                                            TextFont {
+                                                font: font.clone(),
+                                                font_size: 18.0,
+                                                ..default()
+                                            },
+                                            TextColor(Color::srgb(0.5, 1.0, 0.8)),
+                                            Node {
+                                                margin: UiRect::bottom(Val::Px(5.0)),
+                                                ..default()
+                                            },
+                                        ));
+                                        weapon_col.spawn((
+                                            Text::new("  未装備"),
+                                            TextFont {
+                                                font: font.clone(),
+                                                font_size: 14.0,
+                                                ..default()
+                                            },
+                                            TextColor(Color::srgb(0.6, 0.6, 0.6)),
+                                        ));
+                                    }
+                                });
+
+                            // 左手武器の性能表示
+                            weapons_row
+                                .spawn(Node {
+                                    flex_direction: FlexDirection::Column,
+                                    width: Val::Px(320.0),
+                                    ..default()
+                                })
+                                .with_children(|weapon_col| {
+                                    if let Some(weapon_data) = weapon2_data {
+                                        let performance =
+                                            weapon_data.weapon.performance(&current_ability);
+                                        build_weapon_performance_display(
+                                            weapon_col,
+                                            font.clone(),
+                                            "左手武器",
+                                            &weapon_data.weapon,
+                                            &performance,
+                                        );
+                                    } else {
+                                        weapon_col.spawn((
+                                            Text::new("■ 左手武器性能"),
+                                            TextFont {
+                                                font: font.clone(),
+                                                font_size: 18.0,
+                                                ..default()
+                                            },
+                                            TextColor(Color::srgb(0.5, 1.0, 0.8)),
+                                            Node {
+                                                margin: UiRect::bottom(Val::Px(5.0)),
+                                                ..default()
+                                            },
+                                        ));
+                                        weapon_col.spawn((
+                                            Text::new("  未装備"),
+                                            TextFont {
+                                                font: font.clone(),
+                                                font_size: 14.0,
+                                                ..default()
+                                            },
+                                            TextColor(Color::srgb(0.6, 0.6, 0.6)),
+                                        ));
+                                    }
+                                });
                         });
 
-                    // 左手武器の性能表示
-                    weapons_row
+                    // 防御力表示セクション
+                    // 基礎防御力（能力値から算出）
+                    let base_defense = current_ability.base_defense_power();
+
+                    // 装備防御力を計算
+                    let mut equipment_defense = DefensePower::default();
+                    let armor_ids = [
+                        prep_state.equipped_armor1,
+                        prep_state.equipped_armor2,
+                        prep_state.equipped_armor3,
+                        prep_state.equipped_armor4,
+                        prep_state.equipped_armor5,
+                        prep_state.equipped_armor6,
+                        prep_state.equipped_armor7,
+                        prep_state.equipped_armor8,
+                    ];
+                    for armor_id in armor_ids.iter().flatten() {
+                        if let Some(armor_data) =
+                            equipment_db.armors.iter().find(|a| a.id == *armor_id)
+                        {
+                            equipment_defense.add(&armor_data.armor.defense);
+                        }
+                    }
+
+                    right_section
                         .spawn(Node {
                             flex_direction: FlexDirection::Column,
-                            width: Val::Px(320.0),
+                            margin: UiRect::top(Val::Px(15.0)),
                             ..default()
                         })
-                        .with_children(|weapon_col| {
-                            if let Some(weapon_data) = weapon2_data {
-                                let performance = weapon_data.weapon.performance(&current_ability);
-                                build_weapon_performance_display(
-                                    weapon_col,
-                                    font.clone(),
-                                    "左手武器",
-                                    &weapon_data.weapon,
-                                    &performance,
-                                );
-                            } else {
-                                weapon_col.spawn((
-                                    Text::new("■ 左手武器性能"),
-                                    TextFont {
-                                        font: font.clone(),
-                                        font_size: 18.0,
-                                        ..default()
-                                    },
-                                    TextColor(Color::srgb(0.5, 1.0, 0.8)),
-                                    Node {
-                                        margin: UiRect::bottom(Val::Px(5.0)),
-                                        ..default()
-                                    },
-                                ));
-                                weapon_col.spawn((
-                                    Text::new("  未装備"),
-                                    TextFont {
-                                        font: font.clone(),
-                                        font_size: 14.0,
-                                        ..default()
-                                    },
-                                    TextColor(Color::srgb(0.6, 0.6, 0.6)),
-                                ));
-                            }
+                        .with_children(|defense_section| {
+                            // セクションヘッダー
+                            defense_section.spawn((
+                                Text::new("■ 防御力"),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 18.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgb(0.5, 1.0, 0.8)),
+                                Node {
+                                    margin: UiRect::bottom(Val::Px(5.0)),
+                                    ..default()
+                                },
+                            ));
+
+                            // 防御力テーブル
+                            defense_section
+                                .spawn(Node {
+                                    flex_direction: FlexDirection::Column,
+                                    row_gap: Val::Px(2.0),
+                                    ..default()
+                                })
+                                .with_children(|table| {
+                                    // ヘッダー行
+                                    table
+                                        .spawn(Node {
+                                            flex_direction: FlexDirection::Row,
+                                            column_gap: Val::Px(8.0),
+                                            margin: UiRect::bottom(Val::Px(3.0)),
+                                            ..default()
+                                        })
+                                        .with_children(|header_row| {
+                                            header_row.spawn((
+                                                Text::new("属性"),
+                                                TextFont {
+                                                    font: font.clone(),
+                                                    font_size: 13.0,
+                                                    ..default()
+                                                },
+                                                TextColor(Color::srgb(0.8, 0.8, 0.5)),
+                                                Node {
+                                                    width: Val::Px(50.0),
+                                                    ..default()
+                                                },
+                                            ));
+                                            header_row.spawn((
+                                                Text::new("能力"),
+                                                TextFont {
+                                                    font: font.clone(),
+                                                    font_size: 13.0,
+                                                    ..default()
+                                                },
+                                                TextColor(Color::srgb(0.8, 0.8, 0.5)),
+                                                Node {
+                                                    width: Val::Px(40.0),
+                                                    justify_content: JustifyContent::End,
+                                                    ..default()
+                                                },
+                                            ));
+                                            header_row.spawn((
+                                                Text::new("+"),
+                                                TextFont {
+                                                    font: font.clone(),
+                                                    font_size: 13.0,
+                                                    ..default()
+                                                },
+                                                TextColor(Color::srgb(0.8, 0.8, 0.5)),
+                                                Node {
+                                                    width: Val::Px(12.0),
+                                                    justify_content: JustifyContent::Center,
+                                                    ..default()
+                                                },
+                                            ));
+                                            header_row.spawn((
+                                                Text::new("装備"),
+                                                TextFont {
+                                                    font: font.clone(),
+                                                    font_size: 13.0,
+                                                    ..default()
+                                                },
+                                                TextColor(Color::srgb(0.8, 0.8, 0.5)),
+                                                Node {
+                                                    width: Val::Px(40.0),
+                                                    justify_content: JustifyContent::End,
+                                                    ..default()
+                                                },
+                                            ));
+                                            header_row.spawn((
+                                                Text::new("="),
+                                                TextFont {
+                                                    font: font.clone(),
+                                                    font_size: 13.0,
+                                                    ..default()
+                                                },
+                                                TextColor(Color::srgb(0.8, 0.8, 0.5)),
+                                                Node {
+                                                    width: Val::Px(12.0),
+                                                    justify_content: JustifyContent::Center,
+                                                    ..default()
+                                                },
+                                            ));
+                                            header_row.spawn((
+                                                Text::new("合計"),
+                                                TextFont {
+                                                    font: font.clone(),
+                                                    font_size: 13.0,
+                                                    ..default()
+                                                },
+                                                TextColor(Color::srgb(0.8, 0.8, 0.5)),
+                                                Node {
+                                                    width: Val::Px(40.0),
+                                                    justify_content: JustifyContent::End,
+                                                    ..default()
+                                                },
+                                            ));
+                                        });
+
+                                    // 各属性の防御力を表示
+                                    let defense_data = [
+                                        ("斬撃", base_defense.slash, equipment_defense.slash),
+                                        ("打撃", base_defense.strike, equipment_defense.strike),
+                                        ("刺突", base_defense.thrust, equipment_defense.thrust),
+                                        ("衝撃", base_defense.impact, equipment_defense.impact),
+                                        ("魔力", base_defense.magic, equipment_defense.magic),
+                                        ("炎", base_defense.fire, equipment_defense.fire),
+                                        ("雷", base_defense.lightning, equipment_defense.lightning),
+                                        ("混濁", base_defense.chaos, equipment_defense.chaos),
+                                    ];
+
+                                    for (name, base, equip) in defense_data {
+                                        let total = base + equip;
+                                        table
+                                            .spawn(Node {
+                                                flex_direction: FlexDirection::Row,
+                                                column_gap: Val::Px(8.0),
+                                                ..default()
+                                            })
+                                            .with_children(|data_row| {
+                                                // 属性名
+                                                data_row.spawn((
+                                                    Text::new(name),
+                                                    TextFont {
+                                                        font: font.clone(),
+                                                        font_size: 13.0,
+                                                        ..default()
+                                                    },
+                                                    TextColor(Color::WHITE),
+                                                    Node {
+                                                        width: Val::Px(50.0),
+                                                        ..default()
+                                                    },
+                                                ));
+                                                // 能力値による防御力
+                                                data_row.spawn((
+                                                    Text::new(format!("{}", base)),
+                                                    TextFont {
+                                                        font: font.clone(),
+                                                        font_size: 13.0,
+                                                        ..default()
+                                                    },
+                                                    TextColor(Color::srgb(0.7, 0.9, 1.0)),
+                                                    Node {
+                                                        width: Val::Px(40.0),
+                                                        justify_content: JustifyContent::End,
+                                                        ..default()
+                                                    },
+                                                ));
+                                                // プラス記号
+                                                data_row.spawn((
+                                                    Text::new("+"),
+                                                    TextFont {
+                                                        font: font.clone(),
+                                                        font_size: 13.0,
+                                                        ..default()
+                                                    },
+                                                    TextColor(Color::WHITE),
+                                                    Node {
+                                                        width: Val::Px(12.0),
+                                                        justify_content: JustifyContent::Center,
+                                                        ..default()
+                                                    },
+                                                ));
+                                                // 装備による防御力
+                                                data_row.spawn((
+                                                    Text::new(format!("{}", equip)),
+                                                    TextFont {
+                                                        font: font.clone(),
+                                                        font_size: 13.0,
+                                                        ..default()
+                                                    },
+                                                    TextColor(Color::srgb(0.5, 1.0, 0.5)),
+                                                    Node {
+                                                        width: Val::Px(40.0),
+                                                        justify_content: JustifyContent::End,
+                                                        ..default()
+                                                    },
+                                                ));
+                                                // イコール記号
+                                                data_row.spawn((
+                                                    Text::new("="),
+                                                    TextFont {
+                                                        font: font.clone(),
+                                                        font_size: 13.0,
+                                                        ..default()
+                                                    },
+                                                    TextColor(Color::WHITE),
+                                                    Node {
+                                                        width: Val::Px(12.0),
+                                                        justify_content: JustifyContent::Center,
+                                                        ..default()
+                                                    },
+                                                ));
+                                                // 合計
+                                                data_row.spawn((
+                                                    Text::new(format!("{}", total)),
+                                                    TextFont {
+                                                        font: font.clone(),
+                                                        font_size: 13.0,
+                                                        ..default()
+                                                    },
+                                                    TextColor(Color::srgb(1.0, 1.0, 0.5)),
+                                                    Node {
+                                                        width: Val::Px(40.0),
+                                                        justify_content: JustifyContent::End,
+                                                        ..default()
+                                                    },
+                                                ));
+                                            });
+                                    }
+                                });
                         });
                 });
         });
