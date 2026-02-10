@@ -3,10 +3,11 @@ use bevy::{ecs::relationship::RelatedSpawnerCommands, prelude::*};
 use super::*;
 use crate::fundamental::{
     Ability, AbilityScaling, AbilityType, Armor, ArmorKind, ArmorResistance, ArmorSlot, Art,
-    ArtPerk, ArtPotency, ArtPotencyAttack, ArtRank, ArtRequirement, ArtTarget, ArtType,
-    ArtUsableWeapon, AttackPower, AttackPowerScaling, DefensePower, Equipment, GuardCutRate,
-    Weapon, WeaponAbilityRequirement, WeaponAttackPower, WeaponAttackPowerAbilityScaling,
-    WeaponBreakPower, WeaponGuard, WeaponKind, WeaponPerformance, WeaponSorceryPower,
+    ArtPerk, ArtPotency, ArtPotencyAttack, ArtPotencySupport, ArtPotencySupportStatusCondition,
+    ArtRank, ArtRequirement, ArtTarget, ArtType, ArtUsableWeapon, AttackPower, AttackPowerScaling,
+    DefensePower, Equipment, GuardCutRate, Weapon, WeaponAbilityRequirement, WeaponAttackPower,
+    WeaponAttackPowerAbilityScaling, WeaponBreakPower, WeaponGuard, WeaponKind, WeaponPerformance,
+    WeaponSorceryPower,
 };
 
 // ================== Components ==================
@@ -68,6 +69,7 @@ pub struct PreparationState {
     pub selecting_slot: Option<EquipmentSlot>,
     pub selected_arts: Vec<usize>, // 選択された技術のID (最大8つ)
     pub selecting_arts_slot: Option<usize>, // 選択中のスロット (0-7)
+    pub selected_art_tab: ArtTypeTab, // 技術選択ダイアログの選択中タブ
     pub error_message: Option<String>,
     pub error_message_timer: f32,
 }
@@ -129,6 +131,7 @@ impl Plugin for PreparationPlugin {
                     arts_selection_dialog_system,
                     close_equipment_list_system,
                     close_arts_selection_dialog_system,
+                    arts_tab_button_system,
                     update_error_message_system,
                     display_error_message_system,
                 )
@@ -3002,6 +3005,158 @@ fn create_arts_database() -> ArtsDatabase {
                 rank3: None,
             },
         },
+        // 基本タイプのアーツ
+        ArtsData {
+            id: 6,
+            name: "通常攻撃".to_string(),
+            art: Art {
+                name: "通常攻撃".to_string(),
+                sp_cost: 0,
+                stamina_cost: 10,
+                perks: vec![ArtPerk::Melee],
+                requirement: ArtRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                usable_weapon: ArtUsableWeapon::All,
+                art_type: ArtType::Basic,
+                always_hits: false,
+                priority: 0,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Attack(ArtPotencyAttack {
+                        attack_power: AttackPower {
+                            slash: 50,
+                            strike: 50,
+                            thrust: 50,
+                            impact: 0,
+                            magic: 0,
+                            fire: 0,
+                            lightning: 0,
+                            chaos: 0,
+                        },
+                        weapon_attack_power_scaling: AttackPowerScaling {
+                            slash: 1.0,
+                            strike: 1.0,
+                            thrust: 1.0,
+                            impact: 0.0,
+                            magic: 0.0,
+                            fire: 0.0,
+                            lightning: 0.0,
+                            chaos: 0.0,
+                        },
+                        break_power: 10,
+                        weapon_break_power_scaling: 1.0,
+                    }),
+                },
+                rank2: None,
+                rank3: None,
+            },
+        },
+        ArtsData {
+            id: 7,
+            name: "防御".to_string(),
+            art: Art {
+                name: "防御".to_string(),
+                sp_cost: 0,
+                stamina_cost: 5,
+                perks: vec![ArtPerk::Guard],
+                requirement: ArtRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                usable_weapon: ArtUsableWeapon::All,
+                art_type: ArtType::Basic,
+                always_hits: true,
+                priority: 5,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Support(ArtPotencySupport::StatusCondition(
+                        ArtPotencySupportStatusCondition {
+                            status_conditions: vec![],
+                        },
+                    )),
+                },
+                rank2: None,
+                rank3: None,
+            },
+        },
+        ArtsData {
+            id: 8,
+            name: "回避".to_string(),
+            art: Art {
+                name: "回避".to_string(),
+                sp_cost: 0,
+                stamina_cost: 15,
+                perks: vec![],
+                requirement: ArtRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 5,
+                },
+                usable_weapon: ArtUsableWeapon::All,
+                art_type: ArtType::Basic,
+                always_hits: true,
+                priority: 10,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Support(ArtPotencySupport::StatusCondition(
+                        ArtPotencySupportStatusCondition {
+                            status_conditions: vec![],
+                        },
+                    )),
+                },
+                rank2: None,
+                rank3: None,
+            },
+        },
+        ArtsData {
+            id: 9,
+            name: "待機".to_string(),
+            art: Art {
+                name: "待機".to_string(),
+                sp_cost: 0,
+                stamina_cost: 0,
+                perks: vec![],
+                requirement: ArtRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                usable_weapon: ArtUsableWeapon::All,
+                art_type: ArtType::Basic,
+                always_hits: true,
+                priority: -5,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Support(ArtPotencySupport::StatusCondition(
+                        ArtPotencySupportStatusCondition {
+                            status_conditions: vec![],
+                        },
+                    )),
+                },
+                rank2: None,
+                rank3: None,
+            },
+        },
     ];
 
     ArtsDatabase { arts }
@@ -3888,8 +4043,25 @@ struct ErrorMessagePanel;
 
 // ================== 技術選択ダイアログ ==================
 
+/// 技術選択ダイアログのタブ種別
+#[derive(Clone, Copy, PartialEq, Default)]
+pub enum ArtTypeTab {
+    #[default]
+    Basic, // 基本
+    Skill,   // 技
+    Sorcery, // 術
+}
+
 #[derive(Component)]
 struct ArtsSelectionDialog;
+
+#[derive(Component)]
+struct ArtsTabButton {
+    tab_type: ArtTypeTab,
+}
+
+#[derive(Component)]
+struct ArtsListContainer;
 
 #[derive(Component)]
 struct ArtsListButton {
@@ -4056,104 +4228,93 @@ fn arts_slot_button_system(
                                             });
                                     });
 
-                                // 技術リスト（スクロール可能）
+                                // タブ（基本・技・術）
                                 dialog
                                     .spawn(Node {
                                         width: Val::Percent(100.0),
-                                        flex_grow: 1.0,
-                                        flex_direction: FlexDirection::Column,
-                                        row_gap: Val::Px(10.0),
-                                        overflow: Overflow::clip_y(),
+                                        flex_direction: FlexDirection::Row,
+                                        column_gap: Val::Px(5.0),
+                                        margin: UiRect::bottom(Val::Px(10.0)),
                                         ..default()
                                     })
-                                    .with_children(|list| {
-                                        for art_data in &arts_db.arts {
-                                            list.spawn((
-                                                ArtsListButton {
-                                                    arts_id: art_data.id,
-                                                },
+                                    .with_children(|tabs| {
+                                        let tab_items = [
+                                            (ArtTypeTab::Basic, "基本"),
+                                            (ArtTypeTab::Skill, "技"),
+                                            (ArtTypeTab::Sorcery, "術"),
+                                        ];
+
+                                        for (tab_type, label) in tab_items {
+                                            let is_selected =
+                                                prep_state.selected_art_tab == tab_type;
+                                            tabs.spawn((
+                                                ArtsTabButton { tab_type },
                                                 Button,
                                                 Node {
-                                                    width: Val::Percent(100.0),
-                                                    flex_direction: FlexDirection::Column,
-                                                    padding: UiRect::all(Val::Px(15.0)),
+                                                    width: Val::Px(100.0),
+                                                    height: Val::Px(40.0),
+                                                    justify_content: JustifyContent::Center,
+                                                    align_items: AlignItems::Center,
                                                     border: UiRect::all(Val::Px(2.0)),
                                                     ..default()
                                                 },
                                                 BackgroundColor(Color::from(LinearRgba {
-                                                    red: 0.25,
-                                                    green: 0.25,
-                                                    blue: 0.35,
+                                                    red: if is_selected { 0.4 } else { 0.25 },
+                                                    green: if is_selected { 0.4 } else { 0.25 },
+                                                    blue: if is_selected { 0.5 } else { 0.35 },
                                                     alpha: 1.0,
                                                 })),
-                                                BorderColor::all(Color::WHITE),
+                                                BorderColor::all(if is_selected {
+                                                    Color::srgb(1.0, 0.9, 0.6)
+                                                } else {
+                                                    Color::WHITE
+                                                }),
                                             ))
                                             .with_children(|btn| {
-                                                // 技術名
                                                 btn.spawn((
-                                                    Text::new(&art_data.name),
+                                                    Text::new(label),
                                                     TextFont {
                                                         font: font.clone(),
-                                                        font_size: 20.0,
+                                                        font_size: 18.0,
                                                         ..default()
                                                     },
-                                                    TextColor(Color::srgb(1.0, 0.9, 0.6)),
+                                                    TextColor(if is_selected {
+                                                        Color::srgb(1.0, 0.9, 0.6)
+                                                    } else {
+                                                        Color::WHITE
+                                                    }),
                                                 ));
-
-                                                // コスト
-                                                btn.spawn((
-                                                    Text::new(format!(
-                                                        "SP: {} / スタミナ: {}",
-                                                        art_data.art.sp_cost,
-                                                        art_data.art.stamina_cost
-                                                    )),
-                                                    TextFont {
-                                                        font: font.clone(),
-                                                        font_size: 16.0,
-                                                        ..default()
-                                                    },
-                                                    TextColor(Color::srgb(0.7, 0.7, 0.7)),
-                                                ));
-
-                                                // 必要能力
-                                                let req = &art_data.art.requirement;
-                                                let mut req_parts = Vec::new();
-                                                if req.strength > 0 {
-                                                    req_parts.push(format!("筋力{}", req.strength));
-                                                }
-                                                if req.dexterity > 0 {
-                                                    req_parts
-                                                        .push(format!("技量{}", req.dexterity));
-                                                }
-                                                if req.intelligence > 0 {
-                                                    req_parts
-                                                        .push(format!("知力{}", req.intelligence));
-                                                }
-                                                if req.faith > 0 {
-                                                    req_parts.push(format!("信仰{}", req.faith));
-                                                }
-                                                if req.arcane > 0 {
-                                                    req_parts.push(format!("神秘{}", req.arcane));
-                                                }
-                                                if req.agility > 0 {
-                                                    req_parts.push(format!("敏捷{}", req.agility));
-                                                }
-
-                                                if !req_parts.is_empty() {
-                                                    btn.spawn((
-                                                        Text::new(format!(
-                                                            "必要: {}",
-                                                            req_parts.join(", ")
-                                                        )),
-                                                        TextFont {
-                                                            font: font.clone(),
-                                                            font_size: 14.0,
-                                                            ..default()
-                                                        },
-                                                        TextColor(Color::srgb(0.6, 0.8, 1.0)),
-                                                    ));
-                                                }
                                             });
+                                        }
+                                    });
+
+                                // 技術リスト（スクロール可能）
+                                dialog
+                                    .spawn((
+                                        ArtsListContainer,
+                                        Node {
+                                            width: Val::Percent(100.0),
+                                            flex_grow: 1.0,
+                                            flex_direction: FlexDirection::Column,
+                                            row_gap: Val::Px(10.0),
+                                            overflow: Overflow::clip_y(),
+                                            ..default()
+                                        },
+                                    ))
+                                    .with_children(|list| {
+                                        // 選択中のタブに合致するアーツのみを表示
+                                        let target_art_type = match prep_state.selected_art_tab {
+                                            ArtTypeTab::Basic => ArtType::Basic,
+                                            ArtTypeTab::Skill => ArtType::Skill,
+                                            ArtTypeTab::Sorcery => ArtType::Sorcery,
+                                        };
+
+                                        for art_data in arts_db
+                                            .arts
+                                            .iter()
+                                            .filter(|a| a.art.art_type == target_art_type)
+                                        {
+                                            spawn_art_list_item(list, art_data, &font);
                                         }
                                     });
                             });
@@ -4307,6 +4468,393 @@ fn close_arts_selection_dialog_system(
             }
         }
     }
+}
+
+/// 技術タブボタンのクリック処理
+fn arts_tab_button_system(
+    mut interaction_query: Query<
+        (
+            &Interaction,
+            &ArtsTabButton,
+            &mut BackgroundColor,
+            &mut BorderColor,
+        ),
+        (Changed<Interaction>, With<Button>),
+    >,
+    mut commands: Commands,
+    dialog_query: Query<Entity, With<ArtsSelectionDialog>>,
+    mut prep_state: ResMut<PreparationState>,
+    arts_db: Res<ArtsDatabase>,
+    asset_server: Res<AssetServer>,
+) {
+    for (interaction, tab_button, mut color, mut border) in &mut interaction_query {
+        let is_selected = prep_state.selected_art_tab == tab_button.tab_type;
+
+        match *interaction {
+            Interaction::Pressed => {
+                // タブ切り替え
+                if prep_state.selected_art_tab != tab_button.tab_type {
+                    prep_state.selected_art_tab = tab_button.tab_type;
+
+                    // ダイアログを閉じて再生成
+                    for entity in dialog_query.iter() {
+                        commands.entity(entity).despawn();
+                    }
+
+                    // ダイアログを再生成
+                    spawn_arts_selection_dialog(
+                        &mut commands,
+                        &asset_server,
+                        &prep_state,
+                        &arts_db,
+                    );
+                }
+            }
+            Interaction::Hovered => {
+                if !is_selected {
+                    *color = BackgroundColor(Color::from(LinearRgba {
+                        red: 0.35,
+                        green: 0.35,
+                        blue: 0.45,
+                        alpha: 1.0,
+                    }));
+                }
+            }
+            Interaction::None => {
+                *color = BackgroundColor(Color::from(LinearRgba {
+                    red: if is_selected { 0.4 } else { 0.25 },
+                    green: if is_selected { 0.4 } else { 0.25 },
+                    blue: if is_selected { 0.5 } else { 0.35 },
+                    alpha: 1.0,
+                }));
+                *border = BorderColor::all(if is_selected {
+                    Color::srgb(1.0, 0.9, 0.6)
+                } else {
+                    Color::WHITE
+                });
+            }
+        }
+    }
+}
+
+/// 技術リストのアイテムをスポーンするヘルパー関数
+fn spawn_art_list_item(list: &mut ChildSpawnerCommands, art_data: &ArtsData, font: &Handle<Font>) {
+    list.spawn((
+        ArtsListButton {
+            arts_id: art_data.id,
+        },
+        Button,
+        Node {
+            width: Val::Percent(100.0),
+            flex_direction: FlexDirection::Column,
+            padding: UiRect::all(Val::Px(15.0)),
+            border: UiRect::all(Val::Px(2.0)),
+            ..default()
+        },
+        BackgroundColor(Color::from(LinearRgba {
+            red: 0.25,
+            green: 0.25,
+            blue: 0.35,
+            alpha: 1.0,
+        })),
+        BorderColor::all(Color::WHITE),
+    ))
+    .with_children(|btn| {
+        // 技術名
+        btn.spawn((
+            Text::new(&art_data.name),
+            TextFont {
+                font: font.clone(),
+                font_size: 20.0,
+                ..default()
+            },
+            TextColor(Color::srgb(1.0, 0.9, 0.6)),
+        ));
+
+        // コスト
+        btn.spawn((
+            Text::new(format!(
+                "SP: {} / スタミナ: {}",
+                art_data.art.sp_cost, art_data.art.stamina_cost
+            )),
+            TextFont {
+                font: font.clone(),
+                font_size: 16.0,
+                ..default()
+            },
+            TextColor(Color::srgb(0.7, 0.7, 0.7)),
+        ));
+
+        // 必要能力
+        let req = &art_data.art.requirement;
+        let mut req_parts = Vec::new();
+        if req.strength > 0 {
+            req_parts.push(format!("筋力{}", req.strength));
+        }
+        if req.dexterity > 0 {
+            req_parts.push(format!("技量{}", req.dexterity));
+        }
+        if req.intelligence > 0 {
+            req_parts.push(format!("知力{}", req.intelligence));
+        }
+        if req.faith > 0 {
+            req_parts.push(format!("信仰{}", req.faith));
+        }
+        if req.arcane > 0 {
+            req_parts.push(format!("神秘{}", req.arcane));
+        }
+        if req.agility > 0 {
+            req_parts.push(format!("敏捷{}", req.agility));
+        }
+
+        if !req_parts.is_empty() {
+            btn.spawn((
+                Text::new(format!("必要: {}", req_parts.join(", "))),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.6, 0.8, 1.0)),
+            ));
+        }
+    });
+}
+
+/// 技術選択ダイアログをスポーンするヘルパー関数
+fn spawn_arts_selection_dialog(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    prep_state: &ResMut<PreparationState>,
+    arts_db: &Res<ArtsDatabase>,
+) {
+    let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
+
+    commands
+        .spawn((
+            ArtsSelectionDialog,
+            Node {
+                position_type: PositionType::Absolute,
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            BackgroundColor(Color::from(LinearRgba {
+                red: 0.0,
+                green: 0.0,
+                blue: 0.0,
+                alpha: 0.7,
+            })),
+            ZIndex(100),
+        ))
+        .with_children(|overlay| {
+            overlay
+                .spawn((
+                    Node {
+                        width: Val::Px(700.0),
+                        height: Val::Px(600.0),
+                        flex_direction: FlexDirection::Column,
+                        padding: UiRect::all(Val::Px(20.0)),
+                        row_gap: Val::Px(15.0),
+                        border: UiRect::all(Val::Px(3.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::from(LinearRgba {
+                        red: 0.15,
+                        green: 0.15,
+                        blue: 0.2,
+                        alpha: 1.0,
+                    })),
+                    BorderColor::all(Color::WHITE),
+                ))
+                .with_children(|dialog| {
+                    // ヘッダー
+                    dialog
+                        .spawn(Node {
+                            width: Val::Percent(100.0),
+                            justify_content: JustifyContent::SpaceBetween,
+                            align_items: AlignItems::Center,
+                            margin: UiRect::bottom(Val::Px(10.0)),
+                            ..default()
+                        })
+                        .with_children(|header| {
+                            header.spawn((
+                                Text::new("技術を選択"),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 28.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                            ));
+
+                            header
+                                .spawn(Node {
+                                    flex_direction: FlexDirection::Row,
+                                    column_gap: Val::Px(10.0),
+                                    ..default()
+                                })
+                                .with_children(|buttons| {
+                                    // 削除ボタン
+                                    buttons
+                                        .spawn((
+                                            RemoveArtsButton,
+                                            Button,
+                                            Node {
+                                                width: Val::Px(80.0),
+                                                height: Val::Px(40.0),
+                                                justify_content: JustifyContent::Center,
+                                                align_items: AlignItems::Center,
+                                                border: UiRect::all(Val::Px(2.0)),
+                                                ..default()
+                                            },
+                                            BackgroundColor(Color::from(LinearRgba {
+                                                red: 0.6,
+                                                green: 0.3,
+                                                blue: 0.3,
+                                                alpha: 1.0,
+                                            })),
+                                            BorderColor::all(Color::WHITE),
+                                        ))
+                                        .with_children(|btn| {
+                                            btn.spawn((
+                                                Text::new("削除"),
+                                                TextFont {
+                                                    font: font.clone(),
+                                                    font_size: 16.0,
+                                                    ..default()
+                                                },
+                                                TextColor(Color::WHITE),
+                                            ));
+                                        });
+
+                                    // 閉じるボタン
+                                    buttons
+                                        .spawn((
+                                            CloseArtsDialogButton,
+                                            Button,
+                                            Node {
+                                                width: Val::Px(80.0),
+                                                height: Val::Px(40.0),
+                                                justify_content: JustifyContent::Center,
+                                                align_items: AlignItems::Center,
+                                                border: UiRect::all(Val::Px(2.0)),
+                                                ..default()
+                                            },
+                                            BackgroundColor(Color::from(LinearRgba {
+                                                red: 0.4,
+                                                green: 0.4,
+                                                blue: 0.5,
+                                                alpha: 1.0,
+                                            })),
+                                            BorderColor::all(Color::WHITE),
+                                        ))
+                                        .with_children(|btn| {
+                                            btn.spawn((
+                                                Text::new("閉じる"),
+                                                TextFont {
+                                                    font: font.clone(),
+                                                    font_size: 16.0,
+                                                    ..default()
+                                                },
+                                                TextColor(Color::WHITE),
+                                            ));
+                                        });
+                                });
+                        });
+
+                    // タブ（基本・技・術）
+                    dialog
+                        .spawn(Node {
+                            width: Val::Percent(100.0),
+                            flex_direction: FlexDirection::Row,
+                            column_gap: Val::Px(5.0),
+                            margin: UiRect::bottom(Val::Px(10.0)),
+                            ..default()
+                        })
+                        .with_children(|tabs| {
+                            let tab_items = [
+                                (ArtTypeTab::Basic, "基本"),
+                                (ArtTypeTab::Skill, "技"),
+                                (ArtTypeTab::Sorcery, "術"),
+                            ];
+
+                            for (tab_type, label) in tab_items {
+                                let is_selected = prep_state.selected_art_tab == tab_type;
+                                tabs.spawn((
+                                    ArtsTabButton { tab_type },
+                                    Button,
+                                    Node {
+                                        width: Val::Px(100.0),
+                                        height: Val::Px(40.0),
+                                        justify_content: JustifyContent::Center,
+                                        align_items: AlignItems::Center,
+                                        border: UiRect::all(Val::Px(2.0)),
+                                        ..default()
+                                    },
+                                    BackgroundColor(Color::from(LinearRgba {
+                                        red: if is_selected { 0.4 } else { 0.25 },
+                                        green: if is_selected { 0.4 } else { 0.25 },
+                                        blue: if is_selected { 0.5 } else { 0.35 },
+                                        alpha: 1.0,
+                                    })),
+                                    BorderColor::all(if is_selected {
+                                        Color::srgb(1.0, 0.9, 0.6)
+                                    } else {
+                                        Color::WHITE
+                                    }),
+                                ))
+                                .with_children(|btn| {
+                                    btn.spawn((
+                                        Text::new(label),
+                                        TextFont {
+                                            font: font.clone(),
+                                            font_size: 18.0,
+                                            ..default()
+                                        },
+                                        TextColor(if is_selected {
+                                            Color::srgb(1.0, 0.9, 0.6)
+                                        } else {
+                                            Color::WHITE
+                                        }),
+                                    ));
+                                });
+                            }
+                        });
+
+                    // 技術リスト（スクロール可能）
+                    dialog
+                        .spawn((
+                            ArtsListContainer,
+                            Node {
+                                width: Val::Percent(100.0),
+                                flex_grow: 1.0,
+                                flex_direction: FlexDirection::Column,
+                                row_gap: Val::Px(10.0),
+                                overflow: Overflow::clip_y(),
+                                ..default()
+                            },
+                        ))
+                        .with_children(|list| {
+                            // 選択中のタブに合致するアーツのみを表示
+                            let target_art_type = match prep_state.selected_art_tab {
+                                ArtTypeTab::Basic => ArtType::Basic,
+                                ArtTypeTab::Skill => ArtType::Skill,
+                                ArtTypeTab::Sorcery => ArtType::Sorcery,
+                            };
+
+                            for art_data in arts_db
+                                .arts
+                                .iter()
+                                .filter(|a| a.art.art_type == target_art_type)
+                            {
+                                spawn_art_list_item(list, art_data, &font);
+                            }
+                        });
+                });
+        });
 }
 
 /// エラーメッセージを更新するシステム
