@@ -10,6 +10,8 @@ use bevy::prelude::*;
 use rand::Rng;
 use std::sync::Arc;
 
+use super::{ArtsDatabase, EquipmentDatabase, PreparationState};
+
 // ================== Plugin ==================
 pub struct InBattlePlugin;
 
@@ -985,6 +987,426 @@ fn create_mock_battle() -> Battle {
     }
 }
 
+/// 準備画面の設定から装備武器とアーツを作成する
+fn create_equipped_weapons_from_preparation(
+    prep_state: &PreparationState,
+    equipment_db: &EquipmentDatabase,
+    arts_db: &ArtsDatabase,
+) -> (Vec<Arc<Art>>, PlayerEquippedWeapons, Vec<BattleWeapon>) {
+    // 選択された技術を取得
+    let selected_arts: Vec<Arc<Art>> = prep_state
+        .selected_arts
+        .iter()
+        .filter_map(|&id| arts_db.arts.iter().find(|a| a.id == id))
+        .map(|a| Arc::new(a.art.clone()))
+        .collect();
+
+    // 基本アーツ（待機など）を取得
+    let basic_arts: Vec<Arc<Art>> = selected_arts
+        .iter()
+        .filter(|art| art.art_type == ArtType::Basic || art.art_type == ArtType::Sorcery)
+        .cloned()
+        .collect();
+
+    // 装備武器を取得
+    let mut weapons: Vec<EquippedWeaponWithArts> = Vec::new();
+    let mut battle_weapons: Vec<BattleWeapon> = Vec::new();
+
+    // 武器1
+    if let Some(weapon1_id) = prep_state.equipped_weapon1 {
+        if let Some(weapon_data) = equipment_db.weapons.iter().find(|w| w.id == weapon1_id) {
+            let battle_weapon_id = BattleWeaponId(0);
+            let skills: Vec<Arc<Art>> = selected_arts
+                .iter()
+                .filter(|art| {
+                    art.art_type == ArtType::Skill
+                        && (art.usable_weapon == ArtUsableWeapon::All
+                            || matches!(
+                                &art.usable_weapon,
+                                ArtUsableWeapon::Specific(kinds) if kinds.contains(&weapon_data.weapon.kind)
+                            ))
+                })
+                .cloned()
+                .collect();
+            let sorceries: Vec<Arc<Art>> = selected_arts
+                .iter()
+                .filter(|art| art.art_type == ArtType::Sorcery)
+                .cloned()
+                .collect();
+            battle_weapons.push(BattleWeapon {
+                id: BattleWeaponId(0),
+                weapon: weapon_data.weapon.clone(),
+            });
+            weapons.push(EquippedWeaponWithArts {
+                weapon: weapon_data.weapon.clone(),
+                skills,
+                sorceries,
+                battle_weapon_id,
+            });
+        }
+    }
+
+    // 武器2
+    if let Some(weapon2_id) = prep_state.equipped_weapon2 {
+        if let Some(weapon_data) = equipment_db.weapons.iter().find(|w| w.id == weapon2_id) {
+            let battle_weapon_id = BattleWeaponId(1);
+            let skills: Vec<Arc<Art>> = selected_arts
+                .iter()
+                .filter(|art| {
+                    art.art_type == ArtType::Skill
+                        && (art.usable_weapon == ArtUsableWeapon::All
+                            || matches!(
+                                &art.usable_weapon,
+                                ArtUsableWeapon::Specific(kinds) if kinds.contains(&weapon_data.weapon.kind)
+                            ))
+                })
+                .cloned()
+                .collect();
+            let sorceries: Vec<Arc<Art>> = selected_arts
+                .iter()
+                .filter(|art| art.art_type == ArtType::Sorcery)
+                .cloned()
+                .collect();
+            battle_weapons.push(BattleWeapon {
+                id: BattleWeaponId(1),
+                weapon: weapon_data.weapon.clone(),
+            });
+            weapons.push(EquippedWeaponWithArts {
+                weapon: weapon_data.weapon.clone(),
+                skills,
+                sorceries,
+                battle_weapon_id,
+            });
+        }
+    }
+
+    (
+        basic_arts,
+        PlayerEquippedWeapons { weapons },
+        battle_weapons,
+    )
+}
+
+/// 準備画面の設定からBattleデータを作成する
+fn create_battle_from_preparation(
+    prep_state: &PreparationState,
+    equipment_db: &EquipmentDatabase,
+    battle_weapons: Vec<BattleWeapon>,
+) -> Battle {
+    // 共通防御力（0除算防止のため全て1）
+    let def = DefensePower {
+        slash: 1,
+        strike: 1,
+        thrust: 1,
+        impact: 1,
+        magic: 1,
+        fire: 1,
+        lightning: 1,
+        chaos: 1,
+    };
+
+    // 準備画面のステータス設定を使用
+    let ability = Ability {
+        vitality: prep_state.temp_vitality,
+        spirit: prep_state.temp_spirit,
+        endurance: prep_state.temp_endurance,
+        agility: prep_state.temp_agility,
+        strength: prep_state.temp_strength,
+        dexterity: prep_state.temp_dexterity,
+        intelligence: prep_state.temp_intelligence,
+        faith: prep_state.temp_faith,
+        arcane: prep_state.temp_arcane,
+    };
+
+    // HP, SP, スタミナを能力値に基づいて計算
+    let base_hp: u32 = 100;
+    let hp: u32 = base_hp + (ability.vitality * 10);
+    let base_sp: u32 = 30;
+    let sp: u32 = base_sp + (ability.spirit * 2);
+    let base_stamina: u32 = 100;
+    let stamina: u32 = base_stamina + (ability.endurance * 5);
+    let stamina_recovery: u32 = 10 + (ability.endurance / 5);
+
+    // 装備を設定
+    let mut equipment = Equipment {
+        weapon1: None,
+        weapon2: None,
+        armor1: None,
+        armor2: None,
+        armor3: None,
+        armor4: None,
+        armor5: None,
+        armor6: None,
+        armor7: None,
+        armor8: None,
+    };
+
+    // 武器を設定
+    if let Some(weapon1_id) = prep_state.equipped_weapon1 {
+        if let Some(weapon_data) = equipment_db.weapons.iter().find(|w| w.id == weapon1_id) {
+            equipment.weapon1 = Some(weapon_data.weapon.clone());
+        }
+    }
+    if let Some(weapon2_id) = prep_state.equipped_weapon2 {
+        if let Some(weapon_data) = equipment_db.weapons.iter().find(|w| w.id == weapon2_id) {
+            equipment.weapon2 = Some(weapon_data.weapon.clone());
+        }
+    }
+
+    // 防具を設定
+    if let Some(armor1_id) = prep_state.equipped_armor1 {
+        if let Some(armor_data) = equipment_db.armors.iter().find(|a| a.id == armor1_id) {
+            equipment.armor1 = Some(armor_data.armor.clone());
+        }
+    }
+    if let Some(armor2_id) = prep_state.equipped_armor2 {
+        if let Some(armor_data) = equipment_db.armors.iter().find(|a| a.id == armor2_id) {
+            equipment.armor2 = Some(armor_data.armor.clone());
+        }
+    }
+    if let Some(armor3_id) = prep_state.equipped_armor3 {
+        if let Some(armor_data) = equipment_db.armors.iter().find(|a| a.id == armor3_id) {
+            equipment.armor3 = Some(armor_data.armor.clone());
+        }
+    }
+    if let Some(armor4_id) = prep_state.equipped_armor4 {
+        if let Some(armor_data) = equipment_db.armors.iter().find(|a| a.id == armor4_id) {
+            equipment.armor4 = Some(armor_data.armor.clone());
+        }
+    }
+    if let Some(armor5_id) = prep_state.equipped_armor5 {
+        if let Some(armor_data) = equipment_db.armors.iter().find(|a| a.id == armor5_id) {
+            equipment.armor5 = Some(armor_data.armor.clone());
+        }
+    }
+    if let Some(armor6_id) = prep_state.equipped_armor6 {
+        if let Some(armor_data) = equipment_db.armors.iter().find(|a| a.id == armor6_id) {
+            equipment.armor6 = Some(armor_data.armor.clone());
+        }
+    }
+    if let Some(armor7_id) = prep_state.equipped_armor7 {
+        if let Some(armor_data) = equipment_db.armors.iter().find(|a| a.id == armor7_id) {
+            equipment.armor7 = Some(armor_data.armor.clone());
+        }
+    }
+    if let Some(armor8_id) = prep_state.equipped_armor8 {
+        if let Some(armor_data) = equipment_db.armors.iter().find(|a| a.id == armor8_id) {
+            equipment.armor8 = Some(armor_data.armor.clone());
+        }
+    }
+
+    // 防具から防御力を計算
+    let mut total_defense = DefensePower {
+        slash: 5,
+        strike: 5,
+        thrust: 5,
+        impact: 5,
+        magic: 5,
+        fire: 5,
+        lightning: 5,
+        chaos: 5,
+    };
+    let armor_list = [
+        &equipment.armor1,
+        &equipment.armor2,
+        &equipment.armor3,
+        &equipment.armor4,
+        &equipment.armor5,
+        &equipment.armor6,
+        &equipment.armor7,
+        &equipment.armor8,
+    ];
+    for armor_opt in armor_list.iter() {
+        if let Some(armor) = armor_opt {
+            total_defense.slash += armor.defense.slash;
+            total_defense.strike += armor.defense.strike;
+            total_defense.thrust += armor.defense.thrust;
+            total_defense.impact += armor.defense.impact;
+            total_defense.magic += armor.defense.magic;
+            total_defense.fire += armor.defense.fire;
+            total_defense.lightning += armor.defense.lightning;
+            total_defense.chaos += armor.defense.chaos;
+        }
+    }
+
+    // 敵原本（仮）
+    let enemy_original = Arc::new(Enemy {
+        ability: Ability {
+            vitality: 10,
+            spirit: 10,
+            endurance: 10,
+            agility: 10,
+            strength: 10,
+            dexterity: 10,
+            intelligence: 10,
+            faith: 10,
+            arcane: 10,
+        },
+        stats: EnemyStats {
+            hp: 1500,
+            sp: 30,
+            break_max: 100,
+            break_recovery: 10,
+            break_turn: 4,
+        },
+        equipment: Equipment {
+            weapon1: None,
+            weapon2: None,
+            armor1: None,
+            armor2: None,
+            armor3: None,
+            armor4: None,
+            armor5: None,
+            armor6: None,
+            armor7: None,
+            armor8: None,
+        },
+    });
+
+    Battle {
+        player: BattleCharacter {
+            character_id: 1,
+            raw_ability: ability.clone(),
+            raw_base_defense_power: total_defense.clone(),
+            raw_equipment: equipment.clone(),
+            character_type: BattleCharacterType::Player,
+            hp: BattleCharacterHP {
+                max_hp: hp,
+                current_hp: hp,
+                is_dead: false,
+            },
+            sp: BattleCharacterSP {
+                max_sp: sp,
+                current_sp: sp,
+            },
+            stamina: BattleCharacterStamina {
+                max_stamina: stamina,
+                current_stamina: stamina,
+                stamina_recovery,
+            },
+            weapons: battle_weapons,
+            status_conditions: vec![],
+            status_ailment: BattleStatusAilment {
+                poison: BattleStatusAilmentStatus::new_poison(),
+                sleep: BattleStatusAilmentStatus::new_sleep(),
+                chill: BattleStatusAilmentStatus::new_chill(),
+                bleed: BattleStatusAilmentStatus::new_bleed(),
+                burn: BattleStatusAilmentStatus::new_burn(),
+                paralysis: BattleStatusAilmentStatus::new_paralysis(),
+                fear: BattleStatusAilmentStatus::new_fear(),
+                rage: BattleStatusAilmentStatus::new_rage(),
+                breaking: BattleStatusAilmentStatus::new_breaking(),
+            },
+            karma: Some(BattleKarma {
+                draw_pile: vec![
+                    KarmaCard {
+                        name: "猛攻の刻印".to_string(),
+                        cost: 2,
+                        max_turn: 3,
+                        effects: vec![KarmaEffect::AttackDamageModifier(
+                            EffectAttackDamageModifier { modifier: 1.3 },
+                        )],
+                    },
+                    KarmaCard {
+                        name: "鉄壁の守護".to_string(),
+                        cost: 3,
+                        max_turn: 2,
+                        effects: vec![KarmaEffect::ReceiveDamageModifier(
+                            EffectReceiveDamageModifier { modifier: 0.7 },
+                        )],
+                    },
+                    KarmaCard {
+                        name: "力の祝福".to_string(),
+                        cost: 1,
+                        max_turn: 5,
+                        effects: vec![KarmaEffect::AbilityIncrease(EffectAbilityIncrease {
+                            ability_type: AbilityType::Strength,
+                            amount: 10,
+                        })],
+                    },
+                ],
+                discard_pile: vec![],
+                field_cards: vec![],
+            }),
+            trance: Some(BattleTrance {
+                max_trance: 1000,
+                heart: Heart {
+                    name: "烈火の心臓".to_string(),
+                    level1_effects: vec![HeartEffect::PhysicalDefenseModifier(
+                        EffectPhysicalDefenseModifier { modifier: 1.2 },
+                    )],
+                    level2_effects: vec![HeartEffect::StaminaRecoveryModifier(
+                        EffectStaminaRecoveryModifier { modifier: 1.5 },
+                    )],
+                    level3_effects: vec![HeartEffect::PhysicalAttackModifier(
+                        EffectPhysicalAttackModifier { modifier: 1.2 },
+                    )],
+                    combination: None,
+                },
+                current_trance: 0,
+            }),
+            combination_skill: Some(BattleCombinationSkill {
+                combination_skill: CombinationSkill {
+                    name: "烈火の連撃".to_string(),
+                    effect: HeartCombinationEffect::AttackDamageModifier(
+                        EffectAttackDamageModifier { modifier: 10.0 },
+                    ),
+                    condition: CombinationSkillCondition {
+                        current_requirements: CombinationSkillConditionRequirements {
+                            categories: vec![CombinationConductCategory::Attack],
+                            results: vec![],
+                        },
+                        previous_requirements: Some(CombinationSkillConditionRequirements {
+                            categories: vec![CombinationConductCategory::Attack],
+                            results: vec![CombinationConductResult::Success],
+                        }),
+                        two_steps_before_requirements: None,
+                    },
+                },
+                current_combination_conduct_log: None,
+                combination_logs: vec![],
+            }),
+        },
+        enemies: vec![BattleCharacter {
+            character_id: 2,
+            raw_ability: enemy_original.ability.clone(),
+            raw_base_defense_power: def.clone(),
+            raw_equipment: enemy_original.equipment.clone(),
+            character_type: BattleCharacterType::Enemy,
+            hp: BattleCharacterHP {
+                max_hp: enemy_original.stats.hp,
+                current_hp: enemy_original.stats.hp,
+                is_dead: false,
+            },
+            sp: BattleCharacterSP {
+                max_sp: enemy_original.stats.sp,
+                current_sp: enemy_original.stats.sp,
+            },
+            stamina: BattleCharacterStamina {
+                max_stamina: 0,
+                current_stamina: 0,
+                stamina_recovery: 0,
+            },
+            weapons: vec![],
+            status_conditions: vec![],
+            status_ailment: BattleStatusAilment {
+                poison: BattleStatusAilmentStatus::new_poison(),
+                sleep: BattleStatusAilmentStatus::new_sleep(),
+                chill: BattleStatusAilmentStatus::new_chill(),
+                bleed: BattleStatusAilmentStatus::new_bleed(),
+                burn: BattleStatusAilmentStatus::new_burn(),
+                paralysis: BattleStatusAilmentStatus::new_paralysis(),
+                fear: BattleStatusAilmentStatus::new_fear(),
+                rage: BattleStatusAilmentStatus::new_rage(),
+                breaking: BattleStatusAilmentStatus::new_breaking(),
+            },
+            karma: None,
+            trance: None,
+            combination_skill: None,
+        }],
+    }
+}
+
 // 次ターンに表示される事前決定済み敵行動
 #[derive(Resource)]
 struct EnemyPlannedAction(Option<BattleConduct>);
@@ -1234,7 +1656,13 @@ enum BannerPhase {
 struct BattleResource(Battle);
 
 // 戦闘画面のセットアップ
-fn setup_battle_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup_battle_screen(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    prep_state: Res<PreparationState>,
+    equipment_db: Res<EquipmentDatabase>,
+    arts_db: Res<ArtsDatabase>,
+) {
     commands.insert_resource(BattlePhase::DecideEnemyConduct);
     commands.insert_resource(Turn(1));
     // 初期ログと敵行動決定
@@ -1257,12 +1685,18 @@ fn setup_battle_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(ConsecutiveCommands::default());
     commands.insert_resource(KarmaCardsNeedsRedraw(true)); // 初回描画用フラグ
     // プレイヤー行動定義をリソースとして挿入
-    // 基本アーツと武器データをリソースとして挿入
-    commands.insert_resource(PlayerBasicArts(create_basic_arts()));
-    commands.insert_resource(create_equipped_weapons_with_arts());
+    // 基本アーツと武器データをリソースとして挿入（準備画面の設定を反映）
+    let (basic_arts, equipped_weapons, battle_weapons) =
+        create_equipped_weapons_from_preparation(&prep_state, &equipment_db, &arts_db);
+    commands.insert_resource(PlayerBasicArts(basic_arts));
+    commands.insert_resource(equipped_weapons);
     commands.insert_resource(ActionMenuSelection::default());
-    // Battleモジュールの戦闘データを初期化
-    commands.insert_resource(BattleResource(create_mock_battle()));
+    // Battleモジュールの戦闘データを初期化（準備画面の設定を反映）
+    commands.insert_resource(BattleResource(create_battle_from_preparation(
+        &prep_state,
+        &equipment_db,
+        battle_weapons,
+    )));
 
     let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
 
