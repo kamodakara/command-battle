@@ -2055,6 +2055,16 @@ fn build_equipment_content(
         });
 }
 
+/// アーツの必要能力を満たしているかチェック
+fn check_art_requirement(prep_state: &PreparationState, requirement: &ArtRequirement) -> bool {
+    prep_state.temp_strength >= requirement.strength
+        && prep_state.temp_dexterity >= requirement.dexterity
+        && prep_state.temp_intelligence >= requirement.intelligence
+        && prep_state.temp_faith >= requirement.faith
+        && prep_state.temp_arcane >= requirement.arcane
+        && prep_state.temp_agility >= requirement.agility
+}
+
 /// 技術設定画面のコンテンツを構築
 fn build_arts_content(
     parent: &mut RelatedSpawnerCommands<ChildOf>,
@@ -2152,15 +2162,29 @@ fn build_arts_content(
                             ))
                             .with_children(|slot| {
                                 if let Some(art) = selected_art {
-                                    // 技術名
+                                    // 必要能力を満たしているかチェック
+                                    let meets_requirement =
+                                        check_art_requirement(prep_state, &art.art.requirement);
+
+                                    // 技術名（必要能力が足りない場合は×を表示）
+                                    let name_text = if meets_requirement {
+                                        format!("{}. {}", slot_index + 1, art.name)
+                                    } else {
+                                        format!("{}. {} ×", slot_index + 1, art.name)
+                                    };
+                                    let text_color = if meets_requirement {
+                                        Color::WHITE
+                                    } else {
+                                        Color::srgb(1.0, 0.4, 0.4) // 赤っぽい色で警告
+                                    };
                                     slot.spawn((
-                                        Text::new(format!("{}. {}", slot_index + 1, art.name)),
+                                        Text::new(name_text),
                                         TextFont {
                                             font: font.clone(),
                                             font_size: 18.0,
                                             ..default()
                                         },
-                                        TextColor(Color::WHITE),
+                                        TextColor(text_color),
                                     ));
 
                                     // 技術情報
