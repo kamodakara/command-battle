@@ -4642,7 +4642,39 @@ fn spawn_art_list_item(list: &mut ChildSpawnerCommands, art_data: &ArtsData, fon
                 TextColor(Color::srgb(0.6, 0.8, 1.0)),
             ));
         }
+
+        // 使用可能武器種（Allの場合は表示しない）
+        if let ArtUsableWeapon::Specific(weapon_kinds) = &art_data.art.usable_weapon {
+            let weapon_names: Vec<&str> = weapon_kinds
+                .iter()
+                .map(|kind| weapon_kind_to_string(kind))
+                .collect();
+            btn.spawn((
+                Text::new(format!("武器: {}", weapon_names.join(", "))),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.8, 0.6, 1.0)),
+            ));
+        }
     });
+}
+
+/// 武器種を日本語に変換
+fn weapon_kind_to_string(kind: &WeaponKind) -> &'static str {
+    match kind {
+        WeaponKind::StraightSword => "直剣",
+        WeaponKind::Greatsword => "大剣",
+        WeaponKind::Spear => "槍",
+        WeaponKind::Axe => "斧",
+        WeaponKind::Hammer => "ハンマー",
+        WeaponKind::Bow => "弓",
+        WeaponKind::Crossbow => "クロスボウ",
+        WeaponKind::Staff => "杖",
+        WeaponKind::Shield => "盾",
+    }
 }
 
 /// 技術選択ダイアログをスポーンするヘルパー関数
