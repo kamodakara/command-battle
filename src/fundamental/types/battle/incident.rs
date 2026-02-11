@@ -52,6 +52,7 @@ pub enum BattleCharacterIncidentReason {
     ConductConsumption, // 行動時の消費(SP、スタミナなど)
     ConductEffect,      // 行動の効果を受けた(攻撃を受けた、回復を受けたなど)
     TurnEndRecovery,    // ターン終了時の回復
+    CombinationEffect,  // コンビネーション効果
 }
 
 // 戦闘者発生した具体的な出来事
@@ -71,6 +72,8 @@ pub enum BattleCharacterIncidentConcrete {
     StatusAilmentApplied(BattleIncidentStatusAilmentApplied), // 状態異常付与
     StatusAilmentRemoved(BattleIncidentStatusAilmentRemoved), // 状態異常解除
     Death(BattleIncidentDeath),                   // 死亡
+    TranceIncrease(BattleIncidentTranceIncrease), // トランス値上昇
+    TranceDecrease(BattleIncidentTranceDecrease), // トランス値減少
 }
 
 // HPダメージ
@@ -152,6 +155,18 @@ pub struct BattleIncidentStatusAilmentApplied {
 // 状態異常解除
 pub struct BattleIncidentStatusAilmentRemoved {
     pub status_ailment: StatusAilment,
+}
+// トランス値上昇
+pub struct BattleIncidentTranceIncrease {
+    pub increase: u32,
+    pub before: u32,
+    pub after: u32,
+}
+// トランス値減少
+pub struct BattleIncidentTranceDecrease {
+    pub decrease: u32,
+    pub before: u32,
+    pub after: u32,
 }
 
 // 行動失敗

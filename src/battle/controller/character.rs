@@ -2,7 +2,7 @@ use super::uses::*;
 
 pub trait BattleCharacterController {
     fn initialize_current_conduct_log(&mut self);
-    fn combination(&mut self, base: u32);
+    fn combination(&mut self, base: u32) -> BattleIncidentCharacter;
 }
 
 impl BattleCharacterController for BattleCharacter {
@@ -14,7 +14,11 @@ impl BattleCharacterController for BattleCharacter {
     }
 
     // コンビネーション発動
-    fn combination(&mut self, base: u32) {
+    fn combination(&mut self, base: u32) -> BattleIncidentCharacter {
+        // インシデントの準備
+        let mut incident =
+            BattleCharacterIncident::new(BattleCharacterIncidentReason::CombinationEffect);
+
         let combination_level = if let Some(combination_skill) = &mut self.combination_skill {
             // コンビネーション発動時にログを残す
             combination_skill.mark_current_conduct_as_combination_activated();
@@ -31,9 +35,20 @@ impl BattleCharacterController for BattleCharacter {
         // 上昇量：(消費スタミナ^2*神秘*コンビネーションレベル)/20
         if let Some(trance) = &mut self.trance {
             let increase = 1 + (base * base * ability.arcane * combination_level) / 50;
-            let (_before, _after) = trance.add_trance(increase);
+            let (before, after) = trance.add_trance(increase);
 
-            // TODO: インシデント
+            // インシデント
+            incident.add_concrete(BattleCharacterIncidentConcrete::TranceIncrease(
+                BattleIncidentTranceIncrease {
+                    increase,
+                    before,
+                    after,
+                },
+            ));
         }
+
+        let mut incident_character = BattleIncidentCharacter::new(self.character_id);
+        incident_character.add_incident(incident);
+        incident_character
     }
 }

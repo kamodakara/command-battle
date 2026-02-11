@@ -6,7 +6,7 @@ use crate::fundamental::*;
 
 use super::*;
 
-use bevy::prelude::*;
+use bevy::{log, prelude::*};
 use rand::Rng;
 use std::sync::Arc;
 
@@ -2430,7 +2430,7 @@ fn player_input_system(
                     log.0.push("連続コマンド入力完了！ 実行します".to_string());
 
                     // コマンド実行
-                    execute_consecutive_command(cmd, &mut selected_art, battle, false);
+                    execute_consecutive_command(cmd, &mut selected_art, battle, false, &mut log);
 
                     *phase = BattlePhase::InBattle;
 
@@ -2609,6 +2609,7 @@ fn execute_consecutive_command(
     selected_art: &mut SelectedArt,
     battle: &mut Battle,
     is_combination: bool, // コンビネーション発動
+    log: &mut ResMut<CombatLog>,
 ) {
     // プレイヤーの現行行動ログを初期化
     battle.player.initialize_current_conduct_log();
@@ -2616,9 +2617,22 @@ fn execute_consecutive_command(
     if is_combination {
         // プレイヤーのコンビネーション発動
         let stamina_cost = cmd.art.stamina_cost;
-        battle.player.combination(stamina_cost);
+        let incident_character = battle.player.combination(stamina_cost);
 
-        // TODO: インシデント
+        log.0.push("コンビネーション発動！".to_string());
+        for character_incident in incident_character.incidents.iter() {
+            for incident_concrete in character_incident.concretes.iter() {
+                match incident_concrete {
+                    BattleCharacterIncidentConcrete::TranceIncrease(t) => {
+                        log.0.push(format!(
+                            "トランス値 +{} ({} → {})",
+                            t.increase, t.before, t.after
+                        ));
+                    }
+                    _ => {}
+                }
+            }
+        }
     }
 
     selected_art.art = Some(cmd.art);
@@ -2692,7 +2706,13 @@ fn action_menu_click_system(
                                 log.0.push(format!("連続コマンド実行: {}", cmd.art.name));
 
                                 // コマンド実行
-                                execute_consecutive_command(cmd, &mut selected_art, battle, true);
+                                execute_consecutive_command(
+                                    cmd,
+                                    &mut selected_art,
+                                    battle,
+                                    true,
+                                    &mut log,
+                                );
 
                                 consecutive.commands.remove(0);
 
@@ -2721,6 +2741,7 @@ fn action_menu_click_system(
                                         &mut selected_art,
                                         battle,
                                         false,
+                                        &mut log,
                                     );
 
                                     consecutive.commands.remove(0);
