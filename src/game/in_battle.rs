@@ -103,6 +103,156 @@ struct ConsecutiveBatch {
 #[derive(Resource, Default)]
 struct KarmaCardsNeedsRedraw(bool);
 
+fn player_standard_arts() -> Vec<Arc<Art>> {
+    vec![
+        // 待機
+        Arc::new(Art {
+            name: "待機".to_string(),
+            sp_cost: 0,
+            stamina_cost: 0,
+            perks: vec![],
+            requirement: ArtRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            art_type: ArtType::Basic,
+            usable_weapon: ArtUsableWeapon::All,
+            always_hits: false,
+            priority: 0,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Support(ArtPotencySupport::Recover(
+                    ArtPotencySupportRecover {
+                        potencies: vec![SupportRecoverPotency::Stamina(
+                            SupportRecoverPotencyStamina {
+                                stamina_recover: 60,
+                            },
+                        )],
+                    },
+                )),
+            },
+            rank2: None,
+            rank3: None,
+        }),
+        // 回復
+        Arc::new(Art {
+            name: "回復".to_string(),
+            sp_cost: 0,
+            stamina_cost: 25,
+            perks: vec![],
+            requirement: ArtRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            art_type: ArtType::Basic,
+            usable_weapon: ArtUsableWeapon::All,
+            always_hits: true,
+            priority: 0,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Support(ArtPotencySupport::Recover(
+                    ArtPotencySupportRecover {
+                        potencies: vec![SupportRecoverPotency::Hp(SupportRecoverPotencyHp {
+                            hp_recover: 50,
+                        })],
+                    },
+                )),
+            },
+            rank2: None,
+            rank3: None,
+        }),
+        // 防御
+        Arc::new(Art {
+            name: "防御".to_string(),
+            sp_cost: 0,
+            stamina_cost: 5,
+            perks: vec![ArtPerk::Guard],
+            requirement: ArtRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            art_type: ArtType::Skill,
+            usable_weapon: ArtUsableWeapon::All,
+            always_hits: false,
+            priority: 0,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Support(ArtPotencySupport::StatusCondition(
+                    ArtPotencySupportStatusCondition {
+                        status_conditions: vec![StatusCondition {
+                            potency: StatusConditionPotency::Resistance(
+                                StatusConditionResistance {
+                                    battle_weapon_id: BattleWeaponId(0),
+                                },
+                            ),
+                            duration: StatusConditionDuration::Turn(StatusConditionDurationTurn {
+                                turns: 1,
+                            }),
+                        }],
+                    },
+                )),
+            },
+            rank2: None,
+            rank3: None,
+        }),
+        // 通常攻撃
+        Arc::new(Art {
+            name: "攻撃".to_string(),
+            sp_cost: 0,
+            stamina_cost: 5,
+            perks: vec![ArtPerk::Melee],
+            requirement: ArtRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            art_type: ArtType::Skill,
+            usable_weapon: ArtUsableWeapon::All,
+            always_hits: false,
+            priority: 0,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Attack(ArtPotencyAttack {
+                    attack_power: AttackPower {
+                        slash: 25,
+                        strike: 0,
+                        thrust: 0,
+                        impact: 0,
+                        magic: 0,
+                        fire: 0,
+                        lightning: 0,
+                        chaos: 0,
+                    },
+                    weapon_attack_power_scaling: AttackPowerScaling::default(),
+                    break_power: 10,
+                    weapon_break_power_scaling: 0.0,
+                }),
+            },
+            rank2: None,
+            rank3: None,
+        }),
+    ]
+}
+
 fn player_arts() -> Vec<Arc<Art>> {
     vec![
         // 基本アーツ
@@ -994,12 +1144,14 @@ fn create_equipped_weapons_from_preparation(
     arts_db: &ArtsDatabase,
 ) -> (Vec<Arc<Art>>, PlayerEquippedWeapons, Vec<BattleWeapon>) {
     // 選択された技術を取得
-    let selected_arts: Vec<Arc<Art>> = prep_state
+    let mut selected_arts: Vec<Arc<Art>> = prep_state
         .selected_arts
         .iter()
         .filter_map(|&id| arts_db.arts.iter().find(|a| a.id == id))
         .map(|a| Arc::new(a.art.clone()))
         .collect();
+    // プレイヤー標準アーツを追加
+    selected_arts.extend(player_standard_arts());
 
     // 基本アーツ（待機など）を取得
     let basic_arts: Vec<Arc<Art>> = selected_arts
