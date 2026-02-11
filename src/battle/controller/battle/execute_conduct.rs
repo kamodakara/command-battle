@@ -54,6 +54,11 @@ pub fn execute_conduct(
     };
     let attacker_id = attacker.character_id;
 
+    // 攻撃者インシデントの準備
+    let mut attacker_incident_character = BattleIncidentCharacter::new(attacker_id);
+    let mut attacker_incident =
+        BattleCharacterIncident::new(BattleCharacterIncidentReason::ConductConsumption);
+
     // 状態異常、カルマ等から効果を取得する
     let mut attacker_effects = attacker.current_effects();
 
@@ -154,7 +159,6 @@ pub fn execute_conduct(
         combination_skill.add_current_conduct_categories(categories);
 
         // コンビネーション技判定
-        // TODO: このタイミングの効果発動の場合、能力補正を適応できないのでどうするか要検討
         if combination_skill.can_activate_combination_skill() {
             // コンビネーション技発動
             match &combination_skill.combination_skill.effect {
@@ -175,6 +179,15 @@ pub fn execute_conduct(
                     ));
                 }
             }
+
+            // コンビネーション発動インシデント
+            attacker_incident.add_concrete(
+                BattleCharacterIncidentConcrete::CombinationSkillActivated(
+                    BattleIncidentCombinationSkillActivated {
+                        combination_skill_name: combination_skill.combination_skill.name.clone(),
+                    },
+                ),
+            );
         }
     }
 
@@ -219,11 +232,6 @@ pub fn execute_conduct(
             combination_skill.add_current_conduct_result(CombinationConductResult::Success);
         }
     }
-
-    // 攻撃者インシデントの準備
-    let mut attacker_incident_character = BattleIncidentCharacter::new(attacker_id);
-    let mut attacker_incident =
-        BattleCharacterIncident::new(BattleCharacterIncidentReason::ConductConsumption);
 
     // SP消費
     let sp_cost = attacker_data.conduct.art.sp_cost;

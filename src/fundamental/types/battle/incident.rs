@@ -74,6 +74,7 @@ pub enum BattleCharacterIncidentConcrete {
     Death(BattleIncidentDeath),                   // 死亡
     TranceIncrease(BattleIncidentTranceIncrease), // トランス値上昇
     TranceDecrease(BattleIncidentTranceDecrease), // トランス値減少
+    CombinationSkillActivated(BattleIncidentCombinationSkillActivated), // コンビネーション技発動
 }
 
 // HPダメージ
@@ -167,6 +168,9 @@ pub struct BattleIncidentTranceDecrease {
     pub decrease: u32,
     pub before: u32,
     pub after: u32,
+}
+pub struct BattleIncidentCombinationSkillActivated {
+    pub combination_skill_name: String,
 }
 
 // 行動失敗

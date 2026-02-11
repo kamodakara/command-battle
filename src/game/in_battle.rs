@@ -2508,6 +2508,14 @@ fn player_input_system(
                         for character_incident in s.attacker.incidents.iter() {
                             for incident_concrete in character_incident.concretes.iter() {
                                 match incident_concrete {
+                                    BattleCharacterIncidentConcrete::CombinationSkillActivated(
+                                        c,
+                                    ) => {
+                                        log.0.push(format!(
+                                            "コンビネーション技 {} 発動！",
+                                            c.combination_skill_name
+                                        ));
+                                    }
                                     BattleCharacterIncidentConcrete::DamageSp(d) => log.0.push(
                                         format!("SP -{} ({} → {})", d.damage, d.before, d.after),
                                     ),
