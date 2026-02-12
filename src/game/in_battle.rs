@@ -18,9 +18,14 @@ pub struct InBattlePlugin;
 impl Plugin for InBattlePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Battle), setup_battle_screen)
+            .add_systems(OnExit(GameState::Battle), cleanup_battle_screen)
             .add_systems(
                 Update,
                 player_input_system.run_if(in_state(GameState::Battle)),
+            )
+            .add_systems(
+                Update,
+                back_button_system.run_if(in_state(GameState::Battle)),
             )
             .add_systems(
                 Update,
@@ -1476,6 +1481,14 @@ struct ConsecutiveCommandEntry {
     battle_weapon_id: Option<BattleWeaponId>,
 }
 
+// 戦闘画面全体のマーカー（クリーンアップ用）
+#[derive(Component)]
+struct BattleScreen;
+
+// 戻るボタン
+#[derive(Component)]
+struct BackToPreparationButton;
+
 #[derive(Component)]
 struct UiRoot;
 
@@ -1658,6 +1671,7 @@ fn setup_battle_screen(
     // 画面下のログメッセージ（白枠、最大10行）
     commands
         .spawn((
+            BattleScreen,
             Node {
                 width: Val::Px(750.0),
                 height: Val::Auto,
@@ -1694,6 +1708,7 @@ fn setup_battle_screen(
     let dragon = asset_server.load("images/dragon.png");
     commands
         .spawn((
+            BattleScreen,
             UiEnemy,
             Node {
                 width: percent(100),
@@ -1868,6 +1883,7 @@ fn setup_battle_screen(
     // 右上にプレイヤーステータス枠（HP/スタミナの文字とゲージ）
     commands
         .spawn((
+            BattleScreen,
             UiPlayerStatus,
             Node {
                 width: Val::Px(280.0),
@@ -2156,6 +2172,7 @@ fn setup_battle_screen(
     // 行動選択メニュー（クリック可能なボタン式）
     commands
         .spawn((
+            BattleScreen,
             UiActionMenu,
             Node {
                 width: Val::Px(300.0),
@@ -2204,7 +2221,87 @@ fn setup_battle_screen(
             ));
         });
 
+    // 戻るボタン（右上）
+    commands
+        .spawn((
+            BattleScreen,
+            BackToPreparationButton,
+            Button,
+            Node {
+                width: Val::Px(100.0),
+                height: Val::Px(36.0),
+                position_type: PositionType::Absolute,
+                right: Val::Px(16.0),
+                top: Val::Px(16.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                border: UiRect::all(Val::Px(2.0)),
+                ..default()
+            },
+            BackgroundColor(Color::from(LinearRgba {
+                red: 0.3,
+                green: 0.2,
+                blue: 0.2,
+                alpha: 0.9,
+            })),
+            BorderColor::all(Color::WHITE),
+            ZIndex(20),
+        ))
+        .with_children(|btn| {
+            btn.spawn((
+                Text::new("準備画面に戻る"),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 18.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+            ));
+        });
+
     println!("ゲーム開始: 行動をクリックして選択してください");
+}
+
+// ================== Cleanup ==================
+/// 戦闘画面のクリーンアップ
+fn cleanup_battle_screen(mut commands: Commands, query: Query<Entity, With<BattleScreen>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn();
+    }
+}
+
+// ================== Back Button ==================
+/// 戻るボタンのインタラクション
+fn back_button_system(
+    mut interaction_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<BackToPreparationButton>),
+    >,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    for (interaction, mut color) in &mut interaction_query {
+        match *interaction {
+            Interaction::Pressed => {
+                next_state.set(GameState::Preparation);
+            }
+            Interaction::Hovered => {
+                *color = BackgroundColor(Color::from(LinearRgba {
+                    red: 0.45,
+                    green: 0.3,
+                    blue: 0.3,
+                    alpha: 0.9,
+                }));
+            }
+            Interaction::None => {
+                *color = BackgroundColor(Color::from(LinearRgba {
+                    red: 0.3,
+                    green: 0.2,
+                    blue: 0.2,
+                    alpha: 0.9,
+                }));
+            }
+        }
+    }
 }
 
 // ================== Input & Battle Resolution ==================
