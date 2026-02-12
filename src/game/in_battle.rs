@@ -1513,6 +1513,10 @@ struct UiStaText;
 #[derive(Component)]
 struct UiStaGaugeFill;
 #[derive(Component)]
+struct UiSpText;
+#[derive(Component)]
+struct UiSpGaugeFill;
+#[derive(Component)]
 struct UiTranceText;
 #[derive(Component)]
 struct UiTranceGaugeFill;
@@ -1964,6 +1968,60 @@ fn setup_battle_screen(
                         red: 0.20,
                         green: 0.70,
                         blue: 0.25,
+                        alpha: 1.0,
+                    })),
+                ));
+            });
+
+            // SP表示テキスト
+            col.spawn((
+                UiSpText,
+                Text::new("SP: --- / ---"),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::from(LinearRgba {
+                    red: 0.40,
+                    green: 0.60,
+                    blue: 1.00,
+                    alpha: 1.0,
+                })),
+            ));
+            // SPゲージ（枠）
+            col.spawn((
+                Node {
+                    width: percent(100),
+                    height: Val::Px(12.0),
+                    border: UiRect::all(Val::Px(1.0)),
+                    ..default()
+                },
+                BackgroundColor(Color::from(LinearRgba {
+                    red: 0.15,
+                    green: 0.15,
+                    blue: 0.15,
+                    alpha: 1.0,
+                })),
+                BorderColor::all(Color::from(LinearRgba {
+                    red: 0.40,
+                    green: 0.60,
+                    blue: 1.00,
+                    alpha: 1.0,
+                })),
+            ))
+            .with_children(|g| {
+                g.spawn((
+                    UiSpGaugeFill,
+                    Node {
+                        width: percent(0),
+                        height: percent(100),
+                        ..default()
+                    },
+                    BackgroundColor(Color::from(LinearRgba {
+                        red: 0.30,
+                        green: 0.50,
+                        blue: 0.90,
                         alpha: 1.0,
                     })),
                 ));
@@ -3203,7 +3261,7 @@ fn ui_update_message_system(log: Res<CombatLog>, mut msg_q: Query<&mut Text, Wit
     msg.0 = s;
 }
 
-// 右上プレイヤーステータスの更新（HP/スタミナ/トランス テキスト＆ゲージ）
+// 右上プレイヤーステータスの更新（HP/スタミナ/SP/トランス テキスト＆ゲージ）
 fn ui_update_player_status_system(
     battle_resource: Res<BattleResource>,
     mut hp_text_q: Query<
@@ -3211,6 +3269,7 @@ fn ui_update_player_status_system(
         (
             With<UiHpText>,
             Without<UiStaText>,
+            Without<UiSpText>,
             Without<UiTranceText>,
             Without<UiTranceLevelText>,
             Without<UiTranceEffectText>,
@@ -3221,6 +3280,18 @@ fn ui_update_player_status_system(
         (
             With<UiStaText>,
             Without<UiHpText>,
+            Without<UiSpText>,
+            Without<UiTranceText>,
+            Without<UiTranceLevelText>,
+            Without<UiTranceEffectText>,
+        ),
+    >,
+    mut sp_text_q: Query<
+        &mut Text,
+        (
+            With<UiSpText>,
+            Without<UiHpText>,
+            Without<UiStaText>,
             Without<UiTranceText>,
             Without<UiTranceLevelText>,
             Without<UiTranceEffectText>,
@@ -3232,6 +3303,7 @@ fn ui_update_player_status_system(
             With<UiTranceText>,
             Without<UiHpText>,
             Without<UiStaText>,
+            Without<UiSpText>,
             Without<UiTranceLevelText>,
             Without<UiTranceEffectText>,
         ),
@@ -3242,6 +3314,7 @@ fn ui_update_player_status_system(
             With<UiTranceLevelText>,
             Without<UiHpText>,
             Without<UiStaText>,
+            Without<UiSpText>,
             Without<UiTranceText>,
             Without<UiTranceEffectText>,
         ),
@@ -3252,6 +3325,7 @@ fn ui_update_player_status_system(
             With<UiTranceEffectText>,
             Without<UiHpText>,
             Without<UiStaText>,
+            Without<UiSpText>,
             Without<UiTranceText>,
             Without<UiTranceLevelText>,
         ),
@@ -3259,6 +3333,7 @@ fn ui_update_player_status_system(
     mut gauge_params: ParamSet<(
         Query<&mut Node, With<UiHpGaugeFill>>,
         Query<&mut Node, With<UiStaGaugeFill>>,
+        Query<&mut Node, With<UiSpGaugeFill>>,
         Query<&mut Node, With<UiTranceGaugeFill>>,
     )>,
 ) {
@@ -3267,6 +3342,7 @@ fn ui_update_player_status_system(
     let player = &battle.player;
     let p_hp = player.hp.current_hp;
     let p_sta = player.stamina.current_stamina;
+    let p_sp = player.sp.current_sp;
 
     // コンテナ内の最初のTextを簡潔表示用に更新
     if let Ok(mut hp_text) = hp_text_q.single_mut() {
@@ -3274,6 +3350,9 @@ fn ui_update_player_status_system(
     }
     if let Ok(mut sta_text) = sta_text_q.single_mut() {
         sta_text.0 = format!("スタミナ: {} / {}", p_sta, player.stamina.max_stamina);
+    }
+    if let Ok(mut sp_text) = sp_text_q.single_mut() {
+        sp_text.0 = format!("SP: {} / {}", p_sp, player.sp.max_sp);
     }
 
     // トランス表示更新
@@ -3303,7 +3382,7 @@ fn ui_update_player_status_system(
         }
 
         // トランスゲージ幅更新
-        if let Ok(mut trance_node) = gauge_params.p2().single_mut() {
+        if let Ok(mut trance_node) = gauge_params.p3().single_mut() {
             let ratio = if max_trance > 0 {
                 (current_trance as f32 / max_trance as f32).clamp(0.0, 1.0)
             } else {
@@ -3329,6 +3408,15 @@ fn ui_update_player_status_system(
             0.0
         };
         sta_node.width = percent((ratio * 100.0).round());
+    }
+    // SPゲージ幅更新
+    if let Ok(mut sp_node) = gauge_params.p2().single_mut() {
+        let ratio = if player.sp.max_sp > 0 {
+            (p_sp as f32 / player.sp.max_sp as f32).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        sp_node.width = percent((ratio * 100.0).round());
     }
 }
 
