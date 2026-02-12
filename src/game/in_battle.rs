@@ -1206,7 +1206,7 @@ fn create_battle_from_preparation(
                     KarmaCard {
                         name: "ラッキーパンチ".to_string(),
                         cost: 0,
-                        max_turn: 3,
+                        max_turn: 1,
                         effects: vec![KarmaEffect::AttackDamageModifier(
                             EffectAttackDamageModifier { modifier: 1.3 },
                         )],
@@ -1238,7 +1238,7 @@ fn create_battle_from_preparation(
                     KarmaCard {
                         name: "堅実".to_string(),
                         cost: 0,
-                        max_turn: 2,
+                        max_turn: 3,
                         effects: vec![KarmaEffect::ReceiveDamageModifier(
                             EffectReceiveDamageModifier { modifier: 0.95 },
                         )],
@@ -1246,7 +1246,7 @@ fn create_battle_from_preparation(
                     KarmaCard {
                         name: "堅実".to_string(),
                         cost: 0,
-                        max_turn: 2,
+                        max_turn: 3,
                         effects: vec![KarmaEffect::ReceiveDamageModifier(
                             EffectReceiveDamageModifier { modifier: 0.95 },
                         )],
@@ -1254,7 +1254,7 @@ fn create_battle_from_preparation(
                     KarmaCard {
                         name: "堅実".to_string(),
                         cost: 0,
-                        max_turn: 2,
+                        max_turn: 3,
                         effects: vec![KarmaEffect::ReceiveDamageModifier(
                             EffectReceiveDamageModifier { modifier: 0.95 },
                         )],
@@ -1262,7 +1262,7 @@ fn create_battle_from_preparation(
                     KarmaCard {
                         name: "堅実".to_string(),
                         cost: 0,
-                        max_turn: 2,
+                        max_turn: 3,
                         effects: vec![KarmaEffect::ReceiveDamageModifier(
                             EffectReceiveDamageModifier { modifier: 0.95 },
                         )],
@@ -1270,10 +1270,10 @@ fn create_battle_from_preparation(
                     KarmaCard {
                         name: "快調".to_string(),
                         cost: 0,
-                        max_turn: 1,
+                        max_turn: 2,
                         effects: vec![KarmaEffect::AbilityIncrease(EffectAbilityIncrease {
                             ability_type: AbilityType::Agility,
-                            amount: 2,
+                            amount: 5,
                         })],
                     },
                 ],
