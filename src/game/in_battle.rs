@@ -888,255 +888,6 @@ fn create_enemy_wait() -> Action {
     }
 }
 
-// ================== Battle Module Helpers ==================
-fn create_mock_battle() -> Battle {
-    // 共通防御力（0除算防止のため全て1）
-    let def = DefensePower {
-        slash: 1,
-        strike: 1,
-        thrust: 1,
-        impact: 1,
-        magic: 1,
-        fire: 1,
-        lightning: 1,
-        chaos: 1,
-    };
-
-    // プレイヤー原本（仮）
-    let player_original = Arc::new(Player {
-        ability: Ability {
-            vitality: 10,
-            spirit: 10,
-            endurance: 10,
-            agility: 15,
-            strength: 10,
-            dexterity: 10,
-            intelligence: 10,
-            faith: 10,
-            arcane: 10,
-        },
-        stats: PlayerStats {
-            hp: 100,
-            sp: 30,
-            stamina: 100,
-            stamina_recovery: 10,
-            equip_load: 0,
-        },
-        base_defense_power: DefensePower {
-            slash: 5,
-            strike: 5,
-            thrust: 5,
-            impact: 5,
-            magic: 5,
-            fire: 5,
-            lightning: 5,
-            chaos: 5,
-        },
-        equipment: Equipment {
-            weapon1: None,
-            weapon2: None,
-            armor1: None,
-            armor2: None,
-            armor3: None,
-            armor4: None,
-            armor5: None,
-            armor6: None,
-            armor7: None,
-            armor8: None,
-        },
-        arts: vec![],
-        base_status_ailment_resistance: StatusAilmentResistance {
-            poison: 0,
-            sleep: 0,
-            chill: 0,     // 寒気耐性
-            bleed: 0,     // 出血耐性
-            burn: 0,      // 火傷耐性
-            paralysis: 0, // 麻痺耐性
-            fear: 0,      // 恐怖耐性
-            rage: 0,      // 激昂耐性
-        },
-    });
-
-    // 敵原本（仮）
-    let enemy_original = Arc::new(Enemy {
-        ability: Ability {
-            vitality: 10,
-            spirit: 10,
-            endurance: 10,
-            agility: 10,
-            strength: 10,
-            dexterity: 10,
-            intelligence: 10,
-            faith: 10,
-            arcane: 10,
-        },
-        stats: EnemyStats {
-            hp: 1500,
-            sp: 30,
-            break_max: 100,
-            break_recovery: 10,
-            break_turn: 4,
-        },
-        equipment: Equipment {
-            weapon1: None,
-            weapon2: None,
-            armor1: None,
-            armor2: None,
-            armor3: None,
-            armor4: None,
-            armor5: None,
-            armor6: None,
-            armor7: None,
-            armor8: None,
-        },
-    });
-
-    Battle {
-        player: BattleCharacter {
-            character_id: 1,
-            raw_ability: player_original.ability.clone(),
-            raw_base_defense_power: def.clone(),
-            raw_equipment: player_original.equipment.clone(),
-            character_type: BattleCharacterType::Player,
-            hp: BattleCharacterHP {
-                max_hp: player_original.stats.hp,
-                current_hp: player_original.stats.hp,
-                is_dead: false,
-            },
-            sp: BattleCharacterSP {
-                max_sp: player_original.stats.sp,
-                current_sp: player_original.stats.sp,
-            },
-            stamina: BattleCharacterStamina {
-                max_stamina: player_original.stats.stamina,
-                current_stamina: player_original.stats.stamina,
-                stamina_recovery: player_original.stats.stamina_recovery,
-            },
-            weapons: create_battle_weapons(),
-            status_conditions: vec![],
-            status_ailment: BattleStatusAilment {
-                poison: BattleStatusAilmentStatus::new_poison(),
-                sleep: BattleStatusAilmentStatus::new_sleep(),
-                chill: BattleStatusAilmentStatus::new_chill(),
-                bleed: BattleStatusAilmentStatus::new_bleed(),
-                burn: BattleStatusAilmentStatus::new_burn(),
-                paralysis: BattleStatusAilmentStatus::new_paralysis(),
-                fear: BattleStatusAilmentStatus::new_fear(),
-                rage: BattleStatusAilmentStatus::new_rage(),
-                breaking: BattleStatusAilmentStatus::new_breaking(),
-            },
-            karma: Some(BattleKarma {
-                draw_pile: vec![
-                    KarmaCard {
-                        name: "猛攻の刻印".to_string(),
-                        cost: 2,
-                        max_turn: 3,
-                        effects: vec![KarmaEffect::AttackDamageModifier(
-                            EffectAttackDamageModifier { modifier: 1.3 },
-                        )],
-                    },
-                    KarmaCard {
-                        name: "鉄壁の守護".to_string(),
-                        cost: 3,
-                        max_turn: 2,
-                        effects: vec![KarmaEffect::ReceiveDamageModifier(
-                            EffectReceiveDamageModifier { modifier: 0.7 },
-                        )],
-                    },
-                    KarmaCard {
-                        name: "力の祝福".to_string(),
-                        cost: 1,
-                        max_turn: 5,
-                        effects: vec![KarmaEffect::AbilityIncrease(EffectAbilityIncrease {
-                            ability_type: AbilityType::Strength,
-                            amount: 10,
-                        })],
-                    },
-                ],
-                discard_pile: vec![],
-                field_cards: vec![],
-            }),
-            trance: Some(BattleTrance {
-                max_trance: 1000,
-                heart: Heart {
-                    name: "烈火の心臓".to_string(),
-                    level1_effects: vec![HeartEffect::PhysicalDefenseModifier(
-                        EffectPhysicalDefenseModifier { modifier: 1.2 },
-                    )],
-                    level2_effects: vec![HeartEffect::StaminaRecoveryModifier(
-                        EffectStaminaRecoveryModifier { modifier: 1.5 },
-                    )],
-                    level3_effects: vec![HeartEffect::PhysicalAttackModifier(
-                        EffectPhysicalAttackModifier { modifier: 1.2 },
-                    )],
-                    combination: None,
-                },
-                current_trance: 0,
-            }),
-            combination_skill: Some(BattleCombinationSkill {
-                combination_skill: CombinationSkill {
-                    name: "烈火の連撃".to_string(),
-                    effect: HeartCombinationEffect::AttackDamageModifier(
-                        EffectAttackDamageModifier { modifier: 10.0 },
-                    ),
-                    condition: CombinationSkillCondition {
-                        current_requirements: CombinationSkillConditionRequirements {
-                            categories: vec![CombinationConductCategory::Attack],
-                            results: vec![],
-                        },
-                        previous_requirements: Some(CombinationSkillConditionRequirements {
-                            categories: vec![CombinationConductCategory::Attack],
-                            results: vec![CombinationConductResult::Success],
-                        }),
-                        two_steps_before_requirements: None,
-                    },
-                },
-                current_combination_conduct_log: None,
-                combination_logs: vec![],
-            }),
-        },
-        enemies: vec![BattleCharacter {
-            character_id: 2,
-            raw_ability: enemy_original.ability.clone(),
-            raw_base_defense_power: def.clone(),
-            raw_equipment: enemy_original.equipment.clone(),
-            character_type: BattleCharacterType::Enemy,
-            hp: BattleCharacterHP {
-                max_hp: enemy_original.stats.hp,
-                current_hp: enemy_original.stats.hp,
-                is_dead: false,
-            },
-            sp: BattleCharacterSP {
-                max_sp: enemy_original.stats.sp,
-                current_sp: enemy_original.stats.sp,
-            },
-            stamina: BattleCharacterStamina {
-                max_stamina: 0,
-                current_stamina: 0,
-                stamina_recovery: 0,
-            },
-            weapons: vec![
-                // TODO: 装備武器情報生成
-            ],
-            status_conditions: vec![],
-            status_ailment: BattleStatusAilment {
-                poison: BattleStatusAilmentStatus::new_poison(),
-                sleep: BattleStatusAilmentStatus::new_sleep(),
-                chill: BattleStatusAilmentStatus::new_chill(),
-                bleed: BattleStatusAilmentStatus::new_bleed(),
-                burn: BattleStatusAilmentStatus::new_burn(),
-                paralysis: BattleStatusAilmentStatus::new_paralysis(),
-                fear: BattleStatusAilmentStatus::new_fear(),
-                rage: BattleStatusAilmentStatus::new_rage(),
-                breaking: BattleStatusAilmentStatus::new_breaking(),
-            },
-            karma: None,
-            trance: None,
-            combination_skill: None,
-        }],
-    }
-}
-
 /// 準備画面の設定から装備武器とアーツを作成する
 fn create_equipped_weapons_from_preparation(
     prep_state: &PreparationState,
@@ -1450,34 +1201,82 @@ fn create_battle_from_preparation(
                 breaking: BattleStatusAilmentStatus::new_breaking(),
             },
             karma: Some(BattleKarma {
-                draw_pile: vec![
+                draw_pile: vec![],
+                discard_pile: vec![
                     KarmaCard {
-                        name: "猛攻の刻印".to_string(),
-                        cost: 2,
+                        name: "ラッキーパンチ".to_string(),
+                        cost: 0,
                         max_turn: 3,
                         effects: vec![KarmaEffect::AttackDamageModifier(
                             EffectAttackDamageModifier { modifier: 1.3 },
                         )],
                     },
                     KarmaCard {
-                        name: "鉄壁の守護".to_string(),
-                        cost: 3,
-                        max_turn: 2,
-                        effects: vec![KarmaEffect::ReceiveDamageModifier(
-                            EffectReceiveDamageModifier { modifier: 0.7 },
+                        name: "好調".to_string(),
+                        cost: 0,
+                        max_turn: 3,
+                        effects: vec![KarmaEffect::AttackDamageModifier(
+                            EffectAttackDamageModifier { modifier: 1.05 },
                         )],
                     },
                     KarmaCard {
-                        name: "力の祝福".to_string(),
-                        cost: 1,
-                        max_turn: 5,
+                        name: "好調".to_string(),
+                        cost: 0,
+                        max_turn: 3,
+                        effects: vec![KarmaEffect::AttackDamageModifier(
+                            EffectAttackDamageModifier { modifier: 1.05 },
+                        )],
+                    },
+                    KarmaCard {
+                        name: "好調".to_string(),
+                        cost: 0,
+                        max_turn: 3,
+                        effects: vec![KarmaEffect::AttackDamageModifier(
+                            EffectAttackDamageModifier { modifier: 1.05 },
+                        )],
+                    },
+                    KarmaCard {
+                        name: "堅実".to_string(),
+                        cost: 0,
+                        max_turn: 2,
+                        effects: vec![KarmaEffect::ReceiveDamageModifier(
+                            EffectReceiveDamageModifier { modifier: 0.95 },
+                        )],
+                    },
+                    KarmaCard {
+                        name: "堅実".to_string(),
+                        cost: 0,
+                        max_turn: 2,
+                        effects: vec![KarmaEffect::ReceiveDamageModifier(
+                            EffectReceiveDamageModifier { modifier: 0.95 },
+                        )],
+                    },
+                    KarmaCard {
+                        name: "堅実".to_string(),
+                        cost: 0,
+                        max_turn: 2,
+                        effects: vec![KarmaEffect::ReceiveDamageModifier(
+                            EffectReceiveDamageModifier { modifier: 0.95 },
+                        )],
+                    },
+                    KarmaCard {
+                        name: "堅実".to_string(),
+                        cost: 0,
+                        max_turn: 2,
+                        effects: vec![KarmaEffect::ReceiveDamageModifier(
+                            EffectReceiveDamageModifier { modifier: 0.95 },
+                        )],
+                    },
+                    KarmaCard {
+                        name: "快調".to_string(),
+                        cost: 0,
+                        max_turn: 1,
                         effects: vec![KarmaEffect::AbilityIncrease(EffectAbilityIncrease {
-                            ability_type: AbilityType::Strength,
-                            amount: 10,
+                            ability_type: AbilityType::Agility,
+                            amount: 2,
                         })],
                     },
                 ],
-                discard_pile: vec![],
                 field_cards: vec![],
             }),
             trance: Some(BattleTrance {
