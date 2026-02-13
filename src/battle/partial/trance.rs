@@ -38,17 +38,20 @@ impl BattleTrancePartialTrait for BattleTrance {
     // 現在有効なハート効果を取得する
     fn current_heart_effects(&self) -> Vec<HeartEffect> {
         let level = self.trance_level();
-        if level == 3 {
-            // レベル3
-            self.heart.level3_effects.clone()
-        } else if level == 2 {
-            // レベル2
-            self.heart.level2_effects.clone()
-        } else if level == 1 {
+        let mut effects: Vec<HeartEffect> = Vec::new();
+        if level >= 1 {
             // レベル1
-            self.heart.level1_effects.clone()
-        } else {
-            vec![]
+            effects.extend(self.heart.level1_effects.clone());
         }
+        if level >= 2 {
+            // レベル2
+            effects.extend(self.heart.level2_effects.clone());
+        }
+        if level >= 3 {
+            // レベル3
+            effects.extend(self.heart.level3_effects.clone());
+        }
+
+        effects
     }
 }

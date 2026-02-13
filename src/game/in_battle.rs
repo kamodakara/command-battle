@@ -1287,12 +1287,12 @@ fn create_battle_from_preparation(
             trance: Some(BattleTrance {
                 max_trance: 1000,
                 heart: Heart {
-                    name: "烈火の心臓".to_string(),
+                    name: "重騎士のハート".to_string(),
                     level1_effects: vec![HeartEffect::PhysicalDefenseModifier(
                         EffectPhysicalDefenseModifier { modifier: 1.2 },
                     )],
                     level2_effects: vec![HeartEffect::StaminaRecoveryModifier(
-                        EffectStaminaRecoveryModifier { modifier: 1.5 },
+                        EffectStaminaRecoveryModifier { modifier: 1.2 },
                     )],
                     level3_effects: vec![HeartEffect::PhysicalAttackModifier(
                         EffectPhysicalAttackModifier { modifier: 1.2 },
@@ -1303,9 +1303,9 @@ fn create_battle_from_preparation(
             }),
             combination_skill: Some(BattleCombinationSkill {
                 combination_skill: CombinationSkill {
-                    name: "烈火の連撃".to_string(),
+                    name: "連撃".to_string(),
                     effect: HeartCombinationEffect::AttackDamageModifier(
-                        EffectAttackDamageModifier { modifier: 10.0 },
+                        EffectAttackDamageModifier { modifier: 3.0 },
                     ),
                     condition: CombinationSkillCondition {
                         current_requirements: CombinationSkillConditionRequirements {
