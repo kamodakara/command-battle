@@ -18,7 +18,7 @@ impl Ability {
     // プレイヤーステータスを算出する
     pub fn player_stats(&self) -> PlayerStats {
         PlayerStats {
-            hp: 50 + self.vitality * 2,
+            hp: 50 + self.vitality * 10,
             sp: 10 + (self.spirit as f32 * 1.5) as u32,
             stamina: 50 + (self.endurance as f32 * 1.5) as u32,
             stamina_recovery: 5

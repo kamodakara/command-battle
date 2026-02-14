@@ -8,6 +8,7 @@ use super::*;
 
 use bevy::{log, prelude::*};
 use rand::Rng;
+use std::os::linux::raw::stat;
 use std::sync::Arc;
 
 use super::{ArtsDatabase, EquipmentDatabase, PreparationState};
@@ -1035,14 +1036,8 @@ fn create_battle_from_preparation(
         arcane: prep_state.temp_arcane,
     };
 
-    // HP, SP, スタミナを能力値に基づいて計算
-    let base_hp: u32 = 100;
-    let hp: u32 = base_hp + (ability.vitality * 10);
-    let base_sp: u32 = 30;
-    let sp: u32 = base_sp + (ability.spirit * 2);
-    let base_stamina: u32 = 100;
-    let stamina: u32 = base_stamina + (ability.endurance * 5);
-    let stamina_recovery: u32 = 10 + (ability.endurance / 5);
+    // プレイヤーステータスを算出する
+    let stats = ability.player_stats();
 
     // 装備を設定
     let mut equipment = Equipment {
@@ -1188,18 +1183,18 @@ fn create_battle_from_preparation(
             raw_equipment: equipment.clone(),
             character_type: BattleCharacterType::Player,
             hp: BattleCharacterHP {
-                max_hp: hp,
-                current_hp: hp,
+                max_hp: stats.hp,
+                current_hp: stats.hp,
                 is_dead: false,
             },
             sp: BattleCharacterSP {
-                max_sp: sp,
-                current_sp: sp,
+                max_sp: stats.sp,
+                current_sp: stats.sp,
             },
             stamina: BattleCharacterStamina {
-                max_stamina: stamina,
-                current_stamina: stamina,
-                stamina_recovery,
+                max_stamina: stats.stamina,
+                current_stamina: stats.stamina,
+                stamina_recovery: stats.stamina_recovery,
             },
             weapons: battle_weapons,
             status_conditions: vec![],
