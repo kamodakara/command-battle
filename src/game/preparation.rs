@@ -45,6 +45,7 @@ pub enum MenuType {
 
 #[derive(Resource, Default)]
 pub struct PreparationState {
+    pub initialized: bool, // 初期化済みフラグ（戦闘から戻った際にリセットしない）
     pub current_menu: MenuType,
     pub status_points: u32,
     pub temp_vitality: u32,
@@ -151,28 +152,32 @@ pub fn setup_preparation_screen(
 ) {
     let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
 
-    // 初期化
+    // 初期化（初回のみ。戦闘から戻った場合は能力・装備・技術を保持）
+    if !prep_state.initialized {
+        prep_state.initialized = true;
+        prep_state.status_points = 100;
+        prep_state.temp_vitality = 10;
+        prep_state.temp_spirit = 10;
+        prep_state.temp_endurance = 10;
+        prep_state.temp_agility = 10;
+        prep_state.temp_strength = 10;
+        prep_state.temp_dexterity = 10;
+        prep_state.temp_intelligence = 10;
+        prep_state.temp_faith = 10;
+        prep_state.temp_arcane = 10;
+        prep_state.equipped_weapon1 = None;
+        prep_state.equipped_weapon2 = None;
+        prep_state.equipped_armor1 = None;
+        prep_state.equipped_armor2 = None;
+        prep_state.equipped_armor3 = None;
+        prep_state.equipped_armor4 = None;
+        prep_state.equipped_armor5 = None;
+        prep_state.equipped_armor6 = None;
+        prep_state.equipped_armor7 = None;
+        prep_state.equipped_armor8 = None;
+    }
+    // UI状態は毎回リセット
     prep_state.current_menu = MenuType::Status;
-    prep_state.status_points = 100;
-    prep_state.temp_vitality = 10;
-    prep_state.temp_spirit = 10;
-    prep_state.temp_endurance = 10;
-    prep_state.temp_agility = 10;
-    prep_state.temp_strength = 10;
-    prep_state.temp_dexterity = 10;
-    prep_state.temp_intelligence = 10;
-    prep_state.temp_faith = 10;
-    prep_state.temp_arcane = 10;
-    prep_state.equipped_weapon1 = None;
-    prep_state.equipped_weapon2 = None;
-    prep_state.equipped_armor1 = None;
-    prep_state.equipped_armor2 = None;
-    prep_state.equipped_armor3 = None;
-    prep_state.equipped_armor4 = None;
-    prep_state.equipped_armor5 = None;
-    prep_state.equipped_armor6 = None;
-    prep_state.equipped_armor7 = None;
-    prep_state.equipped_armor8 = None;
     prep_state.selecting_slot = None;
 
     commands
