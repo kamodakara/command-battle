@@ -2,6 +2,7 @@ use super::Ability;
 
 use super::*;
 
+#[derive(Debug)]
 pub struct BattleCharacter {
     pub character_id: BattleCharacterId,
 
@@ -27,27 +28,27 @@ pub struct BattleCharacter {
 
 pub type BattleCharacterId = u32;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum BattleCharacterType {
     Player,
     Enemy,
 }
 
 // HP
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BattleCharacterHP {
     pub max_hp: u32,
     pub current_hp: u32,
     pub is_dead: bool, // 死亡状態
 }
 // SP
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BattleCharacterSP {
     pub max_sp: u32,
     pub current_sp: u32,
 }
 // スタミナ
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BattleCharacterStamina {
     pub max_stamina: u32,
     pub current_stamina: u32,

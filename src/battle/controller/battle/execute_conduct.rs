@@ -10,6 +10,7 @@ use super::*;
 // 攻撃者データ
 // 判定や計算に必要なデータをまとめる
 // 行動前のデータ
+#[derive(Debug)]
 struct AttackerData {
     character_id: BattleCharacterId,
     conduct: BattleConduct,

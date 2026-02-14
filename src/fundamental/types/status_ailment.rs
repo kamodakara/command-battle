@@ -20,33 +20,33 @@ pub enum StatusAilment {
 // =================== 状態変化 ================= //
 
 // 状態変化
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct StatusCondition {
     pub potency: StatusConditionPotency,   // 効果量
     pub duration: StatusConditionDuration, // 継続時間
 }
 
 // 状態変化持続時間
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum StatusConditionDuration {
     Permanent,
     Turn(StatusConditionDurationTurn),   // ターン数
     Count(StatusConditionDurationCount), // 回数
     UntilNextAction,                     // 次の行動まで
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct StatusConditionDurationTurn {
     // 効果ターン数
     pub turns: u32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct StatusConditionDurationCount {
     // 効果回数
     pub count: u32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum StatusConditionPotency {
     Resistance(StatusConditionResistance), // 防御
     Evasion,                               // 回避
@@ -57,7 +57,7 @@ pub enum StatusConditionPotency {
 }
 
 // 戦闘中の状態変化 防御状態
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct StatusConditionResistance {
     pub battle_weapon_id: BattleWeaponId, // 防御に使用する武器ID
 }

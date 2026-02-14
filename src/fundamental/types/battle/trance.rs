@@ -1,5 +1,6 @@
 use super::*;
 
+#[derive(Debug)]
 pub struct BattleTrance {
     pub max_trance: u32, // 最大トランス量
     pub heart: Heart,
@@ -7,6 +8,7 @@ pub struct BattleTrance {
     pub current_trance: u32, // トランス量
 }
 
+#[derive(Debug)]
 pub struct BattleCombinationSkill {
     pub combination_skill: CombinationSkill,
 

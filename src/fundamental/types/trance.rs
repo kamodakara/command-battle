@@ -1,5 +1,6 @@
 use super::*;
 
+#[derive(Debug)]
 pub struct Heart {
     pub name: String,
 
@@ -10,7 +11,7 @@ pub struct Heart {
     pub combination: Option<CombinationSkill>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum HeartEffect {
     PhysicalDefenseModifier(EffectPhysicalDefenseModifier), // 物理防御力補正
     MagicalDefenseModifier(EffectMagicalDefenseModifier),   // 魔法防御力補正
@@ -20,12 +21,13 @@ pub enum HeartEffect {
 }
 
 // コンビネーション技
+#[derive(Debug)]
 pub struct CombinationSkill {
     pub name: String,
     pub effect: HeartCombinationEffect,
     pub condition: CombinationSkillCondition, // 発動条件
 }
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub struct CombinationSkillCondition {
     // 現在の行動の必要条件
     pub current_requirements: CombinationSkillConditionRequirements,
@@ -34,7 +36,7 @@ pub struct CombinationSkillCondition {
     // 二つ前の行動の必要条件
     pub two_steps_before_requirements: Option<CombinationSkillConditionRequirements>,
 }
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub struct CombinationSkillConditionRequirements {
     pub categories: Vec<CombinationConductCategory>,
     pub results: Vec<CombinationConductResult>,
@@ -58,6 +60,7 @@ pub enum CombinationConductResult {
     GuardSuccess, // ガード成功
 }
 
+#[derive(Debug)]
 pub enum HeartCombinationEffect {
     AttackDamageModifier(EffectAttackDamageModifier), // 与ダメージ補正
     AttackBreakDamageModifier(EffectAttackBreakDamageModifier), // 与ブレイクダメージ補正

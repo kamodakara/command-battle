@@ -2663,21 +2663,21 @@ fn create_equipment_database() -> EquipmentDatabase {
             name: "ロングソード".to_string(),
             weapon: create_longsword(),
         },
-        WeaponData {
-            id: 1,
-            name: "グレートソード".to_string(),
-            weapon: create_greatsword(),
-        },
-        WeaponData {
-            id: 2,
-            name: "スピア".to_string(),
-            weapon: create_spear(),
-        },
-        WeaponData {
-            id: 3,
-            name: "バトルアックス".to_string(),
-            weapon: create_axe(),
-        },
+        // WeaponData {
+        //     id: 1,
+        //     name: "グレートソード".to_string(),
+        //     weapon: create_greatsword(),
+        // },
+        // WeaponData {
+        //     id: 2,
+        //     name: "スピア".to_string(),
+        //     weapon: create_spear(),
+        // },
+        // WeaponData {
+        //     id: 3,
+        //     name: "バトルアックス".to_string(),
+        //     weapon: create_axe(),
+        // },
         WeaponData {
             id: 4,
             name: "ラウンドシールド".to_string(),
@@ -2763,7 +2763,7 @@ fn create_arts_database() -> ArtsDatabase {
                     target: ArtTarget::Single,
                     potency: ArtPotency::Attack(ArtPotencyAttack {
                         attack_power: AttackPower {
-                            slash: 150,
+                            slash: 50,
                             strike: 0,
                             thrust: 0,
                             impact: 0,
@@ -2773,8 +2773,8 @@ fn create_arts_database() -> ArtsDatabase {
                             chaos: 0,
                         },
                         weapon_attack_power_scaling: AttackPowerScaling {
-                            slash: 1.2,
-                            strike: 0.0,
+                            slash: 1.5,
+                            strike: 1.5,
                             thrust: 0.0,
                             impact: 0.0,
                             magic: 0.0,
@@ -3085,8 +3085,8 @@ fn create_longsword() -> Weapon {
         attack_power: WeaponAttackPower {
             base: AttackPower {
                 slash: 100,
-                strike: 0,
-                thrust: 50,
+                strike: 50,
+                thrust: 0,
                 impact: 0,
                 magic: 0,
                 fire: 0,
@@ -3236,7 +3236,7 @@ fn create_shield() -> Weapon {
     Weapon {
         name: "盾".to_string(),
         kind: WeaponKind::Shield,
-        weight: 8,
+        weight: 15,
         ability_requirement: WeaponAbilityRequirement {
             strength: 10,
             dexterity: 0,
@@ -3247,10 +3247,10 @@ fn create_shield() -> Weapon {
         },
         attack_power: WeaponAttackPower {
             base: AttackPower {
-                slash: 10,
-                strike: 30,
+                slash: 0,
+                strike: 35,
                 thrust: 0,
-                impact: 0,
+                impact: 35,
                 magic: 0,
                 fire: 0,
                 lightning: 0,
@@ -3265,12 +3265,12 @@ fn create_shield() -> Weapon {
         },
         guard: WeaponGuard {
             cut_rate: GuardCutRate {
-                slash: 0.1,
-                strike: 0.1,
-                thrust: 0.1,
-                impact: 0.3,
-                magic: 0.5,
-                fire: 0.5,
+                slash: 0.4,
+                strike: 0.5,
+                thrust: 0.4,
+                impact: 0.6,
+                magic: 0.6,
+                fire: 0.6,
                 lightning: 0.5,
                 chaos: 0.5,
             },

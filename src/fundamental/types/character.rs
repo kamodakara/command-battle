@@ -27,7 +27,7 @@ pub struct Player {
 }
 
 // プレイヤー能力
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Ability {
     pub vitality: u32,     // 生命力
     pub spirit: u32,       // 精神力

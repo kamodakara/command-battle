@@ -24,7 +24,7 @@ pub use karma::*;
 pub use trance::*;
 
 // 戦闘中の状態異常
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BattleStatusAilment {
     pub poison: BattleStatusAilmentStatus,    // 毒
     pub sleep: BattleStatusAilmentStatus,     // 眠気
@@ -37,7 +37,7 @@ pub struct BattleStatusAilment {
     pub breaking: BattleStatusAilmentStatus,  // ブレイク
 }
 // 戦闘中の状態異常ステータス
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BattleStatusAilmentStatus {
     // 蓄積上限値
     pub max_accumulation: u32,
@@ -73,26 +73,26 @@ pub enum BattleStatusAilmentOngoingEffect {
 }
 
 // 戦闘中の状態変化
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BattleStatusCondition {
     pub potency: StatusConditionPotency,         // 状態変化効果
     pub duration: BattleStatusConditionDuration, // 継続時間
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum BattleStatusConditionDuration {
     Permanent,                                 // 永続
     Turn(BattleStatusConditionDurationTurn),   // ターン数
     Count(BattleStatusConditionDurationCount), // 回数
     UntilNextAction,                           // 次の行動まで
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BattleStatusConditionDurationTurn {
     // 効果ターン数
     pub turns: u32,
     // 経過ターン数
     pub elapsed_turns: u32,
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BattleStatusConditionDurationCount {
     // 効果回数
     pub count: u32,
@@ -100,12 +100,13 @@ pub struct BattleStatusConditionDurationCount {
     pub elapsed_count: u32,
 }
 
+#[derive(Debug)]
 pub struct Battle {
     pub player: BattleCharacter,
     pub enemies: Vec<BattleCharacter>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BattleWeapon {
     pub id: BattleWeaponId, // 武器ID
     pub weapon: Weapon,     // 武器情報
@@ -114,7 +115,7 @@ pub struct BattleWeapon {
 #[derive(Clone, PartialEq, Debug)]
 pub struct BattleWeaponId(pub u32);
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BattleConduct {
     pub actor_character_id: u32,
     pub target: BattleConductTargetType,
@@ -122,7 +123,7 @@ pub struct BattleConduct {
     pub battle_weapon_id: Option<BattleWeaponId>, // 使用武器ID
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum BattleConductTargetType {
     Player,                         // プレイヤー単体
     EnemySingle(BattleCharacterId), // 敵側単体

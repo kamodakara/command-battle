@@ -238,7 +238,7 @@ fn player_standard_arts() -> Vec<Arc<Art>> {
                 target: ArtTarget::Single,
                 potency: ArtPotency::Attack(ArtPotencyAttack {
                     attack_power: AttackPower {
-                        slash: 25,
+                        slash: 0,
                         strike: 0,
                         thrust: 0,
                         impact: 0,
@@ -247,7 +247,16 @@ fn player_standard_arts() -> Vec<Arc<Art>> {
                         lightning: 0,
                         chaos: 0,
                     },
-                    weapon_attack_power_scaling: AttackPowerScaling::default(),
+                    weapon_attack_power_scaling: AttackPowerScaling {
+                        slash: 1.0,
+                        strike: 1.0,
+                        thrust: 1.0,
+                        impact: 1.0,
+                        magic: 1.0,
+                        fire: 1.0,
+                        lightning: 1.0,
+                        chaos: 1.0,
+                    },
                     break_power: 10,
                     weapon_break_power_scaling: 0.0,
                 }),
@@ -1140,15 +1149,15 @@ fn create_battle_from_preparation(
     // 敵原本（仮）
     let enemy_original = Arc::new(Enemy {
         ability: Ability {
-            vitality: 10,
-            spirit: 10,
-            endurance: 10,
-            agility: 10,
-            strength: 10,
-            dexterity: 10,
-            intelligence: 10,
-            faith: 10,
-            arcane: 10,
+            vitality: 50,
+            spirit: 50,
+            endurance: 50,
+            agility: 15,
+            strength: 15,
+            dexterity: 15,
+            intelligence: 15,
+            faith: 15,
+            arcane: 15,
         },
         stats: EnemyStats {
             hp: 1500,

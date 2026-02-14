@@ -13,7 +13,6 @@ pub fn decide_enemy_conduct(battle: &Battle, request: DecideEnemyConductRequest)
     // TODO: 実装
 
     // 仮
-    let target = &battle.player;
     BattleConduct {
         actor_character_id: request.enemy_character_id,
         target: BattleConductTargetType::Player,
@@ -39,7 +38,7 @@ pub fn decide_enemy_conduct(battle: &Battle, request: DecideEnemyConductRequest)
                 target: ArtTarget::Single,
                 potency: ArtPotency::Attack(ArtPotencyAttack {
                     attack_power: AttackPower {
-                        slash: 900,
+                        slash: 500,
                         strike: 0,
                         thrust: 0,
                         impact: 0,

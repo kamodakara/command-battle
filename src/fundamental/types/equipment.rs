@@ -2,7 +2,7 @@ use super::character::AbilityType;
 use super::common::*;
 
 // 装備
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Equipment {
     pub weapon1: Option<Weapon>, // 右手
     pub weapon2: Option<Weapon>, // 左手
@@ -17,7 +17,7 @@ pub struct Equipment {
 }
 
 // 武器
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Weapon {
     pub name: String,                                  // 名前
     pub kind: WeaponKind,                              // 種類
@@ -29,7 +29,7 @@ pub struct Weapon {
     pub guard: WeaponGuard,                            // 防御性能
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum WeaponKind {
     StraightSword, // 直剣
     Greatsword,    // 大剣
@@ -43,7 +43,7 @@ pub enum WeaponKind {
 }
 
 // 武器必要能力
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct WeaponAbilityRequirement {
     pub strength: u32,     // 筋力
     pub dexterity: u32,    // 技量
@@ -54,14 +54,14 @@ pub struct WeaponAbilityRequirement {
 }
 
 // 武器攻撃性能
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct WeaponAttackPower {
     pub base: AttackPower,                                // 基礎攻撃力
     pub ability_scaling: WeaponAttackPowerAbilityScaling, // 能力補正
 }
 
 // 武器攻撃力能力補正
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct WeaponAttackPowerAbilityScaling {
     pub slash: AbilityScaling,     // 斬撃
     pub strike: AbilityScaling,    // 打撃
@@ -74,21 +74,21 @@ pub struct WeaponAttackPowerAbilityScaling {
 }
 
 // 武器術力
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct WeaponSorceryPower {
     pub base: u32,               // 基礎力
     pub scaling: AbilityScaling, // 能力補正
 }
 
 // 武器ブレイク力
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct WeaponBreakPower {
     pub base_power: u32,         // 基礎力
     pub scaling: AbilityScaling, // 能力補正
 }
 
 // 武器防御性能
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct WeaponGuard {
     pub cut_rate: GuardCutRate, // カット率
     pub guard_strength: u32,    // ガード強度
@@ -97,7 +97,7 @@ pub struct WeaponGuard {
 // 武器防御カット率
 // 攻撃力補正値が入る0.0〜1.0の範囲
 // 0.0で100%カット
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct GuardCutRate {
     pub slash: f32,     // 斬撃
     pub strike: f32,    // 打撃
@@ -110,6 +110,7 @@ pub struct GuardCutRate {
 }
 
 // 使用した際の武器性能
+#[derive(Debug)]
 pub struct WeaponPerformance {
     pub attack_power: AttackPower,                 // 攻撃性能
     pub ability_attack_power: AttackPower,         // 攻撃性能、能力補正分
@@ -120,6 +121,7 @@ pub struct WeaponPerformance {
     pub guard_strength: u32,                       // ガード強度
     pub penalty: Option<WeaponPerformancePenalty>, // ペナルティ情報、存在する場合ペナルティがかかっている
 }
+#[derive(Debug)]
 pub struct WeaponPerformancePenalty {
     pub not_enough_abilities: Vec<AbilityType>, // 足りてない能力一覧
     pub penalty_attack_power: AttackPower,      // 攻撃性能、ペナルティ分
@@ -129,7 +131,7 @@ pub struct WeaponPerformancePenalty {
 }
 
 // 防具
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Armor {
     pub kind: ArmorKind,             // 種類
     pub weight: u32,                 // 重量
@@ -139,7 +141,7 @@ pub struct Armor {
 }
 
 // 防具種類
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ArmorKind {
     Helmet,     // 頭装備
     ChestArmor, // 胴装備
@@ -148,7 +150,7 @@ pub enum ArmorKind {
 }
 
 // 防具状態異常耐性値
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ArmorResistance {
     pub immunity: u32,   // 免疫
     pub robustness: u32, // 頑健
@@ -156,7 +158,7 @@ pub struct ArmorResistance {
 }
 
 // 防具装備箇所
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum ArmorSlot {
     Head,  // 頭装備
     Chest, // 胴装備

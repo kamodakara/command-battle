@@ -26,7 +26,7 @@ pub struct AttackPower {
     pub chaos: u32,     // 混濁
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AttackPowerScaling {
     pub slash: f32,     // 斬撃
     pub strike: f32,    // 打撃
@@ -67,7 +67,7 @@ impl AttackPowerScaling {
 }
 
 // 能力補正
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AbilityScaling {
     pub strength: f32,     // 筋力
     pub dexterity: f32,    // 技量
@@ -98,7 +98,7 @@ impl AbilityScaling {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DefensePower {
     pub slash: u32,     // 斬撃
     pub strike: u32,    // 打撃

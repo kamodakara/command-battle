@@ -1,6 +1,7 @@
 use super::character::AbilityType;
 use super::status_ailment::StatusAilment;
 
+#[derive(Debug)]
 pub enum Effect {
     HpPercentageDamage(EffectHpPercentageDamage), // HP最大値の割合ダメージ
     SpPercentageDamage(EffectSpPercentageDamage), // SP最大値の割合ダメージ
