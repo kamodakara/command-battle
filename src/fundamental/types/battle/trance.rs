@@ -10,7 +10,7 @@ pub struct BattleTrance {
 
 #[derive(Debug)]
 pub struct BattleCombinationSkill {
-    pub combination_skill: CombinationSkill,
+    pub combination_skills: Vec<CombinationSkill>,
 
     pub current_combination_conduct_log: Option<BattleCombinationConductLog>,
     pub combination_logs: Vec<BattleCombinationConductLog>,

@@ -160,24 +160,27 @@ pub fn execute_conduct(
         combination_skill.add_current_conduct_categories(categories);
 
         // コンビネーション技判定
-        if combination_skill.can_activate_combination_skill() {
+        let activated_combination_skills = combination_skill.activate_combination_skills();
+        for combination_skill in activated_combination_skills.into_iter() {
             // コンビネーション技発動
-            match &combination_skill.combination_skill.effect {
-                HeartCombinationEffect::AttackDamageModifier(modifier) => {
-                    // 与ダメージ補正効果追加
-                    attacker_effects.push(Effect::AttackDamageModifier(
-                        EffectAttackDamageModifier {
-                            modifier: modifier.modifier,
-                        },
-                    ));
-                }
-                HeartCombinationEffect::AttackBreakDamageModifier(modifier) => {
-                    // 与ブレイクダメージ補正効果追加
-                    attacker_effects.push(Effect::AttackBreakDamageModifier(
-                        EffectAttackBreakDamageModifier {
-                            modifier: modifier.modifier,
-                        },
-                    ));
+            for effect in combination_skill.effects.iter() {
+                match effect {
+                    HeartCombinationEffect::AttackDamageModifier(modifier) => {
+                        // 与ダメージ補正効果処理
+                        attacker_effects.push(Effect::AttackDamageModifier(
+                            EffectAttackDamageModifier {
+                                modifier: modifier.modifier,
+                            },
+                        ));
+                    }
+                    HeartCombinationEffect::AttackBreakDamageModifier(modifier) => {
+                        // 与ブレイクダメージ補正効果処理
+                        attacker_effects.push(Effect::AttackBreakDamageModifier(
+                            EffectAttackBreakDamageModifier {
+                                modifier: modifier.modifier,
+                            },
+                        ));
+                    }
                 }
             }
 
@@ -185,7 +188,7 @@ pub fn execute_conduct(
             attacker_incident.add_concrete(
                 BattleCharacterIncidentConcrete::CombinationSkillActivated(
                     BattleIncidentCombinationSkillActivated {
-                        combination_skill_name: combination_skill.combination_skill.name.clone(),
+                        combination_skill_name: combination_skill.name.clone(),
                     },
                 ),
             );

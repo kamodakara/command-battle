@@ -8,7 +8,6 @@ use super::*;
 
 use bevy::{log, prelude::*};
 use rand::Rng;
-use std::os::linux::raw::stat;
 use std::sync::Arc;
 
 use super::{ArtsDatabase, EquipmentDatabase, PreparationState};
@@ -194,7 +193,7 @@ fn player_standard_arts() -> Vec<Arc<Art>> {
             art_type: ArtType::Skill,
             usable_weapon: ArtUsableWeapon::All,
             always_hits: false,
-            priority: 0,
+            priority: 2,
             rank1: ArtRank {
                 threshold: 0,
                 target: ArtTarget::Single,
@@ -1306,23 +1305,52 @@ fn create_battle_from_preparation(
                 current_trance: 0,
             }),
             combination_skill: Some(BattleCombinationSkill {
-                combination_skill: CombinationSkill {
-                    name: "連撃".to_string(),
-                    effect: HeartCombinationEffect::AttackDamageModifier(
-                        EffectAttackDamageModifier { modifier: 3.0 },
-                    ),
-                    condition: CombinationSkillCondition {
-                        current_requirements: CombinationSkillConditionRequirements {
-                            categories: vec![CombinationConductCategory::Attack],
-                            results: vec![],
+                combination_skills: vec![
+                    CombinationSkill {
+                        name: "連撃".to_string(),
+                        effects: vec![
+                            HeartCombinationEffect::AttackDamageModifier(
+                                EffectAttackDamageModifier { modifier: 1.2 },
+                            ),
+                            HeartCombinationEffect::AttackBreakDamageModifier(
+                                EffectAttackBreakDamageModifier { modifier: 1.2 },
+                            ),
+                        ],
+                        condition: CombinationSkillCondition {
+                            current_requirements: CombinationSkillConditionRequirements {
+                                categories: vec![CombinationConductCategory::Attack],
+                                results: vec![],
+                            },
+                            previous_requirements: Some(CombinationSkillConditionRequirements {
+                                categories: vec![CombinationConductCategory::Attack],
+                                results: vec![CombinationConductResult::Success],
+                            }),
+                            two_steps_before_requirements: None,
                         },
-                        previous_requirements: Some(CombinationSkillConditionRequirements {
-                            categories: vec![CombinationConductCategory::Attack],
-                            results: vec![CombinationConductResult::Success],
-                        }),
-                        two_steps_before_requirements: None,
                     },
-                },
+                    CombinationSkill {
+                        name: "ガードカウンター".to_string(),
+                        effects: vec![
+                            HeartCombinationEffect::AttackDamageModifier(
+                                EffectAttackDamageModifier { modifier: 1.5 },
+                            ),
+                            HeartCombinationEffect::AttackBreakDamageModifier(
+                                EffectAttackBreakDamageModifier { modifier: 2.0 },
+                            ),
+                        ],
+                        condition: CombinationSkillCondition {
+                            current_requirements: CombinationSkillConditionRequirements {
+                                categories: vec![CombinationConductCategory::Attack],
+                                results: vec![],
+                            },
+                            previous_requirements: Some(CombinationSkillConditionRequirements {
+                                categories: vec![CombinationConductCategory::Guard],
+                                results: vec![CombinationConductResult::GuardSuccess],
+                            }),
+                            two_steps_before_requirements: None,
+                        },
+                    },
+                ],
                 current_combination_conduct_log: None,
                 combination_logs: vec![],
             }),

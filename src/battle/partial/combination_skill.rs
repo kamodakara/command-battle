@@ -1,3 +1,5 @@
+use std::vec;
+
 use super::*;
 
 impl BattleCombinationSkill {
@@ -51,70 +53,84 @@ impl BattleCombinationSkill {
     }
 
     // コンビネーション技が発動可能か判定する
-    pub fn can_activate_combination_skill(&self) -> bool {
+    // 発動したコンビネーション技を返す
+    pub fn activate_combination_skills(&self) -> Vec<&CombinationSkill> {
         // 発動条件の判定ロジックを実装
         if let Some(current_log) = &self.current_combination_conduct_log {
             if !current_log.combination_activated {
                 // コンビネーションが発動していない場合なので発動しない
-                return false;
+                return vec![];
             }
 
-            let condition = &self.combination_skill.condition;
+            // コンビネーション技の発動条件をチェック
+            let combination_skills = self
+                .combination_skills
+                .iter()
+                .filter(|combination_skill| {
+                    let condition = &combination_skill.condition;
 
-            // 現在の行動の条件をチェック
-            for required_category in &condition.current_requirements.categories {
-                if !current_log.categories.contains(required_category) {
-                    return false;
-                }
-            }
-            for required_result in &condition.current_requirements.results {
-                if !current_log.results.contains(required_result) {
-                    return false;
-                }
-            }
-
-            // 直前の行動の条件をチェック
-            if let Some(previous_requirements) = &condition.previous_requirements {
-                if let Some(previous_log) = self.combination_logs.last() {
-                    for required_category in &previous_requirements.categories {
-                        if !previous_log.categories.contains(required_category) {
+                    // 現在の行動の条件をチェック
+                    for required_category in &condition.current_requirements.categories {
+                        if !current_log.categories.contains(required_category) {
                             return false;
                         }
                     }
-                    for required_result in &previous_requirements.results {
-                        if !previous_log.results.contains(required_result) {
+                    for required_result in &condition.current_requirements.results {
+                        if !current_log.results.contains(required_result) {
                             return false;
                         }
                     }
-                } else {
-                    return false; // 直前の行動ログが存在しない場合
-                }
-            }
 
-            // 二つ前の行動の条件をチェック
-            if let Some(two_steps_before_requirements) = &condition.two_steps_before_requirements {
-                if self.combination_logs.len() >= 2 {
-                    let two_steps_before_log =
-                        &self.combination_logs[self.combination_logs.len() - 2];
-                    for required_category in &two_steps_before_requirements.categories {
-                        if !two_steps_before_log.categories.contains(required_category) {
+                    // 直前の行動の条件をチェック
+                    if let Some(previous_requirements) = &condition.previous_requirements {
+                        if let Some(previous_log) = self.combination_logs.last() {
+                            for required_category in &previous_requirements.categories {
+                                if !previous_log.categories.contains(required_category) {
+                                    return false;
+                                }
+                            }
+                            for required_result in &previous_requirements.results {
+                                if !previous_log.results.contains(required_result) {
+                                    return false;
+                                }
+                            }
+                        } else {
+                            // 直前の行動ログが存在しない場合
                             return false;
                         }
                     }
-                    for required_result in &two_steps_before_requirements.results {
-                        if !two_steps_before_log.results.contains(required_result) {
-                            return false;
-                        }
-                    }
-                } else {
-                    return false; // 二つ前の行動ログが存在しない場合
-                }
-            }
 
-            // すべての条件を満たしている場合、発動可能
-            return true;
+                    // 二つ前の行動の条件をチェック
+                    if let Some(two_steps_before_requirements) =
+                        &condition.two_steps_before_requirements
+                    {
+                        if self.combination_logs.len() >= 2 {
+                            let two_steps_before_log =
+                                &self.combination_logs[self.combination_logs.len() - 2];
+                            for required_category in &two_steps_before_requirements.categories {
+                                if !two_steps_before_log.categories.contains(required_category) {
+                                    return false;
+                                }
+                            }
+                            for required_result in &two_steps_before_requirements.results {
+                                if !two_steps_before_log.results.contains(required_result) {
+                                    return false;
+                                }
+                            }
+                        } else {
+                            // 二つ前の行動ログが存在しない場合
+                            return false;
+                        }
+                    }
+
+                    // すべての条件を満たしている場合、発動可能
+                    true
+                })
+                .collect();
+
+            return combination_skills;
         }
 
-        false
+        vec![]
     }
 }

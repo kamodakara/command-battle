@@ -24,7 +24,7 @@ pub enum HeartEffect {
 #[derive(Debug)]
 pub struct CombinationSkill {
     pub name: String,
-    pub effect: HeartCombinationEffect,
+    pub effects: Vec<HeartCombinationEffect>,
     pub condition: CombinationSkillCondition, // 発動条件
 }
 #[derive(PartialEq, Debug)]
