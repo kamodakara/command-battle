@@ -119,6 +119,10 @@ pub fn execute_attack_potency(
         }
     });
 
+    // 調整のための補正
+    // TODO: 後で整理する
+    attack_power.multiply(8.0);
+
     // ダメージ
     let mut damage = calc_damage(&attack_power, &target_defense_power);
     // 攻撃側の効果からダメージ補正を反映する

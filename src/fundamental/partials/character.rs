@@ -19,7 +19,7 @@ impl Ability {
     pub fn player_stats(&self) -> PlayerStats {
         PlayerStats {
             hp: 50 + self.vitality * 10,
-            sp: 10 + (self.spirit as f32 * 1.5) as u32,
+            sp: 10 + (self.spirit as f32 * 3.0) as u32,
             stamina: 50 + (self.endurance as f32 * 1.5) as u32,
             stamina_recovery: 5
                 + ((self.endurance as f32 * 0.5) + (self.vitality as f32 * 0.5)) as u32,
@@ -29,7 +29,7 @@ impl Ability {
 }
 
 fn calc_def_from_ability(ability: &Ability, coef: [f64; 9]) -> u32 {
-    ((ability.vitality as f64 * coef[0]
+    (ability.vitality as f64 * coef[0]
         + ability.spirit as f64 * coef[1]
         + ability.endurance as f64 * coef[2]
         + ability.agility as f64 * coef[3]
@@ -37,6 +37,5 @@ fn calc_def_from_ability(ability: &Ability, coef: [f64; 9]) -> u32 {
         + ability.dexterity as f64 * coef[5]
         + ability.intelligence as f64 * coef[6]
         + ability.faith as f64 * coef[7]
-        + ability.arcane as f64 * coef[8])
-        / 10.0) as u32
+        + ability.arcane as f64 * coef[8]) as u32
 }
