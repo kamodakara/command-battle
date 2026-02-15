@@ -3,11 +3,12 @@ use bevy::{ecs::relationship::RelatedSpawnerCommands, prelude::*};
 use super::*;
 use crate::fundamental::{
     Ability, AbilityScaling, AbilityType, Armor, ArmorKind, ArmorResistance, ArmorSlot, Art,
-    ArtPerk, ArtPotency, ArtPotencyAttack, ArtPotencySupport, ArtPotencySupportStatusCondition,
-    ArtRank, ArtRequirement, ArtTarget, ArtType, ArtUsableWeapon, AttackPower, AttackPowerScaling,
-    DefensePower, Equipment, GuardCutRate, Weapon, WeaponAbilityRequirement, WeaponAttackPower,
-    WeaponAttackPowerAbilityScaling, WeaponBreakPower, WeaponGuard, WeaponKind, WeaponPerformance,
-    WeaponSorceryPower,
+    ArtPerk, ArtPotency, ArtPotencyAttack, ArtPotencySupport, ArtPotencySupportRecover,
+    ArtPotencySupportStatusCondition, ArtRank, ArtRequirement, ArtTarget, ArtType, ArtUsableWeapon,
+    AttackPower, AttackPowerScaling, DefensePower, Equipment, GuardCutRate, SupportRecoverPotency,
+    SupportRecoverPotencyHp, SupportRecoverPotencySp, Weapon, WeaponAbilityRequirement,
+    WeaponAttackPower, WeaponAttackPowerAbilityScaling, WeaponBreakPower, WeaponGuard, WeaponKind,
+    WeaponPerformance, WeaponSorceryPower,
 };
 
 // ================== Components ==================
@@ -3071,18 +3072,18 @@ fn create_arts_database() -> ArtsDatabase {
         },
         ArtsData {
             id: 5,
-            name: "混沌の魔法".to_string(),
+            name: "ヒール".to_string(),
             art: Art {
-                name: "混沌の魔法".to_string(),
-                sp_cost: 35,
-                stamina_cost: 15,
+                name: "ヒール".to_string(),
+                sp_cost: 25,
+                stamina_cost: 10,
                 perks: vec![ArtPerk::Ranged, ArtPerk::AtFeet],
                 requirement: ArtRequirement {
                     strength: 0,
                     dexterity: 0,
                     intelligence: 12,
-                    faith: 12,
-                    arcane: 15,
+                    faith: 0,
+                    arcane: 0,
                     agility: 0,
                 },
                 usable_weapon: ArtUsableWeapon::All,
@@ -3091,24 +3092,26 @@ fn create_arts_database() -> ArtsDatabase {
                 priority: 0,
                 rank1: ArtRank {
                     threshold: 0,
-                    target: ArtTarget::All,
-                    potency: ArtPotency::Attack(ArtPotencyAttack {
-                        attack_power: AttackPower {
-                            slash: 0,
-                            strike: 0,
-                            thrust: 0,
-                            impact: 0,
-                            magic: 150,
-                            fire: 150,
-                            lightning: 0,
-                            chaos: 200,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Support(ArtPotencySupport::Recover(
+                        ArtPotencySupportRecover {
+                            potencies: vec![SupportRecoverPotency::Hp(SupportRecoverPotencyHp {
+                                hp_recover: 50,
+                            })],
                         },
-                        weapon_attack_power_scaling: AttackPowerScaling::default(),
-                        break_power: 25,
-                        weapon_break_power_scaling: 0.0,
-                    }),
+                    )),
                 },
-                rank2: None,
+                rank2: Some(ArtRank {
+                    threshold: 25,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Support(ArtPotencySupport::Recover(
+                        ArtPotencySupportRecover {
+                            potencies: vec![SupportRecoverPotency::Hp(SupportRecoverPotencyHp {
+                                hp_recover: 70,
+                            })],
+                        },
+                    )),
+                }),
                 rank3: None,
             },
         },
@@ -3139,6 +3142,41 @@ fn create_arts_database() -> ArtsDatabase {
                     potency: ArtPotency::Support(ArtPotencySupport::StatusCondition(
                         ArtPotencySupportStatusCondition {
                             status_conditions: vec![],
+                        },
+                    )),
+                },
+                rank2: None,
+                rank3: None,
+            },
+        },
+        ArtsData {
+            id: 7,
+            name: "瞑想".to_string(),
+            art: Art {
+                name: "瞑想".to_string(),
+                sp_cost: 0,
+                stamina_cost: 25,
+                perks: vec![],
+                requirement: ArtRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 0,
+                },
+                art_type: ArtType::Basic,
+                usable_weapon: ArtUsableWeapon::All,
+                always_hits: true,
+                priority: 0,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Support(ArtPotencySupport::Recover(
+                        ArtPotencySupportRecover {
+                            potencies: vec![SupportRecoverPotency::Sp(SupportRecoverPotencySp {
+                                sp_recover: 30,
+                            })],
                         },
                     )),
                 },
