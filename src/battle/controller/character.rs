@@ -32,9 +32,10 @@ impl BattleCharacterController for BattleCharacter {
         let ability = self.ability_with_effects(&self.current_effects());
 
         // トランス値上昇
-        // 上昇量：(消費スタミナ^2*神秘*コンビネーションレベル)/20
+        // 上昇量：(消費スタミナ^2*神秘*コンビネーションレベル)/50
         if let Some(trance) = &mut self.trance {
-            let increase = 1 + (base * base * ability.arcane * combination_level) / 50;
+            let v = base / 2 + ability.arcane;
+            let increase = 1 + (v * v * combination_level) / 40;
             let (before, after) = trance.add_trance(increase);
 
             // インシデント
