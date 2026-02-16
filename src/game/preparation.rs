@@ -5,10 +5,12 @@ use crate::fundamental::{
     Ability, AbilityScaling, AbilityType, Armor, ArmorKind, ArmorResistance, ArmorSlot, Art,
     ArtPerk, ArtPotency, ArtPotencyAttack, ArtPotencySupport, ArtPotencySupportRecover,
     ArtPotencySupportStatusCondition, ArtRank, ArtRequirement, ArtTarget, ArtType, ArtUsableWeapon,
-    AttackPower, AttackPowerScaling, DefensePower, Equipment, GuardCutRate, SupportRecoverPotency,
-    SupportRecoverPotencyHp, SupportRecoverPotencySp, Weapon, WeaponAbilityRequirement,
-    WeaponAttackPower, WeaponAttackPowerAbilityScaling, WeaponBreakPower, WeaponGuard, WeaponKind,
-    WeaponPerformance, WeaponSorceryPower,
+    AttackPower, AttackPowerScaling, DefensePower, Equipment, GuardCutRate, StatusCondition,
+    StatusConditionDuration, StatusConditionDurationTurn, StatusConditionPotency,
+    StatusConditionResistance, SupportRecoverPotency, SupportRecoverPotencyHp,
+    SupportRecoverPotencySp, Weapon, WeaponAbilityRequirement, WeaponAttackPower,
+    WeaponAttackPowerAbilityScaling, WeaponBreakPower, WeaponGuard, WeaponKind, WeaponPerformance,
+    WeaponSorceryPower,
 };
 
 // ================== Components ==================
@@ -3141,7 +3143,12 @@ fn create_arts_database() -> ArtsDatabase {
                     target: ArtTarget::Single,
                     potency: ArtPotency::Support(ArtPotencySupport::StatusCondition(
                         ArtPotencySupportStatusCondition {
-                            status_conditions: vec![],
+                            status_conditions: vec![StatusCondition {
+                                potency: StatusConditionPotency::Evasion,
+                                duration: StatusConditionDuration::Turn(
+                                    StatusConditionDurationTurn { turns: 1 },
+                                ),
+                            }],
                         },
                     )),
                 },
@@ -3177,6 +3184,82 @@ fn create_arts_database() -> ArtsDatabase {
                             potencies: vec![SupportRecoverPotency::Sp(SupportRecoverPotencySp {
                                 sp_recover: 30,
                             })],
+                        },
+                    )),
+                },
+                rank2: None,
+                rank3: None,
+            },
+        },
+        ArtsData {
+            id: 8,
+            name: "バックステップ".to_string(),
+            art: Art {
+                name: "バックステップ".to_string(),
+                sp_cost: 0,
+                stamina_cost: 5,
+                perks: vec![],
+                requirement: ArtRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 10,
+                },
+                usable_weapon: ArtUsableWeapon::All,
+                art_type: ArtType::Basic,
+                always_hits: true,
+                priority: 5,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Support(ArtPotencySupport::StatusCondition(
+                        ArtPotencySupportStatusCondition {
+                            status_conditions: vec![StatusCondition {
+                                potency: StatusConditionPotency::Ranged,
+                                duration: StatusConditionDuration::Turn(
+                                    StatusConditionDurationTurn { turns: 1 },
+                                ),
+                            }],
+                        },
+                    )),
+                },
+                rank2: None,
+                rank3: None,
+            },
+        },
+        ArtsData {
+            id: 9,
+            name: "ジャンプ".to_string(),
+            art: Art {
+                name: "ジャンプ".to_string(),
+                sp_cost: 0,
+                stamina_cost: 5,
+                perks: vec![],
+                requirement: ArtRequirement {
+                    strength: 0,
+                    dexterity: 0,
+                    intelligence: 0,
+                    faith: 0,
+                    arcane: 0,
+                    agility: 10,
+                },
+                usable_weapon: ArtUsableWeapon::All,
+                art_type: ArtType::Basic,
+                always_hits: true,
+                priority: 5,
+                rank1: ArtRank {
+                    threshold: 0,
+                    target: ArtTarget::Single,
+                    potency: ArtPotency::Support(ArtPotencySupport::StatusCondition(
+                        ArtPotencySupportStatusCondition {
+                            status_conditions: vec![StatusCondition {
+                                potency: StatusConditionPotency::Floating,
+                                duration: StatusConditionDuration::Turn(
+                                    StatusConditionDurationTurn { turns: 1 },
+                                ),
+                            }],
                         },
                     )),
                 },

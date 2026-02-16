@@ -1206,7 +1206,7 @@ fn create_battle_from_preparation(
                 paralysis: BattleStatusAilmentStatus::new_paralysis(),
                 fear: BattleStatusAilmentStatus::new_fear(),
                 rage: BattleStatusAilmentStatus::new_rage(),
-                breaking: BattleStatusAilmentStatus::new_breaking(),
+                breaking: BattleStatusAilmentStatus::new_breaking(0),
             },
             karma: Some(BattleKarma {
                 draw_pile: vec![],
@@ -1386,7 +1386,7 @@ fn create_battle_from_preparation(
                 paralysis: BattleStatusAilmentStatus::new_paralysis(),
                 fear: BattleStatusAilmentStatus::new_fear(),
                 rage: BattleStatusAilmentStatus::new_rage(),
-                breaking: BattleStatusAilmentStatus::new_breaking(),
+                breaking: BattleStatusAilmentStatus::new_breaking(50),
             },
             karma: None,
             trance: None,

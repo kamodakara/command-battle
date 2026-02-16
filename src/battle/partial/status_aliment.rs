@@ -168,10 +168,10 @@ impl BattleStatusAilment {
 }
 
 impl BattleStatusAilmentStatus {
-    pub fn new(ailment_recovery_rate: f32) -> Self {
+    pub fn new(recovery_amount: u32, ailment_recovery_rate: f32) -> Self {
         BattleStatusAilmentStatus {
             max_accumulation: 1000,
-            recovery_amount: 10,
+            recovery_amount,
             ailment_recovery_rate,
 
             is_ailment: false,
@@ -180,32 +180,32 @@ impl BattleStatusAilmentStatus {
         }
     }
     pub fn new_poison() -> Self {
-        Self::new(1.0 / 5.0) // 状態異常中は1/5回復
+        Self::new(10, 1.0 / 5.0) // 状態異常中は1/5回復
     }
     pub fn new_sleep() -> Self {
-        Self::new(1.0 / 3.0) // 状態異常中は1/3回復
+        Self::new(10, 1.0 / 3.0) // 状態異常中は1/3回復
     }
     pub fn new_chill() -> Self {
-        Self::new(1.0 / 4.0) // 状態異常中は1/4回復
+        Self::new(10, 1.0 / 4.0) // 状態異常中は1/4回復
     }
     pub fn new_bleed() -> Self {
-        Self::new(1.0 / 2.0) // 状態異常中は1/2回復
+        Self::new(10, 1.0 / 2.0) // 状態異常中は1/2回復
     }
     pub fn new_burn() -> Self {
-        Self::new(1.0 / 4.0) // 状態異常中は1/4回復
+        Self::new(10, 1.0 / 4.0) // 状態異常中は1/4回復
     }
     pub fn new_paralysis() -> Self {
-        Self::new(1.0 / 4.0) // 状態異常中は1/4回復
+        Self::new(10, 1.0 / 4.0) // 状態異常中は1/4回復
     }
     pub fn new_fear() -> Self {
-        Self::new(1.0 / 5.0) // 状態異常中は1/5回復
+        Self::new(10, 1.0 / 5.0) // 状態異常中は1/5回復
     }
     pub fn new_rage() -> Self {
-        Self::new(1.0 / 4.0) // 状態異常中は1/4回復
+        Self::new(10, 1.0 / 4.0) // 状態異常中は1/4回復
     }
-    pub fn new_breaking() -> Self {
+    pub fn new_breaking(recovery_amount: u32) -> Self {
         // TODO: ブレイクの回復ターンは敵によって変わるようにする
-        Self::new(1.0 / 4.0) // ブレイクは自然回復しない
+        Self::new(recovery_amount, 1.0 / 4.0) // ブレイクは自然回復しない
     }
 
     // 蓄積付与
