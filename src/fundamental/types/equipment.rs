@@ -16,6 +16,23 @@ pub struct Equipment {
     pub armor8: Option<Armor>,   // 防具
 }
 
+// 装備荷重性能
+pub struct EquipmentLoadPerformance {
+    pub max_equipment_weight: u32,              // 最大装備重量
+    pub total_weight: u32,                      // 装備総重量
+    pub status: EquipmentLoadPerformanceStatus, // 装備荷重性能ステータス
+    // 敏捷性倍率
+    pub agility_multiplier: f32, // 敏捷性倍率、1.0で補正なし、1.0未満で敏捷性が下がる、1.0以上で敏捷性が上がる
+    // スタミナ回復量倍率
+    pub stamina_recovery_multiplier: f32, // スタミナ回復量倍率、1.0で補正なし、1.0未満でスタミナ回復量が下がる、1.0以上でスタミナ回復量が上がる
+}
+pub enum EquipmentLoadPerformanceStatus {
+    Light,      // 軽量
+    Medium,     // 中量
+    Heavy,      // 重量
+    SuperHeavy, // 超重量
+}
+
 // 武器
 #[derive(Clone, Debug)]
 pub struct Weapon {

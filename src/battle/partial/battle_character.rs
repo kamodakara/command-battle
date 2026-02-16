@@ -98,6 +98,30 @@ impl BattleCharacter {
     pub fn current_effects(&self) -> Vec<Effect> {
         let mut effects = vec![];
 
+        // 装備重量
+        if self.character_type == BattleCharacterType::Player {
+            // TODO: 現状、毎回算出する必要はない
+            let equipment_load_performance = self
+                .raw_equipment
+                .load_performance(self.max_equipment_weight);
+
+            // 装備重量による敏捷性補正
+            if equipment_load_performance.agility_multiplier != 1.0 {
+                effects.push(Effect::AbilityModifier(EffectAbilityModifier {
+                    ability_type: AbilityType::Agility,
+                    modifier: equipment_load_performance.agility_multiplier,
+                }));
+            }
+            // 装備重量によるスタミナ回復量補正
+            if equipment_load_performance.stamina_recovery_multiplier != 1.0 {
+                effects.push(Effect::StaminaRecoveryModifier(
+                    EffectStaminaRecoveryModifier {
+                        modifier: equipment_load_performance.stamina_recovery_multiplier,
+                    },
+                ));
+            }
+        }
+
         // 状態異常の継続効果
         let status_ailment_ongoing_effects = self.status_ailment.current_ongoing_effects();
         for ongoing_effect in status_ailment_ongoing_effects.into_iter() {

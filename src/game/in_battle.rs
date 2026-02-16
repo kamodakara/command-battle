@@ -1195,6 +1195,7 @@ fn create_battle_from_preparation(
                 current_stamina: stats.stamina,
                 stamina_recovery: stats.stamina_recovery,
             },
+            max_equipment_weight: stats.max_equipment_weight,
             weapons: battle_weapons,
             status_conditions: vec![],
             status_ailment: BattleStatusAilment {
@@ -1375,6 +1376,7 @@ fn create_battle_from_preparation(
                 current_stamina: 0,
                 stamina_recovery: 0,
             },
+            max_equipment_weight: 0,
             weapons: vec![],
             status_conditions: vec![],
             status_ailment: BattleStatusAilment {

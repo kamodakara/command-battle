@@ -23,7 +23,7 @@ impl Ability {
             stamina: 50 + (self.endurance as f32 * 1.5) as u32,
             stamina_recovery: 5
                 + ((self.endurance as f32 * 0.5) + (self.vitality as f32 * 0.5)) as u32,
-            equip_load: 30 + (self.endurance as f32 * 1.0) as u32,
+            max_equipment_weight: 30 + (self.endurance as f32 * 1.0) as u32,
         }
     }
 }

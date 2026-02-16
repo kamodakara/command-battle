@@ -55,11 +55,11 @@ pub enum AbilityType {
 
 // プレイヤーステータス
 pub struct PlayerStats {
-    pub hp: u32,               // HP
-    pub sp: u32,               // SP
-    pub stamina: u32,          // スタミナ
-    pub stamina_recovery: u32, // スタミナ回復量
-    pub equip_load: u32,       // 装備重量
+    pub hp: u32,                   // HP
+    pub sp: u32,                   // SP
+    pub stamina: u32,              // スタミナ
+    pub stamina_recovery: u32,     // スタミナ回復量
+    pub max_equipment_weight: u32, // 装備重量の最大値
 }
 
 // 状態異常耐性

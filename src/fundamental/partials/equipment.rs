@@ -42,6 +42,68 @@ impl Equipment {
     pub fn is_equippable(&self, armor: &Armor) -> bool {
         is_armor_equippable(armor, self)
     }
+
+    // 装備総重量
+    pub fn total_weight(&self) -> u32 {
+        let mut weight = 0;
+        if let Some(armor) = &self.armor1 {
+            weight += armor.weight;
+        }
+        if let Some(armor) = &self.armor2 {
+            weight += armor.weight;
+        }
+        if let Some(armor) = &self.armor3 {
+            weight += armor.weight;
+        }
+        if let Some(armor) = &self.armor4 {
+            weight += armor.weight;
+        }
+        if let Some(armor) = &self.armor5 {
+            weight += armor.weight;
+        }
+        if let Some(armor) = &self.armor6 {
+            weight += armor.weight;
+        }
+        if let Some(armor) = &self.armor7 {
+            weight += armor.weight;
+        }
+        if let Some(armor) = &self.armor8 {
+            weight += armor.weight;
+        }
+        weight
+    }
+
+    pub fn load_performance(&self, max_equipment_weight: u32) -> EquipmentLoadPerformance {
+        let total_weight = self.total_weight();
+        let status = if total_weight <= max_equipment_weight {
+            EquipmentLoadPerformanceStatus::Light
+        } else if total_weight <= max_equipment_weight * 2 {
+            EquipmentLoadPerformanceStatus::Medium
+        } else if total_weight <= max_equipment_weight * 3 {
+            EquipmentLoadPerformanceStatus::Heavy
+        } else {
+            EquipmentLoadPerformanceStatus::SuperHeavy
+        };
+        let agility_multiplier = match status {
+            EquipmentLoadPerformanceStatus::Light => 1.5,
+            EquipmentLoadPerformanceStatus::Medium => 1.0,
+            EquipmentLoadPerformanceStatus::Heavy => 0.5,
+            EquipmentLoadPerformanceStatus::SuperHeavy => 0.1,
+        };
+        let stamina_recovery_multiplier = match status {
+            EquipmentLoadPerformanceStatus::Light => 1.5,
+            EquipmentLoadPerformanceStatus::Medium => 1.0,
+            EquipmentLoadPerformanceStatus::Heavy => 0.5,
+            EquipmentLoadPerformanceStatus::SuperHeavy => 0.1,
+        };
+        EquipmentLoadPerformance {
+            max_equipment_weight,
+            total_weight,
+            status,
+            agility_multiplier,
+            stamina_recovery_multiplier,
+        }
+    }
 }
 
 impl Weapon {

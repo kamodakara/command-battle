@@ -15,6 +15,7 @@ pub struct BattleCharacter {
     pub hp: BattleCharacterHP,           // HP
     pub sp: BattleCharacterSP,           // SP
     pub stamina: BattleCharacterStamina, // スタミナ (プレイヤーのみ)
+    pub max_equipment_weight: u32,       // 装備重量の最大値 (プレイヤーのみ)
 
     pub weapons: Vec<BattleWeapon>, // 装備武器
 

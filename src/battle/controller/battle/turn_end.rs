@@ -7,6 +7,10 @@ pub fn turn_end(battle: &mut Battle) -> Vec<BattleIncidentCharacter> {
 
     // プレイヤー
     let player = &mut battle.player;
+
+    // 現在の効果を取得
+    let effects = player.current_effects();
+
     // コンビネーションのターン終了処理
     if let Some(combination_skill) = &mut player.combination_skill {
         // コンビネーションのターン終了処理
@@ -23,7 +27,7 @@ pub fn turn_end(battle: &mut Battle) -> Vec<BattleIncidentCharacter> {
     incident_characters.push(update_status_condition(player));
 
     // プレイヤーのスタミナ回復
-    incident_characters.push(recover_stamina(player));
+    incident_characters.push(recover_stamina(player, &effects));
     // カルマのターン終了時処理
     karma(player);
     // TODO: カルマのインシデント追加
@@ -31,6 +35,7 @@ pub fn turn_end(battle: &mut Battle) -> Vec<BattleIncidentCharacter> {
     // 状態異常終了
     incident_characters.push(recover_character_status_ailments(player));
 
+    // ====================
     // 敵キャラクター
     // 生存中の敵キャラクターに対して処理を行う
     let mut enemies = battle.alive_enemies_mut();
@@ -83,9 +88,20 @@ pub fn update_status_condition(character: &mut BattleCharacter) -> BattleInciden
 }
 
 // スタミナ回復
-fn recover_stamina(player: &mut BattleCharacter) -> BattleIncidentCharacter {
+fn recover_stamina(player: &mut BattleCharacter, effects: &Vec<Effect>) -> BattleIncidentCharacter {
     // スタミナ回復
-    let stamina_recovery = player.stamina.stamina_recovery;
+    let mut stamina_recovery = player.stamina.stamina_recovery;
+    // 効果によるスタミナ回復量の補正
+    for effect in effects {
+        match effect {
+            Effect::StaminaRecoveryModifier(e) => {
+                stamina_recovery = (stamina_recovery as f32 * e.modifier) as u32;
+            }
+            _ => {}
+        }
+    }
+
+    // スタミナ回復処理
     let (before_stamina, after_stamina) = player.stamina.recover(stamina_recovery);
 
     let mut incident = BattleCharacterIncident::new(BattleCharacterIncidentReason::TurnEndRecovery);

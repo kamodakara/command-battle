@@ -718,7 +718,7 @@ fn build_status_content(
                     ("SP", player_stats.sp),
                     ("スタミナ", player_stats.stamina),
                     ("スタミナ回復", player_stats.stamina_recovery),
-                    ("装備重量", player_stats.equip_load),
+                    ("装備重量", player_stats.max_equipment_weight),
                 ];
 
                 for (name, value) in player_stats_info {
