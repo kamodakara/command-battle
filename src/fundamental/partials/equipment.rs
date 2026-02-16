@@ -46,6 +46,12 @@ impl Equipment {
     // 装備総重量
     pub fn total_weight(&self) -> u32 {
         let mut weight = 0;
+        if let Some(weapon) = &self.weapon1 {
+            weight += weapon.weight;
+        }
+        if let Some(weapon) = &self.weapon2 {
+            weight += weapon.weight;
+        }
         if let Some(armor) = &self.armor1 {
             weight += armor.weight;
         }
@@ -75,11 +81,11 @@ impl Equipment {
 
     pub fn load_performance(&self, max_equipment_weight: u32) -> EquipmentLoadPerformance {
         let total_weight = self.total_weight();
-        let status = if total_weight <= max_equipment_weight {
+        let status = if total_weight <= max_equipment_weight / 3 {
             EquipmentLoadPerformanceStatus::Light
-        } else if total_weight <= max_equipment_weight * 2 {
+        } else if total_weight <= max_equipment_weight * 2 / 3 {
             EquipmentLoadPerformanceStatus::Medium
-        } else if total_weight <= max_equipment_weight * 3 {
+        } else if total_weight <= max_equipment_weight {
             EquipmentLoadPerformanceStatus::Heavy
         } else {
             EquipmentLoadPerformanceStatus::SuperHeavy

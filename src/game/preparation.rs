@@ -5,12 +5,12 @@ use crate::fundamental::{
     Ability, AbilityScaling, AbilityType, Armor, ArmorKind, ArmorResistance, ArmorSlot, Art,
     ArtPerk, ArtPotency, ArtPotencyAttack, ArtPotencySupport, ArtPotencySupportRecover,
     ArtPotencySupportStatusCondition, ArtRank, ArtRequirement, ArtTarget, ArtType, ArtUsableWeapon,
-    AttackPower, AttackPowerScaling, DefensePower, Equipment, GuardCutRate, StatusCondition,
-    StatusConditionDuration, StatusConditionDurationTurn, StatusConditionPotency,
-    StatusConditionResistance, SupportRecoverPotency, SupportRecoverPotencyHp,
-    SupportRecoverPotencySp, Weapon, WeaponAbilityRequirement, WeaponAttackPower,
-    WeaponAttackPowerAbilityScaling, WeaponBreakPower, WeaponGuard, WeaponKind, WeaponPerformance,
-    WeaponSorceryPower,
+    AttackPower, AttackPowerScaling, DefensePower, Equipment, EquipmentLoadPerformanceStatus,
+    GuardCutRate, StatusCondition, StatusConditionDuration, StatusConditionDurationTurn,
+    StatusConditionPotency, StatusConditionResistance, SupportRecoverPotency,
+    SupportRecoverPotencyHp, SupportRecoverPotencySp, Weapon, WeaponAbilityRequirement,
+    WeaponAttackPower, WeaponAttackPowerAbilityScaling, WeaponBreakPower, WeaponGuard, WeaponKind,
+    WeaponPerformance, WeaponSorceryPower,
 };
 
 // ================== Components ==================
@@ -1690,6 +1690,192 @@ fn build_equipment_content(
                                 });
                             });
                     }
+
+                    // 装備重量・荷重表示
+                    let current_equipment = Equipment {
+                        weapon1: prep_state.equipped_weapon1.and_then(|id| {
+                            equipment_db
+                                .weapons
+                                .iter()
+                                .find(|w| w.id == id)
+                                .map(|w| w.weapon.clone())
+                        }),
+                        weapon2: prep_state.equipped_weapon2.and_then(|id| {
+                            equipment_db
+                                .weapons
+                                .iter()
+                                .find(|w| w.id == id)
+                                .map(|w| w.weapon.clone())
+                        }),
+                        armor1: prep_state.equipped_armor1.and_then(|id| {
+                            equipment_db
+                                .armors
+                                .iter()
+                                .find(|a| a.id == id)
+                                .map(|a| a.armor.clone())
+                        }),
+                        armor2: prep_state.equipped_armor2.and_then(|id| {
+                            equipment_db
+                                .armors
+                                .iter()
+                                .find(|a| a.id == id)
+                                .map(|a| a.armor.clone())
+                        }),
+                        armor3: prep_state.equipped_armor3.and_then(|id| {
+                            equipment_db
+                                .armors
+                                .iter()
+                                .find(|a| a.id == id)
+                                .map(|a| a.armor.clone())
+                        }),
+                        armor4: prep_state.equipped_armor4.and_then(|id| {
+                            equipment_db
+                                .armors
+                                .iter()
+                                .find(|a| a.id == id)
+                                .map(|a| a.armor.clone())
+                        }),
+                        armor5: prep_state.equipped_armor5.and_then(|id| {
+                            equipment_db
+                                .armors
+                                .iter()
+                                .find(|a| a.id == id)
+                                .map(|a| a.armor.clone())
+                        }),
+                        armor6: prep_state.equipped_armor6.and_then(|id| {
+                            equipment_db
+                                .armors
+                                .iter()
+                                .find(|a| a.id == id)
+                                .map(|a| a.armor.clone())
+                        }),
+                        armor7: prep_state.equipped_armor7.and_then(|id| {
+                            equipment_db
+                                .armors
+                                .iter()
+                                .find(|a| a.id == id)
+                                .map(|a| a.armor.clone())
+                        }),
+                        armor8: prep_state.equipped_armor8.and_then(|id| {
+                            equipment_db
+                                .armors
+                                .iter()
+                                .find(|a| a.id == id)
+                                .map(|a| a.armor.clone())
+                        }),
+                    };
+
+                    let player_stats = current_ability.player_stats();
+                    let load_perf =
+                        current_equipment.load_performance(player_stats.max_equipment_weight);
+
+                    let load_status_text = match load_perf.status {
+                        EquipmentLoadPerformanceStatus::Light => "軽量",
+                        EquipmentLoadPerformanceStatus::Medium => "中量",
+                        EquipmentLoadPerformanceStatus::Heavy => "重量",
+                        EquipmentLoadPerformanceStatus::SuperHeavy => "重量過多",
+                    };
+
+                    let load_status_color = match load_perf.status {
+                        EquipmentLoadPerformanceStatus::Light => Color::srgb(0.4, 1.0, 0.4),
+                        EquipmentLoadPerformanceStatus::Medium => Color::srgb(1.0, 1.0, 0.4),
+                        EquipmentLoadPerformanceStatus::Heavy => Color::srgb(1.0, 0.6, 0.2),
+                        EquipmentLoadPerformanceStatus::SuperHeavy => Color::srgb(1.0, 0.2, 0.2),
+                    };
+
+                    // 装備重量セクション
+                    left_col
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Column,
+                            margin: UiRect::top(Val::Px(15.0)),
+                            padding: UiRect::all(Val::Px(10.0)),
+                            border: UiRect::all(Val::Px(1.0)),
+                            width: Val::Px(370.0),
+                            ..default()
+                        })
+                        .insert(BackgroundColor(Color::from(LinearRgba {
+                            red: 0.15,
+                            green: 0.15,
+                            blue: 0.2,
+                            alpha: 1.0,
+                        })))
+                        .insert(BorderColor::all(Color::srgb(0.4, 0.4, 0.5)))
+                        .with_children(|weight_section| {
+                            // タイトル
+                            weight_section.spawn((
+                                Text::new("装備荷重"),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 16.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                                Node {
+                                    margin: UiRect::bottom(Val::Px(8.0)),
+                                    ..default()
+                                },
+                            ));
+
+                            // 装備重量: 現在値 / 最大値
+                            weight_section
+                                .spawn(Node {
+                                    flex_direction: FlexDirection::Row,
+                                    align_items: AlignItems::Center,
+                                    margin: UiRect::bottom(Val::Px(4.0)),
+                                    ..default()
+                                })
+                                .with_children(|row| {
+                                    row.spawn((
+                                        Text::new("装備重量: "),
+                                        TextFont {
+                                            font: font.clone(),
+                                            font_size: 14.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::srgb(0.7, 0.7, 0.7)),
+                                    ));
+                                    row.spawn((
+                                        Text::new(format!(
+                                            "{} / {}",
+                                            load_perf.total_weight, load_perf.max_equipment_weight
+                                        )),
+                                        TextFont {
+                                            font: font.clone(),
+                                            font_size: 14.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::WHITE),
+                                    ));
+                                });
+
+                            // 荷重状態
+                            weight_section
+                                .spawn(Node {
+                                    flex_direction: FlexDirection::Row,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                })
+                                .with_children(|row| {
+                                    row.spawn((
+                                        Text::new("荷重状態: "),
+                                        TextFont {
+                                            font: font.clone(),
+                                            font_size: 14.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::srgb(0.7, 0.7, 0.7)),
+                                    ));
+                                    row.spawn((
+                                        Text::new(load_status_text),
+                                        TextFont {
+                                            font: font.clone(),
+                                            font_size: 14.0,
+                                            ..default()
+                                        },
+                                        TextColor(load_status_color),
+                                    ));
+                                });
+                        });
                 });
 
             // 右側：武器性能と防御力表示
@@ -3132,7 +3318,7 @@ fn create_arts_database() -> ArtsDatabase {
                     intelligence: 0,
                     faith: 0,
                     arcane: 0,
-                    agility: 5,
+                    agility: 10,
                 },
                 usable_weapon: ArtUsableWeapon::All,
                 art_type: ArtType::Basic,
@@ -3583,7 +3769,7 @@ fn create_shield() -> Weapon {
     Weapon {
         name: "盾".to_string(),
         kind: WeaponKind::Shield,
-        weight: 15,
+        weight: 10,
         ability_requirement: WeaponAbilityRequirement {
             strength: 10,
             dexterity: 0,
