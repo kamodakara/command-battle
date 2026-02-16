@@ -186,6 +186,7 @@ impl BattleCharacter {
                     HeartEffect::StaminaRecoveryModifier(e) => {
                         effects.push(Effect::StaminaRecoveryModifier(e))
                     }
+                    HeartEffect::AbilityIncrease(e) => effects.push(Effect::AbilityIncrease(e)),
                 }
             }
         }

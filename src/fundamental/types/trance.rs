@@ -18,6 +18,7 @@ pub enum HeartEffect {
     PhysicalAttackModifier(EffectPhysicalAttackModifier),   // 物理攻撃力補正
     MagicalAttackModifier(EffectMagicalAttackModifier),     // 魔法攻撃力補正
     StaminaRecoveryModifier(EffectStaminaRecoveryModifier), // スタミナ回復量補正
+    AbilityIncrease(EffectAbilityIncrease),                 // 能力上昇
 }
 
 // コンビネーション技

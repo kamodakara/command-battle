@@ -148,7 +148,7 @@ fn player_standard_arts() -> Vec<Arc<Art>> {
         Arc::new(Art {
             name: "回復".to_string(),
             sp_cost: 0,
-            stamina_cost: 25,
+            stamina_cost: 10,
             perks: vec![],
             requirement: ArtRequirement {
                 strength: 0,
@@ -1291,16 +1291,35 @@ fn create_battle_from_preparation(
             trance: Some(BattleTrance {
                 max_trance: 1000,
                 heart: Heart {
-                    name: "重騎士のハート".to_string(),
-                    level1_effects: vec![HeartEffect::PhysicalDefenseModifier(
-                        EffectPhysicalDefenseModifier { modifier: 1.2 },
-                    )],
-                    level2_effects: vec![HeartEffect::StaminaRecoveryModifier(
-                        EffectStaminaRecoveryModifier { modifier: 1.2 },
-                    )],
-                    level3_effects: vec![HeartEffect::PhysicalAttackModifier(
-                        EffectPhysicalAttackModifier { modifier: 1.2 },
-                    )],
+                    name: "聖騎士のハート".to_string(),
+                    level1_effects: vec![
+                        HeartEffect::AbilityIncrease(EffectAbilityIncrease {
+                            ability_type: AbilityType::Strength,
+                            amount: 5,
+                        }),
+                        HeartEffect::AbilityIncrease(EffectAbilityIncrease {
+                            ability_type: AbilityType::Intelligence,
+                            amount: 5,
+                        }),
+                        HeartEffect::AbilityIncrease(EffectAbilityIncrease {
+                            ability_type: AbilityType::Agility,
+                            amount: 5,
+                        }),
+                    ],
+                    level2_effects: vec![HeartEffect::AbilityIncrease(EffectAbilityIncrease {
+                        ability_type: AbilityType::Faith,
+                        amount: 10,
+                    })],
+                    level3_effects: vec![
+                        HeartEffect::AbilityIncrease(EffectAbilityIncrease {
+                            ability_type: AbilityType::Strength,
+                            amount: 10,
+                        }),
+                        HeartEffect::AbilityIncrease(EffectAbilityIncrease {
+                            ability_type: AbilityType::Intelligence,
+                            amount: 10,
+                        }),
+                    ],
                     combination: None,
                 },
                 current_trance: 0,
@@ -3567,6 +3586,20 @@ fn format_heart_effect(effect: &HeartEffect) -> String {
         HeartEffect::StaminaRecoveryModifier(m) => {
             format!("スタミナ回復+{:.0}%", (m.modifier - 1.0) * 100.0)
         }
+        HeartEffect::AbilityIncrease(e) => {
+            let ability_name = match e.ability_type {
+                AbilityType::Strength => "筋力",
+                AbilityType::Dexterity => "技量",
+                AbilityType::Intelligence => "知力",
+                AbilityType::Faith => "信仰",
+                AbilityType::Arcane => "神秘",
+                AbilityType::Agility => "敏捷性",
+                AbilityType::Vitality => "生命力",
+                AbilityType::Spirit => "精神力",
+                AbilityType::Endurance => "持久力",
+            };
+            format!("{}+{}", ability_name, e.amount)
+        }
     }
 }
 
@@ -3591,7 +3624,7 @@ fn format_karma_effect(effect: &KarmaEffect) -> String {
                 AbilityType::Intelligence => "知力",
                 AbilityType::Faith => "信仰",
                 AbilityType::Arcane => "神秘",
-                AbilityType::Agility => "便捷",
+                AbilityType::Agility => "敏捷性",
                 AbilityType::Vitality => "生命力",
                 AbilityType::Spirit => "精神力",
                 AbilityType::Endurance => "持久力",

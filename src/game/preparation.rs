@@ -3485,15 +3485,15 @@ fn create_longsword() -> Weapon {
             },
             ability_scaling: WeaponAttackPowerAbilityScaling {
                 slash: AbilityScaling {
-                    strength: 1.0,
-                    dexterity: 1.0,
+                    strength: 3.0,
+                    dexterity: 3.0,
                     intelligence: 0.0,
                     faith: 0.0,
                     arcane: 0.0,
                     agility: 0.0,
                 },
                 strike: AbilityScaling {
-                    strength: 0.5,
+                    strength: 3.0,
                     dexterity: 0.0,
                     intelligence: 0.0,
                     faith: 0.0,
@@ -3501,7 +3501,7 @@ fn create_longsword() -> Weapon {
                     agility: 0.0,
                 },
                 thrust: AbilityScaling {
-                    strength: 1.5,
+                    strength: 3.0,
                     dexterity: 0.0,
                     intelligence: 0.0,
                     faith: 0.0,
@@ -3519,8 +3519,8 @@ fn create_longsword() -> Weapon {
         break_power: WeaponBreakPower {
             base_power: 20,
             scaling: AbilityScaling {
-                strength: 1.0,
-                dexterity: 1.0,
+                strength: 2.0,
+                dexterity: 2.0,
                 intelligence: 0.0,
                 faith: 0.0,
                 arcane: 0.0,
@@ -3570,7 +3570,7 @@ fn create_wizard_staff() -> Weapon {
             ability_scaling: WeaponAttackPowerAbilityScaling {
                 slash: create_default_ability_scaling(),
                 strike: AbilityScaling {
-                    strength: 2.0,
+                    strength: 3.0,
                     dexterity: 0.0,
                     intelligence: 0.0,
                     faith: 0.0,
@@ -3582,7 +3582,7 @@ fn create_wizard_staff() -> Weapon {
                 magic: AbilityScaling {
                     strength: 0.0,
                     dexterity: 0.0,
-                    intelligence: 3.0,
+                    intelligence: 5.0,
                     faith: 0.0,
                     arcane: 0.0,
                     agility: 0.0,
