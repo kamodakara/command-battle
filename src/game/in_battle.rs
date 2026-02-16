@@ -1217,7 +1217,7 @@ fn create_battle_from_preparation(
                         cost: 0,
                         max_turn: 1,
                         effects: vec![KarmaEffect::AttackDamageModifier(
-                            EffectAttackDamageModifier { modifier: 1.3 },
+                            EffectAttackDamageModifier { modifier: 1.5 },
                         )],
                     },
                     KarmaCard {
@@ -1277,12 +1277,39 @@ fn create_battle_from_preparation(
                         )],
                     },
                     KarmaCard {
-                        name: "快調".to_string(),
+                        name: "追い風".to_string(),
                         cost: 0,
                         max_turn: 2,
                         effects: vec![KarmaEffect::AbilityIncrease(EffectAbilityIncrease {
                             ability_type: AbilityType::Agility,
-                            amount: 5,
+                            amount: 1,
+                        })],
+                    },
+                    KarmaCard {
+                        name: "追い風".to_string(),
+                        cost: 0,
+                        max_turn: 2,
+                        effects: vec![KarmaEffect::AbilityIncrease(EffectAbilityIncrease {
+                            ability_type: AbilityType::Agility,
+                            amount: 1,
+                        })],
+                    },
+                    KarmaCard {
+                        name: "追い風".to_string(),
+                        cost: 0,
+                        max_turn: 2,
+                        effects: vec![KarmaEffect::AbilityIncrease(EffectAbilityIncrease {
+                            ability_type: AbilityType::Agility,
+                            amount: 1,
+                        })],
+                    },
+                    KarmaCard {
+                        name: "追い風".to_string(),
+                        cost: 0,
+                        max_turn: 2,
+                        effects: vec![KarmaEffect::AbilityIncrease(EffectAbilityIncrease {
+                            ability_type: AbilityType::Agility,
+                            amount: 1,
                         })],
                     },
                 ],
