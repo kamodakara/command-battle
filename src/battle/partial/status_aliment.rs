@@ -126,6 +126,8 @@ impl StatusAilment {
 
             //
             StatusAilment::Breaking => vec![
+                // 行動不能
+                BattleStatusAilmentOngoingEffect::UnableToAct,
                 // 被ダメージ3倍
                 BattleStatusAilmentOngoingEffect::ReceiveDamageModifier(
                     EffectReceiveDamageModifier { modifier: 3.0 },
@@ -162,6 +164,9 @@ impl BattleStatusAilment {
         }
         if self.rage.is_ailment {
             ongoing_effects.extend(StatusAilment::Rage.ongoing_effects());
+        }
+        if self.breaking.is_ailment {
+            ongoing_effects.extend(StatusAilment::Breaking.ongoing_effects());
         }
         ongoing_effects
     }

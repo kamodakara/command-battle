@@ -490,13 +490,9 @@ fn determine_action_outcome_failure(
 
     // 行動不能効果チェック
     for effect in attacker_data.effects.iter() {
-        match effect {
-            Effect::UnableToAct => {
-                // TODO: インシデント調整
-                // ブレイク中行動不能
-                return Some(BattleIncidentConductOutcomeFailureReason::IsBreak);
-            }
-            _ => {}
+        if let Effect::UnableToAct = effect {
+            // ブレイク中行動不能
+            return Some(BattleIncidentConductOutcomeFailureReason::IsBreak);
         }
     }
 
