@@ -104,6 +104,14 @@ pub struct BattleStatusConditionDurationCount {
 pub struct Battle {
     pub player: BattleCharacter,
     pub enemies: Vec<BattleCharacter>,
+
+    pub enemy_actions: Vec<EnemyAction>, // 敵のアーツ
+}
+
+#[derive(Clone, Debug)]
+pub struct EnemyAction {
+    pub art: Arc<Art>,                            // 使用アーツ
+    pub battle_weapon_id: Option<BattleWeaponId>, // 使用武器ID
 }
 
 #[derive(Clone, Debug)]

@@ -3805,10 +3805,10 @@ fn create_shield() -> Weapon {
         },
         guard: WeaponGuard {
             cut_rate: GuardCutRate {
-                slash: 0.4,
-                strike: 0.5,
-                thrust: 0.4,
-                impact: 0.6,
+                slash: 0.3,
+                strike: 0.3,
+                thrust: 0.3,
+                impact: 0.3,
                 magic: 0.6,
                 fire: 0.6,
                 lightning: 0.5,

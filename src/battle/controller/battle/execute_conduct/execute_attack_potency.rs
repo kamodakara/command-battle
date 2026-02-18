@@ -42,7 +42,7 @@ pub fn execute_attack_potency(
 
                     // 防御時のスタミナダメージ
                     // ガードで使用する武器の現状の武器性能でガード強度を取得する
-                    let sta_damage = break_power / performance.guard_strength.max(1);
+                    let sta_damage = 5 + (break_power / performance.guard_strength.max(1));
                     let (before_sta, after_sta) = target.stamina.damage(sta_damage);
 
                     // ガード成功時のコンビネーションログ
@@ -123,6 +123,7 @@ pub fn execute_attack_potency(
     // TODO: 後で整理する
     attack_power.multiply(8.0);
 
+    println!("攻撃力: {attack_power:?}");
     // ダメージ
     let mut damage = calc_damage(&attack_power, &target_defense_power);
     // 攻撃側の効果からダメージ補正を反映する

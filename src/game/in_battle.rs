@@ -1153,13 +1153,7 @@ fn create_battle_from_preparation(
             faith: 15,
             arcane: 15,
         },
-        stats: EnemyStats {
-            hp: 1500,
-            sp: 30,
-            break_max: 100,
-            break_recovery: 10,
-            break_turn: 4,
-        },
+        stats: EnemyStats { hp: 1500, sp: 30 },
         equipment: Equipment {
             weapon1: None,
             weapon2: None,
@@ -1423,7 +1417,140 @@ fn create_battle_from_preparation(
                 stamina_recovery: 0,
             },
             max_equipment_weight: 0,
-            weapons: vec![],
+            weapons: vec![
+                BattleWeapon {
+                    id: BattleWeaponId(0),
+                    weapon: Weapon {
+                        name: "爪".to_string(),
+                        kind: WeaponKind::StraightSword,
+                        weight: 0,
+                        ability_requirement: WeaponAbilityRequirement {
+                            strength: 0,
+                            dexterity: 0,
+                            intelligence: 0,
+                            faith: 0,
+                            arcane: 0,
+                            agility: 0,
+                        },
+                        attack_power: WeaponAttackPower {
+                            base: AttackPower {
+                                slash: 500,
+                                strike: 0,
+                                thrust: 0,
+                                impact: 0,
+                                magic: 0,
+                                fire: 0,
+                                lightning: 0,
+                                chaos: 0,
+                            },
+                            ability_scaling: WeaponAttackPowerAbilityScaling {
+                                slash: AbilityScaling::default(),
+                                strike: AbilityScaling::default(),
+                                thrust: AbilityScaling::default(),
+                                impact: AbilityScaling::default(),
+                                magic: AbilityScaling::default(),
+                                fire: AbilityScaling::default(),
+                                lightning: AbilityScaling::default(),
+                                chaos: AbilityScaling::default(),
+                            },
+                        },
+                        sorcery_power: WeaponSorceryPower {
+                            base: 0,
+                            scaling: AbilityScaling::default(),
+                        },
+                        break_power: WeaponBreakPower {
+                            base_power: 50,
+                            scaling: AbilityScaling {
+                                strength: 1.0,
+                                dexterity: 0.0,
+                                intelligence: 0.0,
+                                faith: 0.0,
+                                arcane: 0.0,
+                                agility: 0.0,
+                            },
+                        },
+                        guard: WeaponGuard {
+                            cut_rate: GuardCutRate {
+                                slash: 0.5,
+                                strike: 0.5,
+                                thrust: 0.5,
+                                impact: 0.5,
+                                magic: 0.5,
+                                fire: 0.5,
+                                lightning: 0.5,
+                                chaos: 0.5,
+                            },
+                            guard_strength: 20,
+                        },
+                    },
+                },
+                BattleWeapon {
+                    id: BattleWeaponId(1),
+                    weapon: Weapon {
+                        name: "尻尾".to_string(),
+                        kind: WeaponKind::StraightSword,
+                        weight: 0,
+                        ability_requirement: WeaponAbilityRequirement {
+                            strength: 0,
+                            dexterity: 0,
+                            intelligence: 0,
+                            faith: 0,
+                            arcane: 0,
+                            agility: 0,
+                        },
+                        attack_power: WeaponAttackPower {
+                            base: AttackPower {
+                                slash: 0,
+                                strike: 400,
+                                thrust: 0,
+                                impact: 0,
+                                magic: 0,
+                                fire: 0,
+                                lightning: 0,
+                                chaos: 0,
+                            },
+                            ability_scaling: WeaponAttackPowerAbilityScaling {
+                                slash: AbilityScaling::default(),
+                                strike: AbilityScaling::default(),
+                                thrust: AbilityScaling::default(),
+                                impact: AbilityScaling::default(),
+                                magic: AbilityScaling::default(),
+                                fire: AbilityScaling::default(),
+                                lightning: AbilityScaling::default(),
+                                chaos: AbilityScaling::default(),
+                            },
+                        },
+                        sorcery_power: WeaponSorceryPower {
+                            base: 0,
+                            scaling: AbilityScaling::default(),
+                        },
+                        break_power: WeaponBreakPower {
+                            base_power: 30,
+                            scaling: AbilityScaling {
+                                strength: 3.0,
+                                dexterity: 0.0,
+                                intelligence: 0.0,
+                                faith: 0.0,
+                                arcane: 0.0,
+                                agility: 0.0,
+                            },
+                        },
+                        guard: WeaponGuard {
+                            cut_rate: GuardCutRate {
+                                slash: 0.5,
+                                strike: 0.5,
+                                thrust: 0.5,
+                                impact: 0.5,
+                                magic: 0.5,
+                                fire: 0.5,
+                                lightning: 0.5,
+                                chaos: 0.5,
+                            },
+                            guard_strength: 20,
+                        },
+                    },
+                },
+            ],
             status_conditions: vec![],
             status_ailment: BattleStatusAilment {
                 poison: BattleStatusAilmentStatus::new_poison(),
@@ -1440,6 +1567,163 @@ fn create_battle_from_preparation(
             trance: None,
             combination_skill: None,
         }],
+
+        // 敵のアーツ
+        enemy_actions: vec![
+            EnemyAction {
+                art: Arc::new(Art {
+                    name: "ひっかき".to_string(),
+                    sp_cost: 0,
+                    stamina_cost: 0,
+                    perks: vec![ArtPerk::Melee],
+                    requirement: ArtRequirement {
+                        strength: 0,
+                        dexterity: 0,
+                        intelligence: 0,
+                        faith: 0,
+                        arcane: 0,
+                        agility: 0,
+                    },
+                    art_type: ArtType::Basic,
+                    usable_weapon: ArtUsableWeapon::All,
+                    always_hits: false,
+                    priority: 0,
+                    rank1: ArtRank {
+                        threshold: 0,
+                        target: ArtTarget::Single,
+                        potency: ArtPotency::Attack(ArtPotencyAttack {
+                            attack_power: AttackPower {
+                                slash: 0,
+                                strike: 0,
+                                thrust: 0,
+                                impact: 0,
+                                magic: 0,
+                                fire: 0,
+                                lightning: 0,
+                                chaos: 0,
+                            },
+                            weapon_attack_power_scaling: AttackPowerScaling {
+                                slash: 1.0,
+                                strike: 0.0,
+                                thrust: 0.0,
+                                impact: 0.0,
+                                magic: 0.0,
+                                fire: 0.0,
+                                lightning: 0.0,
+                                chaos: 0.0,
+                            },
+                            break_power: 30,
+                            weapon_break_power_scaling: 1.0,
+                        }),
+                    },
+                    rank2: None,
+                    rank3: None,
+                }),
+                battle_weapon_id: Some(BattleWeaponId(0)),
+            },
+            EnemyAction {
+                art: Arc::new(Art {
+                    name: "噛みつき".to_string(),
+                    sp_cost: 0,
+                    stamina_cost: 0,
+                    perks: vec![ArtPerk::Melee],
+                    requirement: ArtRequirement {
+                        strength: 0,
+                        dexterity: 0,
+                        intelligence: 0,
+                        faith: 0,
+                        arcane: 0,
+                        agility: 0,
+                    },
+                    art_type: ArtType::Basic,
+                    usable_weapon: ArtUsableWeapon::All,
+                    always_hits: false,
+                    priority: 0,
+                    rank1: ArtRank {
+                        threshold: 0,
+                        target: ArtTarget::Single,
+                        potency: ArtPotency::Attack(ArtPotencyAttack {
+                            attack_power: AttackPower {
+                                slash: 0,
+                                strike: 0,
+                                thrust: 0,
+                                impact: 0,
+                                magic: 0,
+                                fire: 0,
+                                lightning: 0,
+                                chaos: 0,
+                            },
+                            weapon_attack_power_scaling: AttackPowerScaling {
+                                slash: 4.0,
+                                strike: 0.0,
+                                thrust: 0.0,
+                                impact: 0.0,
+                                magic: 0.0,
+                                fire: 0.0,
+                                lightning: 0.0,
+                                chaos: 0.0,
+                            },
+                            break_power: 50,
+                            weapon_break_power_scaling: 3.0,
+                        }),
+                    },
+                    rank2: None,
+                    rank3: None,
+                }),
+                battle_weapon_id: Some(BattleWeaponId(0)),
+            },
+            EnemyAction {
+                art: Arc::new(Art {
+                    name: "尾撃".to_string(),
+                    sp_cost: 0,
+                    stamina_cost: 0,
+                    perks: vec![ArtPerk::AtFeet],
+                    requirement: ArtRequirement {
+                        strength: 0,
+                        dexterity: 0,
+                        intelligence: 0,
+                        faith: 0,
+                        arcane: 0,
+                        agility: 0,
+                    },
+                    art_type: ArtType::Basic,
+                    usable_weapon: ArtUsableWeapon::All,
+                    always_hits: false,
+                    priority: -1,
+                    rank1: ArtRank {
+                        threshold: 0,
+                        target: ArtTarget::Single,
+                        potency: ArtPotency::Attack(ArtPotencyAttack {
+                            attack_power: AttackPower {
+                                slash: 0,
+                                strike: 0,
+                                thrust: 0,
+                                impact: 0,
+                                magic: 0,
+                                fire: 0,
+                                lightning: 0,
+                                chaos: 0,
+                            },
+                            weapon_attack_power_scaling: AttackPowerScaling {
+                                slash: 0.0,
+                                strike: 5.0,
+                                thrust: 0.0,
+                                impact: 0.0,
+                                magic: 0.0,
+                                fire: 0.0,
+                                lightning: 0.0,
+                                chaos: 0.0,
+                            },
+                            break_power: 50,
+                            weapon_break_power_scaling: 3.0,
+                        }),
+                    },
+                    rank2: None,
+                    rank3: None,
+                }),
+                battle_weapon_id: Some(BattleWeaponId(1)),
+            },
+        ],
     }
 }
 
@@ -2512,10 +2796,8 @@ fn player_input_system(
                 battle_weapon_id: weapon_id,
             };
 
-            let enemy_conduct = battle.decide_enemy_conduct(DecideEnemyConductRequest {
-                enemy_character_id: enemy_id,
-            });
-            planned.0 = Some(enemy_conduct.clone());
+            let enemy_conduct = planned.0.clone().expect("敵の行動が未定");
+            planned.0 = None; // 予定は消費
 
             // 行動順決定
             let order = battle.decide_order(BattleDecideOrderRequest {

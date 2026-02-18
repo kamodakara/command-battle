@@ -1,6 +1,7 @@
 use super::art::Art;
 use super::common::DefensePower;
 use super::equipment::Equipment;
+use std::sync::Arc;
 
 // 敵
 pub struct Enemy {
@@ -10,11 +11,8 @@ pub struct Enemy {
 }
 
 pub struct EnemyStats {
-    pub hp: u32,             // HP
-    pub sp: u32,             // SP
-    pub break_max: u32,      // ブレイク最大値
-    pub break_recovery: u32, // ブレイク回復量
-    pub break_turn: u32,     // ブレイクターン
+    pub hp: u32, // HP
+    pub sp: u32, // SP
 }
 
 pub struct Player {

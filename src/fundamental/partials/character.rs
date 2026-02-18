@@ -21,8 +21,8 @@ impl Ability {
             hp: 50 + self.vitality * 10,
             sp: 10 + (self.spirit as f32 * 3.0) as u32,
             stamina: 50 + (self.endurance as f32 * 1.5) as u32,
-            stamina_recovery: 5
-                + ((self.endurance as f32 * 0.5) + (self.vitality as f32 * 0.5)) as u32,
+            stamina_recovery: 2
+                + ((self.endurance as f32 * 0.2) + (self.vitality as f32 * 0.1)) as u32,
             max_equipment_weight: 30 + (self.endurance as f32 * 2.0) as u32,
         }
     }
