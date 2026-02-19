@@ -80,6 +80,7 @@ enum BattlePhase {
     DecideEnemyConduct, // 敵行動決定
     AwaitCommand,       // プレイヤーコマンド入力待ち
     ConfirmQueued,      // 連続コマンドの次コマンドを実行するか確認するフェーズ
+    ConfirmAllCommands, // 3つのコマンド選択後の確認フェーズ
     InBattle,
     TurnEnd,  // ターン終了処理
     Finished, // 戦闘終了
@@ -2102,6 +2103,7 @@ enum ActionMenuState {
     ConsecutiveInput,                            // 連続コマンド入力中 - カテゴリ選択
     ConsecutiveBasicArts,                        // 連続コマンド入力中 - 基本アーツ選択
     ConsecutiveWeaponArts { weapon_idx: usize }, // 連続コマンド入力中 - 武器アーツ選択
+    ConfirmAllCommands,                          // 3つコマンド選択後の確認画面
 }
 
 #[derive(Clone)]
@@ -2140,6 +2142,11 @@ impl ActionMenuSelection {
     // 確定選択
     fn confirm(&mut self) {
         self.menu_state = ActionMenuState::ConsecutiveConfirm;
+        self.command_state = CommandSelectionState::Confirm;
+    }
+    // 3つのコマンド選択後の確認
+    fn confirm_all(&mut self) {
+        self.menu_state = ActionMenuState::ConfirmAllCommands;
         self.command_state = CommandSelectionState::Confirm;
     }
     // カテゴリ選択
@@ -2314,9 +2321,11 @@ enum ActionMenuCategory {
 // 連続コマンド確認画面の選択肢
 #[derive(Clone, PartialEq, Eq)]
 enum ConsecutiveActionType {
-    Execute,     // 連続コマンドを実行
-    Reenter,     // コマンド入力しなおし
-    FinishInput, // 入力完了（1〜2ターン分で終了）
+    Execute,       // 連続コマンドを実行
+    Reenter,       // コマンド入力しなおし
+    FinishInput,   // 入力完了（1〜2ターン分で終了）
+    ConfirmAll,    // 3つのコマンド選択を確定して実行
+    ReselectThird, // 3つ目のコマンドを再選択
 }
 
 #[derive(Component)]
@@ -3104,21 +3113,15 @@ fn player_input_system(
                 log.0
                     .push(format!("{}ターン目: {}を設定", input_turn, art.name));
 
-                // 次のターンへ、または確定
+                // 次のターンへ、または確認画面へ
                 if input_turn < 3 {
                     action_menu.input();
-                } else if let Some(cmd) = consecutive.commands.first().cloned() {
-                    // 3ターン分入力完了、実行開始
-                    log.0.push("連続コマンド入力完了！ 実行します".to_string());
-
-                    // コマンド実行
-                    execute_consecutive_command(cmd, &mut selected_art, battle, false, &mut log);
-
-                    *phase = BattlePhase::InBattle;
-
-                    consecutive.commands.remove(0);
-
-                    action_menu.input();
+                } else {
+                    // 3ターン分入力完了、確認画面へ
+                    log.0
+                        .push("連続コマンド入力完了！ 内容を確認してください".to_string());
+                    action_menu.confirm_all();
+                    *phase = BattlePhase::ConfirmAllCommands;
                 }
             }
         }
@@ -3126,6 +3129,10 @@ fn player_input_system(
             // 連続コマンド確認画面での選択処理
             // action_menu_click_systemで処理されるので、ここでは待機
             // 選択されたらInBattleまたはAwaitCommandに遷移
+        }
+        BattlePhase::ConfirmAllCommands => {
+            // 3つのコマンド選択後の確認画面
+            // action_menu_click_systemで処理されるので、ここでは待機
         }
         BattlePhase::InBattle => {
             // 選択されたアーツを取得
@@ -3343,8 +3350,11 @@ fn action_menu_click_system(
     >,
     mut battle_resource: ResMut<BattleResource>,
 ) {
-    // AwaitCommand または ConfirmQueued フェーズで処理
-    if *phase != BattlePhase::AwaitCommand && *phase != BattlePhase::ConfirmQueued {
+    // AwaitCommand, ConfirmQueued, ConfirmAllCommands フェーズで処理
+    if *phase != BattlePhase::AwaitCommand
+        && *phase != BattlePhase::ConfirmQueued
+        && *phase != BattlePhase::ConfirmAllCommands
+    {
         return;
     }
 
@@ -3438,6 +3448,34 @@ fn action_menu_click_system(
                                 }
                             }
                         }
+                        ConsecutiveActionType::ConfirmAll => {
+                            // 3つのコマンド選択を確定して実行開始
+                            if let Some(cmd) = consecutive.commands.first().cloned() {
+                                log.0.push("連続コマンド確定！ 実行します".to_string());
+
+                                // 最初のコマンドを実行
+                                execute_consecutive_command(
+                                    cmd,
+                                    &mut selected_art,
+                                    battle,
+                                    false,
+                                    &mut log,
+                                );
+
+                                consecutive.commands.remove(0);
+
+                                *phase = BattlePhase::InBattle;
+                            }
+                        }
+                        ConsecutiveActionType::ReselectThird => {
+                            // 3つ目のコマンドを再選択
+                            if consecutive.commands.len() == 3 {
+                                consecutive.commands.pop();
+                            }
+                            log.0.push("3ターン目のコマンドを再選択します".to_string());
+                            action_menu.input();
+                            *phase = BattlePhase::AwaitCommand;
+                        }
                     }
                 }
             }
@@ -3458,17 +3496,23 @@ fn action_menu_update_system(
     container_q: Query<Entity, With<UiActionMenuContainer>>,
     menu_items_q: Query<Entity, With<ActionMenuItem>>,
 ) {
-    // メニューの表示/非表示 (AwaitCommand または ConfirmQueued で表示)
+    // メニューの表示/非表示 (AwaitCommand, ConfirmQueued, ConfirmAllCommands で表示)
     if let Ok(mut vis) = menu_vis_q.single_mut() {
-        *vis = if *phase == BattlePhase::AwaitCommand || *phase == BattlePhase::ConfirmQueued {
+        *vis = if *phase == BattlePhase::AwaitCommand
+            || *phase == BattlePhase::ConfirmQueued
+            || *phase == BattlePhase::ConfirmAllCommands
+        {
             Visibility::Visible
         } else {
             Visibility::Hidden
         };
     }
 
-    // AwaitCommand または ConfirmQueued フェーズで処理
-    if *phase != BattlePhase::AwaitCommand && *phase != BattlePhase::ConfirmQueued {
+    // AwaitCommand, ConfirmQueued, ConfirmAllCommands フェーズで処理
+    if *phase != BattlePhase::AwaitCommand
+        && *phase != BattlePhase::ConfirmQueued
+        && *phase != BattlePhase::ConfirmAllCommands
+    {
         return;
     }
 
@@ -3516,6 +3560,32 @@ fn action_menu_update_system(
                     &font,
                     "✕ コマンド入力しなおし",
                     ActionMenuItemType::ConsecutiveAction(ConsecutiveActionType::Reenter),
+                );
+            });
+        }
+        ActionMenuState::ConfirmAllCommands => {
+            // 3つのコマンド選択後の確認画面
+            commands.entity(container_entity).with_children(|parent| {
+                spawn_menu_label(parent, &font, "【選択したコマンドの確認】");
+                for (i, cmd) in consecutive.commands.iter().enumerate() {
+                    let label = format!("{}ターン目: {}", i + 1, cmd.art.name);
+                    spawn_menu_label(parent, &font, &label);
+                }
+
+                spawn_menu_label(parent, &font, "");
+                spawn_menu_label(parent, &font, "この内容でよろしいですか？");
+                spawn_menu_label(parent, &font, "");
+                spawn_menu_button(
+                    parent,
+                    &font,
+                    "はい",
+                    ActionMenuItemType::ConsecutiveAction(ConsecutiveActionType::ConfirmAll),
+                );
+                spawn_menu_button(
+                    parent,
+                    &font,
+                    "いいえ",
+                    ActionMenuItemType::ConsecutiveAction(ConsecutiveActionType::ReselectThird),
                 );
             });
         }
@@ -4039,6 +4109,7 @@ fn ui_update_system(
         }
         BattlePhase::AwaitCommand => "行動を選択してください".to_string(),
         BattlePhase::ConfirmQueued => "連続コマンドを実行しますか？".to_string(),
+        BattlePhase::ConfirmAllCommands => "選択したコマンドを確認してください".to_string(),
         BattlePhase::InBattle => "処理中".to_string(),
         BattlePhase::TurnEnd => "ターン終了".to_string(),
         BattlePhase::Finished => "終了".to_string(),
