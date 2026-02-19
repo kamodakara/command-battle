@@ -2880,7 +2880,7 @@ fn create_equipment_database() -> EquipmentDatabase {
         WeaponData {
             id: 4,
             name: "ラウンドシールド".to_string(),
-            weapon: create_shield(),
+            weapon: create_round_shield(),
         },
     ];
 
@@ -3765,9 +3765,9 @@ fn create_axe() -> Weapon {
     }
 }
 
-fn create_shield() -> Weapon {
+fn create_round_shield() -> Weapon {
     Weapon {
-        name: "盾".to_string(),
+        name: "ラウンドシールド".to_string(),
         kind: WeaponKind::Shield,
         weight: 10,
         ability_requirement: WeaponAbilityRequirement {
@@ -3805,16 +3805,16 @@ fn create_shield() -> Weapon {
         },
         guard: WeaponGuard {
             cut_rate: GuardCutRate {
-                slash: 0.3,
-                strike: 0.3,
-                thrust: 0.3,
-                impact: 0.3,
+                slash: 0.2,
+                strike: 0.2,
+                thrust: 0.2,
+                impact: 0.2,
                 magic: 0.6,
                 fire: 0.6,
                 lightning: 0.5,
                 chaos: 0.5,
             },
-            guard_strength: 60,
+            guard_strength: 30,
         },
     }
 }

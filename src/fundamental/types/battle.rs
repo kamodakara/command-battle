@@ -105,10 +105,16 @@ pub struct Battle {
     pub player: BattleCharacter,
     pub enemies: Vec<BattleCharacter>,
 
-    // TODO: 仮
+    // TODO: 敵の行動関係仮
     pub enemy_commands: Vec<EnemyCommand>, // 敵の行動コマンド
-    pub enemy_actions: Vec<EnemyAction>,   // 敵の行動
-    pub enemy_action_progress: Option<EnemyActionProgress>, // 敵の行動進行状況
+    pub enemy_action_lots: Vec<EnemyActionLot>, // 敵の行動抽選
+    // 敵第二段階の行動抽選
+    pub enemy_second_stage_action_lots: Vec<EnemyActionLot>,
+    // 敵第二段階
+    pub enemy_second_stage: bool,
+
+    // 敵の行動進行状況
+    pub enemy_action_progress: Option<EnemyActionProgress>,
 }
 
 // TODO: 敵行動周りは仮
@@ -123,7 +129,12 @@ pub struct EnemyCommandId(pub u32);
 #[derive(Debug, Clone)]
 pub struct EnemyAction {
     pub name: String,                  // 行動名
-    pub commands: Vec<EnemyCommandId>, // 実行コマンド
+    pub commands: Vec<EnemyCommandId>, // 実行コマンドID
+}
+#[derive(Debug)]
+pub struct EnemyActionLot {
+    pub action: EnemyAction,
+    pub weight: u32,
 }
 #[derive(Debug)]
 pub struct EnemyActionProgress {

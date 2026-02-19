@@ -48,13 +48,49 @@ pub fn decide_enemy_conduct(
         }
     }
 
+    let enemy = battle
+        .enemies
+        .iter()
+        .find(|e| e.character_id == request.enemy_character_id)
+        .expect("Enemy character not found");
+    if enemy.hp.current_hp < (enemy.hp.max_hp as f32 * 0.6) as u32 {
+        battle.enemy_second_stage = true;
+    }
+
+    let command_lots = if battle.enemy_second_stage {
+        &battle.enemy_second_stage_action_lots
+    } else {
+        &battle.enemy_action_lots
+    };
+
     // 行動パターンをランダムで選択
-    let random_index = rand::random::<u32>() % battle.enemy_actions.len() as u32;
-    let action = &battle.enemy_actions[random_index as usize];
+    let total_weight: u32 = command_lots.iter().map(|lot| lot.weight).sum();
+    let mut rng = rand::rng();
+    let mut random_weight = rand::Rng::random_range(&mut rng, 0..total_weight);
+    let selected_action = command_lots
+        .iter()
+        .find(|lot| {
+            if random_weight < lot.weight {
+                true
+            } else {
+                random_weight -= lot.weight;
+                false
+            }
+        })
+        .expect("No enemy actions available")
+        .action
+        .clone();
     battle.enemy_action_progress = Some(EnemyActionProgress {
-        enemy_action: action.clone(),
+        enemy_action: selected_action,
         current_command_index: 0,
     });
+
+    // let random_index = rand::random::<u32>() % battle.enemy_actions.len() as u32;
+    // let action = &battle.enemy_actions[random_index as usize];
+    // battle.enemy_action_progress = Some(EnemyActionProgress {
+    //     enemy_action: action.clone(),
+    //     current_command_index: 0,
+    // });
 
     // このターンは待機
     if let Some(command) = battle

@@ -8,7 +8,6 @@ use super::*;
 
 use bevy::{log, prelude::*};
 use rand::Rng;
-use std::f32::consts::E;
 use std::sync::Arc;
 
 use super::{ArtsDatabase, EquipmentDatabase, PreparationState};
@@ -1570,22 +1569,98 @@ fn create_battle_from_preparation(
         }],
 
         enemy_action_progress: None,
-        enemy_actions: vec![
-            EnemyAction {
-                name: "ひっかき(単)".to_string(),
-                commands: vec![EnemyCommandId(1)],
+        enemy_second_stage: false,
+        enemy_action_lots: vec![
+            EnemyActionLot {
+                action: EnemyAction {
+                    name: "ひっかき（単）".to_string(),
+                    commands: vec![EnemyCommandId(1)],
+                },
+                weight: 40,
             },
-            EnemyAction {
-                name: "噛みつき(単)".to_string(),
-                commands: vec![EnemyCommandId(2)],
+            EnemyActionLot {
+                action: EnemyAction {
+                    name: "ひっかき（2連）".to_string(),
+                    commands: vec![EnemyCommandId(4), EnemyCommandId(5)],
+                },
+                weight: 10,
             },
-            EnemyAction {
-                name: "尾撃(単)".to_string(),
-                commands: vec![EnemyCommandId(3)],
+            EnemyActionLot {
+                action: EnemyAction {
+                    name: "噛みつき".to_string(),
+                    commands: vec![EnemyCommandId(2)],
+                },
+                weight: 20,
             },
-            EnemyAction {
-                name: "尾撃(2連)".to_string(),
-                commands: vec![EnemyCommandId(3), EnemyCommandId(3)],
+            EnemyActionLot {
+                action: EnemyAction {
+                    name: "尾撃（単）".to_string(),
+                    commands: vec![EnemyCommandId(3)],
+                },
+                weight: 20,
+            },
+            EnemyActionLot {
+                action: EnemyAction {
+                    name: "尾撃（2連）".to_string(),
+                    commands: vec![EnemyCommandId(3), EnemyCommandId(3)],
+                },
+                weight: 10,
+            },
+        ],
+        enemy_second_stage_action_lots: vec![
+            EnemyActionLot {
+                action: EnemyAction {
+                    name: "ひっかき（単）".to_string(),
+                    commands: vec![EnemyCommandId(1)],
+                },
+                weight: 10,
+            },
+            EnemyActionLot {
+                action: EnemyAction {
+                    name: "ひっかき（2連）".to_string(),
+                    commands: vec![EnemyCommandId(4), EnemyCommandId(5)],
+                },
+                weight: 20,
+            },
+            EnemyActionLot {
+                action: EnemyAction {
+                    name: "ひっかき（3連）".to_string(),
+                    commands: vec![EnemyCommandId(4), EnemyCommandId(5), EnemyCommandId(6)],
+                },
+                weight: 20,
+            },
+            EnemyActionLot {
+                action: EnemyAction {
+                    name: "噛みつき".to_string(),
+                    commands: vec![EnemyCommandId(2)],
+                },
+                weight: 30,
+            },
+            EnemyActionLot {
+                action: EnemyAction {
+                    name: "尾撃（単）".to_string(),
+                    commands: vec![EnemyCommandId(3)],
+                },
+                weight: 10,
+            },
+            EnemyActionLot {
+                action: EnemyAction {
+                    name: "尾撃（2連）".to_string(),
+                    commands: vec![EnemyCommandId(3), EnemyCommandId(3)],
+                },
+                weight: 20,
+            },
+            EnemyActionLot {
+                action: EnemyAction {
+                    name: "ファイアブレス".to_string(),
+                    commands: vec![
+                        EnemyCommandId(7),
+                        EnemyCommandId(8),
+                        EnemyCommandId(8),
+                        EnemyCommandId(8),
+                    ],
+                },
+                weight: 20,
             },
         ],
         // 敵のアーツ
@@ -1774,6 +1849,243 @@ fn create_battle_from_preparation(
                     rank3: None,
                 }),
                 battle_weapon_id: Some(BattleWeaponId(1)),
+            },
+            EnemyCommand {
+                id: EnemyCommandId(4),
+                art: Arc::new(Art {
+                    name: "連続ひっかき(1)".to_string(),
+                    sp_cost: 0,
+                    stamina_cost: 0,
+                    perks: vec![ArtPerk::Melee],
+                    requirement: ArtRequirement {
+                        strength: 0,
+                        dexterity: 0,
+                        intelligence: 0,
+                        faith: 0,
+                        arcane: 0,
+                        agility: 0,
+                    },
+                    art_type: ArtType::Basic,
+                    usable_weapon: ArtUsableWeapon::All,
+                    always_hits: false,
+                    priority: 0,
+                    rank1: ArtRank {
+                        threshold: 0,
+                        target: ArtTarget::Single,
+                        potency: ArtPotency::Attack(ArtPotencyAttack {
+                            attack_power: AttackPower {
+                                slash: 0,
+                                strike: 0,
+                                thrust: 0,
+                                impact: 0,
+                                magic: 0,
+                                fire: 0,
+                                lightning: 0,
+                                chaos: 0,
+                            },
+                            weapon_attack_power_scaling: AttackPowerScaling {
+                                slash: 0.9,
+                                strike: 0.0,
+                                thrust: 0.0,
+                                impact: 0.0,
+                                magic: 0.0,
+                                fire: 0.0,
+                                lightning: 0.0,
+                                chaos: 0.0,
+                            },
+                            break_power: 30,
+                            weapon_break_power_scaling: 1.0,
+                        }),
+                    },
+                    rank2: None,
+                    rank3: None,
+                }),
+                battle_weapon_id: Some(BattleWeaponId(0)),
+            },
+            EnemyCommand {
+                id: EnemyCommandId(5),
+                art: Arc::new(Art {
+                    name: "連続ひっかき(2)".to_string(),
+                    sp_cost: 0,
+                    stamina_cost: 0,
+                    perks: vec![ArtPerk::Melee],
+                    requirement: ArtRequirement {
+                        strength: 0,
+                        dexterity: 0,
+                        intelligence: 0,
+                        faith: 0,
+                        arcane: 0,
+                        agility: 0,
+                    },
+                    art_type: ArtType::Basic,
+                    usable_weapon: ArtUsableWeapon::All,
+                    always_hits: false,
+                    priority: 0,
+                    rank1: ArtRank {
+                        threshold: 0,
+                        target: ArtTarget::Single,
+                        potency: ArtPotency::Attack(ArtPotencyAttack {
+                            attack_power: AttackPower {
+                                slash: 0,
+                                strike: 0,
+                                thrust: 0,
+                                impact: 0,
+                                magic: 0,
+                                fire: 0,
+                                lightning: 0,
+                                chaos: 0,
+                            },
+                            weapon_attack_power_scaling: AttackPowerScaling {
+                                slash: 1.1,
+                                strike: 0.0,
+                                thrust: 0.0,
+                                impact: 0.0,
+                                magic: 0.0,
+                                fire: 0.0,
+                                lightning: 0.0,
+                                chaos: 0.0,
+                            },
+                            break_power: 30,
+                            weapon_break_power_scaling: 1.0,
+                        }),
+                    },
+                    rank2: None,
+                    rank3: None,
+                }),
+                battle_weapon_id: Some(BattleWeaponId(0)),
+            },
+            EnemyCommand {
+                id: EnemyCommandId(6),
+                art: Arc::new(Art {
+                    name: "連続ひっかき(3)".to_string(),
+                    sp_cost: 0,
+                    stamina_cost: 0,
+                    perks: vec![ArtPerk::Melee],
+                    requirement: ArtRequirement {
+                        strength: 0,
+                        dexterity: 0,
+                        intelligence: 0,
+                        faith: 0,
+                        arcane: 0,
+                        agility: 0,
+                    },
+                    art_type: ArtType::Basic,
+                    usable_weapon: ArtUsableWeapon::All,
+                    always_hits: false,
+                    priority: 0,
+                    rank1: ArtRank {
+                        threshold: 0,
+                        target: ArtTarget::Single,
+                        potency: ArtPotency::Attack(ArtPotencyAttack {
+                            attack_power: AttackPower {
+                                slash: 0,
+                                strike: 0,
+                                thrust: 0,
+                                impact: 0,
+                                magic: 0,
+                                fire: 0,
+                                lightning: 0,
+                                chaos: 0,
+                            },
+                            weapon_attack_power_scaling: AttackPowerScaling {
+                                slash: 1.5,
+                                strike: 0.0,
+                                thrust: 0.0,
+                                impact: 0.0,
+                                magic: 0.0,
+                                fire: 0.0,
+                                lightning: 0.0,
+                                chaos: 0.0,
+                            },
+                            break_power: 60,
+                            weapon_break_power_scaling: 2.0,
+                        }),
+                    },
+                    rank2: None,
+                    rank3: None,
+                }),
+                battle_weapon_id: Some(BattleWeaponId(0)),
+            },
+            EnemyCommand {
+                id: EnemyCommandId(7),
+                art: Arc::new(Art {
+                    name: "息を吸い込む".to_string(),
+                    sp_cost: 0,
+                    stamina_cost: 0,
+                    perks: vec![],
+                    requirement: ArtRequirement {
+                        strength: 0,
+                        dexterity: 0,
+                        intelligence: 0,
+                        faith: 0,
+                        arcane: 0,
+                        agility: 0,
+                    },
+                    art_type: ArtType::Sorcery,
+                    usable_weapon: ArtUsableWeapon::All,
+                    always_hits: false,
+                    priority: 0,
+                    rank1: ArtRank {
+                        threshold: 0,
+                        target: ArtTarget::Single,
+                        potency: ArtPotency::Support(ArtPotencySupport::None),
+                    },
+                    rank2: None,
+                    rank3: None,
+                }),
+                battle_weapon_id: None,
+            },
+            EnemyCommand {
+                id: EnemyCommandId(8),
+                art: Arc::new(Art {
+                    name: "ファイアブレス".to_string(),
+                    sp_cost: 0,
+                    stamina_cost: 0,
+                    perks: vec![],
+                    requirement: ArtRequirement {
+                        strength: 0,
+                        dexterity: 0,
+                        intelligence: 0,
+                        faith: 0,
+                        arcane: 0,
+                        agility: 0,
+                    },
+                    art_type: ArtType::Sorcery,
+                    usable_weapon: ArtUsableWeapon::All,
+                    always_hits: false,
+                    priority: 0,
+                    rank1: ArtRank {
+                        threshold: 0,
+                        target: ArtTarget::Single,
+                        potency: ArtPotency::Attack(ArtPotencyAttack {
+                            attack_power: AttackPower {
+                                slash: 0,
+                                strike: 0,
+                                thrust: 0,
+                                impact: 0,
+                                magic: 0,
+                                fire: 1500,
+                                lightning: 0,
+                                chaos: 0,
+                            },
+                            weapon_attack_power_scaling: AttackPowerScaling {
+                                slash: 0.0,
+                                strike: 0.0,
+                                thrust: 0.0,
+                                impact: 0.0,
+                                magic: 0.0,
+                                fire: 0.0,
+                                lightning: 0.0,
+                                chaos: 0.0,
+                            },
+                            break_power: 100,
+                            weapon_break_power_scaling: 1.0,
+                        }),
+                    },
+                    rank2: None,
+                    rank3: None,
+                }),
+                battle_weapon_id: None,
             },
         ],
     }
