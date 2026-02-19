@@ -1154,7 +1154,7 @@ fn create_battle_from_preparation(
             faith: 15,
             arcane: 15,
         },
-        stats: EnemyStats { hp: 1500, sp: 30 },
+        stats: EnemyStats { hp: 1000, sp: 30 },
         equipment: Equipment {
             weapon1: None,
             weapon2: None,
