@@ -8,6 +8,7 @@ use super::*;
 
 use bevy::{log, prelude::*};
 use rand::Rng;
+use std::f32::consts::E;
 use std::sync::Arc;
 
 use super::{ArtsDatabase, EquipmentDatabase, PreparationState};
@@ -1568,9 +1569,58 @@ fn create_battle_from_preparation(
             combination_skill: None,
         }],
 
-        // 敵のアーツ
+        enemy_action_progress: None,
         enemy_actions: vec![
             EnemyAction {
+                name: "ひっかき(単)".to_string(),
+                commands: vec![EnemyCommandId(1)],
+            },
+            EnemyAction {
+                name: "噛みつき(単)".to_string(),
+                commands: vec![EnemyCommandId(2)],
+            },
+            EnemyAction {
+                name: "尾撃(単)".to_string(),
+                commands: vec![EnemyCommandId(3)],
+            },
+            EnemyAction {
+                name: "尾撃(2連)".to_string(),
+                commands: vec![EnemyCommandId(3), EnemyCommandId(3)],
+            },
+        ],
+        // 敵のアーツ
+        enemy_commands: vec![
+            EnemyCommand {
+                id: EnemyCommandId(0),
+                art: Arc::new(Art {
+                    name: "待機".to_string(),
+                    sp_cost: 0,
+                    stamina_cost: 0,
+                    perks: vec![],
+                    requirement: ArtRequirement {
+                        strength: 0,
+                        dexterity: 0,
+                        intelligence: 0,
+                        faith: 0,
+                        arcane: 0,
+                        agility: 0,
+                    },
+                    art_type: ArtType::Basic,
+                    usable_weapon: ArtUsableWeapon::All,
+                    always_hits: false,
+                    priority: 0,
+                    rank1: ArtRank {
+                        threshold: 0,
+                        target: ArtTarget::Single,
+                        potency: ArtPotency::Support(ArtPotencySupport::None),
+                    },
+                    rank2: None,
+                    rank3: None,
+                }),
+                battle_weapon_id: Some(BattleWeaponId(0)),
+            },
+            EnemyCommand {
+                id: EnemyCommandId(1),
                 art: Arc::new(Art {
                     name: "ひっかき".to_string(),
                     sp_cost: 0,
@@ -1621,7 +1671,8 @@ fn create_battle_from_preparation(
                 }),
                 battle_weapon_id: Some(BattleWeaponId(0)),
             },
-            EnemyAction {
+            EnemyCommand {
+                id: EnemyCommandId(2),
                 art: Arc::new(Art {
                     name: "噛みつき".to_string(),
                     sp_cost: 0,
@@ -1672,7 +1723,8 @@ fn create_battle_from_preparation(
                 }),
                 battle_weapon_id: Some(BattleWeaponId(0)),
             },
-            EnemyAction {
+            EnemyCommand {
+                id: EnemyCommandId(3),
                 art: Arc::new(Art {
                     name: "尾撃".to_string(),
                     sp_cost: 0,

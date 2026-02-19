@@ -88,6 +88,7 @@ pub struct ArtPotencyAttack {
 // 技能支援効果
 #[derive(Clone, Debug)]
 pub enum ArtPotencySupport {
+    None,                                              // 行動しない
     StatusCondition(ArtPotencySupportStatusCondition), // 状態変化付与
     Recover(ArtPotencySupportRecover),                 // HP回復量
 }

@@ -6,6 +6,7 @@ pub fn execute_support_potency(
 ) -> Vec<BattleCharacterIncidentConcrete> {
     // 支援処理
     match support {
+        ArtPotencySupport::None => vec![], // 行動しない
         // 支援状態変化
         ArtPotencySupport::StatusCondition(status_condition) => {
             support_status_effect(&status_condition.status_conditions, target)

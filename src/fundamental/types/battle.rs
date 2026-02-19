@@ -105,13 +105,30 @@ pub struct Battle {
     pub player: BattleCharacter,
     pub enemies: Vec<BattleCharacter>,
 
-    pub enemy_actions: Vec<EnemyAction>, // 敵のアーツ
+    // TODO: 仮
+    pub enemy_commands: Vec<EnemyCommand>, // 敵の行動コマンド
+    pub enemy_actions: Vec<EnemyAction>,   // 敵の行動
+    pub enemy_action_progress: Option<EnemyActionProgress>, // 敵の行動進行状況
 }
 
+// TODO: 敵行動周りは仮
 #[derive(Clone, Debug)]
-pub struct EnemyAction {
+pub struct EnemyCommand {
+    pub id: EnemyCommandId,
     pub art: Arc<Art>,                            // 使用アーツ
     pub battle_weapon_id: Option<BattleWeaponId>, // 使用武器ID
+}
+#[derive(Clone, Debug, PartialEq)]
+pub struct EnemyCommandId(pub u32);
+#[derive(Debug, Clone)]
+pub struct EnemyAction {
+    pub name: String,                  // 行動名
+    pub commands: Vec<EnemyCommandId>, // 実行コマンド
+}
+#[derive(Debug)]
+pub struct EnemyActionProgress {
+    pub enemy_action: EnemyAction,
+    pub current_command_index: usize,
 }
 
 #[derive(Clone, Debug)]

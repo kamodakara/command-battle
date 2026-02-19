@@ -20,7 +20,7 @@ pub trait BattleController {
     // 行動順を決定する
     fn decide_order(&self, request: BattleDecideOrderRequest) -> Vec<u32>;
     fn execute_conduct(&mut self, request: BattleExecuteConductRequest) -> BattleIncidentConduct;
-    fn decide_enemy_conduct(&self, request: DecideEnemyConductRequest) -> BattleConduct;
+    fn decide_enemy_conduct(&mut self, request: DecideEnemyConductRequest) -> BattleConduct;
     fn turn_end(&mut self) -> Vec<BattleIncidentCharacter>;
     fn karma_draw_card(&mut self);
 }
@@ -35,7 +35,7 @@ impl BattleController for Battle {
         execute_conduct(self, request)
     }
 
-    fn decide_enemy_conduct(&self, request: DecideEnemyConductRequest) -> BattleConduct {
+    fn decide_enemy_conduct(&mut self, request: DecideEnemyConductRequest) -> BattleConduct {
         decide_enemy_conduct(self, request)
     }
 
