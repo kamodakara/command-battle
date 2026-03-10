@@ -1,4 +1,5 @@
 mod battle;
+mod data;
 mod fundamental;
 mod game;
 
