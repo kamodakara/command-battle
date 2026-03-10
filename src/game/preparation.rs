@@ -1,6 +1,7 @@
 use bevy::{ecs::relationship::RelatedSpawnerCommands, prelude::*};
 
 use super::*;
+use crate::data::DataManager;
 use crate::fundamental::{
     Ability, AbilityScaling, AbilityType, Armor, ArmorKind, ArmorResistance, ArmorSlot, Art,
     ArtPerk, ArtPotency, ArtPotencyAttack, ArtPotencySupport, ArtPotencySupportRecover,
@@ -60,18 +61,18 @@ pub struct PreparationState {
     pub temp_intelligence: u32,
     pub temp_faith: u32,
     pub temp_arcane: u32,
-    pub equipped_weapon1: Option<usize>,
-    pub equipped_weapon2: Option<usize>,
-    pub equipped_armor1: Option<usize>,
-    pub equipped_armor2: Option<usize>,
-    pub equipped_armor3: Option<usize>,
-    pub equipped_armor4: Option<usize>,
-    pub equipped_armor5: Option<usize>,
-    pub equipped_armor6: Option<usize>,
-    pub equipped_armor7: Option<usize>,
-    pub equipped_armor8: Option<usize>,
+    pub equipped_weapon1: Option<u32>,
+    pub equipped_weapon2: Option<u32>,
+    pub equipped_armor1: Option<u32>,
+    pub equipped_armor2: Option<u32>,
+    pub equipped_armor3: Option<u32>,
+    pub equipped_armor4: Option<u32>,
+    pub equipped_armor5: Option<u32>,
+    pub equipped_armor6: Option<u32>,
+    pub equipped_armor7: Option<u32>,
+    pub equipped_armor8: Option<u32>,
     pub selecting_slot: Option<EquipmentSlot>,
-    pub selected_arts: Vec<usize>, // 選択された技術のID (最大8つ)
+    pub selected_arts: Vec<u32>, // 選択された技術のID (最大8つ)
     pub selecting_arts_slot: Option<usize>, // 選択中のスロット (0-7)
     pub selected_art_tab: ArtTypeTab, // 技術選択ダイアログの選択中タブ
     pub error_message: Option<String>,
@@ -87,14 +88,14 @@ pub struct EquipmentDatabase {
 
 #[derive(Clone)]
 pub struct WeaponData {
-    pub id: usize,
+    pub id: u32,
     pub name: String,
     pub weapon: Weapon,
 }
 
 #[derive(Clone)]
 pub struct ArmorData {
-    pub id: usize,
+    pub id: u32,
     pub name: String,
     pub armor: Armor,
 }
@@ -107,7 +108,7 @@ pub struct ArtsDatabase {
 
 #[derive(Clone)]
 pub struct ArtsData {
-    pub id: usize,
+    pub id: u32,
     pub name: String,
     pub art: Art,
 }
@@ -118,8 +119,6 @@ pub struct PreparationPlugin;
 impl Plugin for PreparationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<PreparationState>()
-            .insert_resource(create_equipment_database())
-            .insert_resource(create_arts_database())
             .add_systems(OnEnter(GameState::Preparation), setup_preparation_screen)
             .add_systems(
                 Update,
@@ -434,8 +433,7 @@ pub fn update_content_panel(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     prep_state: Res<PreparationState>,
-    equipment_db: Res<EquipmentDatabase>,
-    arts_db: Res<ArtsDatabase>,
+    dm: Res<DataManager>,
     panel_query: Query<Entity, With<ContentPanel>>,
     children_query: Query<&Children>,
 ) {
@@ -461,13 +459,13 @@ pub fn update_content_panel(
             .entity(panel_entity)
             .with_children(|parent| match current_menu {
                 MenuType::Status => {
-                    build_status_content(parent, font_clone.clone(), &prep_state, &equipment_db);
+                    build_status_content(parent, font_clone.clone(), &prep_state, &dm);
                 }
                 MenuType::Equipment => {
-                    build_equipment_content(parent, font_clone.clone(), &prep_state, &equipment_db);
+                    build_equipment_content(parent, font_clone.clone(), &prep_state, &dm);
                 }
                 MenuType::Arts => {
-                    build_arts_content(parent, font_clone.clone(), &prep_state, &arts_db);
+                    build_arts_content(parent, font_clone.clone(), &prep_state, &dm);
                 }
                 MenuType::StartBattle => {
                     build_start_battle_content(parent, font_clone);
@@ -481,7 +479,7 @@ fn build_status_content(
     parent: &mut RelatedSpawnerCommands<ChildOf>,
     font: Handle<Font>,
     prep_state: &PreparationState,
-    equipment_db: &EquipmentDatabase,
+    dm: &DataManager,
 ) {
     parent.spawn((
         Text::new("ステータス"),
@@ -807,8 +805,8 @@ fn build_status_content(
 
                 // 武器1の攻撃力を計算
                 let weapon1_attack_power = if let Some(weapon_id) = prep_state.equipped_weapon1 {
-                    if let Some(weapon_data) = equipment_db.weapons.get(weapon_id) {
-                        let weapon_performance = weapon_data.weapon.performance(&current_ability);
+                    if let Some(weapon_record) = dm.weapon.find_by_id(weapon_id) {
+                        let weapon_performance = weapon_record.data.performance(&current_ability);
                         println!(
                             "Weapon 1 Attack Power Calculation: {:?}",
                             weapon_performance.final_attack_power()
@@ -827,8 +825,8 @@ fn build_status_content(
 
                 // 武器2の攻撃力を計算
                 let weapon2_attack_power = if let Some(weapon_id) = prep_state.equipped_weapon2 {
-                    if let Some(weapon_data) = equipment_db.weapons.get(weapon_id) {
-                        let weapon_performance = weapon_data.weapon.performance(&current_ability);
+                    if let Some(weapon_record) = dm.weapon.find_by_id(weapon_id) {
+                        let weapon_performance = weapon_record.data.performance(&current_ability);
                         weapon_performance.final_attack_power().total_power()
                     } else {
                         WeaponPerformance::unarmed_weapon_performance()
@@ -890,8 +888,8 @@ fn build_status_content(
 
                 // 武器1の術力を計算
                 let weapon1_sorcery_power = if let Some(weapon_id) = prep_state.equipped_weapon1 {
-                    if let Some(weapon_data) = equipment_db.weapons.get(weapon_id) {
-                        let weapon_performance = weapon_data.weapon.performance(&current_ability);
+                    if let Some(weapon_record) = dm.weapon.find_by_id(weapon_id) {
+                        let weapon_performance = weapon_record.data.performance(&current_ability);
                         weapon_performance.final_sorcery_power()
                     } else {
                         WeaponPerformance::unarmed_weapon_performance().final_sorcery_power()
@@ -902,8 +900,8 @@ fn build_status_content(
 
                 // 武器2の術力を計算
                 let weapon2_sorcery_power = if let Some(weapon_id) = prep_state.equipped_weapon2 {
-                    if let Some(weapon_data) = equipment_db.weapons.get(weapon_id) {
-                        let weapon_performance = weapon_data.weapon.performance(&current_ability);
+                    if let Some(weapon_record) = dm.weapon.find_by_id(weapon_id) {
+                        let weapon_performance = weapon_record.data.performance(&current_ability);
                         weapon_performance.final_sorcery_power()
                     } else {
                         WeaponPerformance::unarmed_weapon_performance().final_sorcery_power()
@@ -1353,7 +1351,7 @@ fn build_equipment_content(
     parent: &mut RelatedSpawnerCommands<ChildOf>,
     font: Handle<Font>,
     prep_state: &PreparationState,
-    equipment_db: &EquipmentDatabase,
+    dm: &DataManager,
 ) {
     parent.spawn((
         Text::new("装備"),
@@ -1385,22 +1383,23 @@ fn build_equipment_content(
     // 装備スロット一覧（武器の場合は武器データも保持）
     let weapon1_data = prep_state
         .equipped_weapon1
-        .and_then(|id| equipment_db.weapons.iter().find(|w| w.id == id));
+        .and_then(|id| dm.weapon.find_by_id(id));
     let weapon2_data = prep_state
         .equipped_weapon2
-        .and_then(|id| equipment_db.weapons.iter().find(|w| w.id == id));
+        .and_then(|id| dm.weapon.find_by_id(id));
 
-    let equipment_slots: Vec<(&str, EquipmentSlot, Option<String>, Option<&WeaponData>)> = vec![
+    use crate::data::WeaponRecord;
+    let equipment_slots: Vec<(&str, EquipmentSlot, Option<String>, Option<&WeaponRecord>)> = vec![
         (
             "右手武器",
             EquipmentSlot::Weapon1,
-            weapon1_data.map(|w| w.name.clone()),
+            weapon1_data.map(|w| w.data.name.clone()),
             weapon1_data,
         ),
         (
             "左手武器",
             EquipmentSlot::Weapon2,
-            weapon2_data.map(|w| w.name.clone()),
+            weapon2_data.map(|w| w.data.name.clone()),
             weapon2_data,
         ),
         (
@@ -1408,14 +1407,7 @@ fn build_equipment_content(
             EquipmentSlot::Armor1,
             prep_state
                 .equipped_armor1
-                .map(|id| {
-                    equipment_db
-                        .armors
-                        .iter()
-                        .find(|a| a.id == id)
-                        .map(|a| a.name.clone())
-                })
-                .flatten(),
+                .and_then(|id| dm.armor.find_by_id(id).map(|a| a.data.name.clone())),
             None,
         ),
         (
@@ -1423,14 +1415,7 @@ fn build_equipment_content(
             EquipmentSlot::Armor2,
             prep_state
                 .equipped_armor2
-                .map(|id| {
-                    equipment_db
-                        .armors
-                        .iter()
-                        .find(|a| a.id == id)
-                        .map(|a| a.name.clone())
-                })
-                .flatten(),
+                .and_then(|id| dm.armor.find_by_id(id).map(|a| a.data.name.clone())),
             None,
         ),
         (
@@ -1438,14 +1423,7 @@ fn build_equipment_content(
             EquipmentSlot::Armor3,
             prep_state
                 .equipped_armor3
-                .map(|id| {
-                    equipment_db
-                        .armors
-                        .iter()
-                        .find(|a| a.id == id)
-                        .map(|a| a.name.clone())
-                })
-                .flatten(),
+                .and_then(|id| dm.armor.find_by_id(id).map(|a| a.data.name.clone())),
             None,
         ),
         (
@@ -1453,14 +1431,7 @@ fn build_equipment_content(
             EquipmentSlot::Armor4,
             prep_state
                 .equipped_armor4
-                .map(|id| {
-                    equipment_db
-                        .armors
-                        .iter()
-                        .find(|a| a.id == id)
-                        .map(|a| a.name.clone())
-                })
-                .flatten(),
+                .and_then(|id| dm.armor.find_by_id(id).map(|a| a.data.name.clone())),
             None,
         ),
         (
@@ -1468,14 +1439,7 @@ fn build_equipment_content(
             EquipmentSlot::Armor5,
             prep_state
                 .equipped_armor5
-                .map(|id| {
-                    equipment_db
-                        .armors
-                        .iter()
-                        .find(|a| a.id == id)
-                        .map(|a| a.name.clone())
-                })
-                .flatten(),
+                .and_then(|id| dm.armor.find_by_id(id).map(|a| a.data.name.clone())),
             None,
         ),
         (
@@ -1483,14 +1447,7 @@ fn build_equipment_content(
             EquipmentSlot::Armor6,
             prep_state
                 .equipped_armor6
-                .map(|id| {
-                    equipment_db
-                        .armors
-                        .iter()
-                        .find(|a| a.id == id)
-                        .map(|a| a.name.clone())
-                })
-                .flatten(),
+                .and_then(|id| dm.armor.find_by_id(id).map(|a| a.data.name.clone())),
             None,
         ),
         (
@@ -1498,14 +1455,7 @@ fn build_equipment_content(
             EquipmentSlot::Armor7,
             prep_state
                 .equipped_armor7
-                .map(|id| {
-                    equipment_db
-                        .armors
-                        .iter()
-                        .find(|a| a.id == id)
-                        .map(|a| a.name.clone())
-                })
-                .flatten(),
+                .and_then(|id| dm.armor.find_by_id(id).map(|a| a.data.name.clone())),
             None,
         ),
         (
@@ -1513,14 +1463,7 @@ fn build_equipment_content(
             EquipmentSlot::Armor8,
             prep_state
                 .equipped_armor8
-                .map(|id| {
-                    equipment_db
-                        .armors
-                        .iter()
-                        .find(|a| a.id == id)
-                        .map(|a| a.name.clone())
-                })
-                .flatten(),
+                .and_then(|id| dm.armor.find_by_id(id).map(|a| a.data.name.clone())),
             None,
         ),
     ];
@@ -1585,9 +1528,9 @@ fn build_equipment_content(
 
                                     if let Some(eq_name) = equipped_name {
                                         // 武器の場合、使用可能かチェック
-                                        let is_usable = if let Some(weapon_data) = weapon_data {
-                                            let not_enough_abilities = weapon_data
-                                                .weapon
+                                        let is_usable = if let Some(weapon_record) = weapon_data {
+                                            let not_enough_abilities = weapon_record
+                                                .data
                                                 .not_enough_abilities(&current_ability);
                                             not_enough_abilities.is_empty()
                                         } else {
@@ -1694,74 +1637,34 @@ fn build_equipment_content(
                     // 装備重量・荷重表示
                     let current_equipment = Equipment {
                         weapon1: prep_state.equipped_weapon1.and_then(|id| {
-                            equipment_db
-                                .weapons
-                                .iter()
-                                .find(|w| w.id == id)
-                                .map(|w| w.weapon.clone())
+                            dm.weapon.find_by_id(id).map(|r| r.data.clone())
                         }),
                         weapon2: prep_state.equipped_weapon2.and_then(|id| {
-                            equipment_db
-                                .weapons
-                                .iter()
-                                .find(|w| w.id == id)
-                                .map(|w| w.weapon.clone())
+                            dm.weapon.find_by_id(id).map(|r| r.data.clone())
                         }),
                         armor1: prep_state.equipped_armor1.and_then(|id| {
-                            equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == id)
-                                .map(|a| a.armor.clone())
+                            dm.armor.find_by_id(id).map(|r| r.data.clone())
                         }),
                         armor2: prep_state.equipped_armor2.and_then(|id| {
-                            equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == id)
-                                .map(|a| a.armor.clone())
+                            dm.armor.find_by_id(id).map(|r| r.data.clone())
                         }),
                         armor3: prep_state.equipped_armor3.and_then(|id| {
-                            equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == id)
-                                .map(|a| a.armor.clone())
+                            dm.armor.find_by_id(id).map(|r| r.data.clone())
                         }),
                         armor4: prep_state.equipped_armor4.and_then(|id| {
-                            equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == id)
-                                .map(|a| a.armor.clone())
+                            dm.armor.find_by_id(id).map(|r| r.data.clone())
                         }),
                         armor5: prep_state.equipped_armor5.and_then(|id| {
-                            equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == id)
-                                .map(|a| a.armor.clone())
+                            dm.armor.find_by_id(id).map(|r| r.data.clone())
                         }),
                         armor6: prep_state.equipped_armor6.and_then(|id| {
-                            equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == id)
-                                .map(|a| a.armor.clone())
+                            dm.armor.find_by_id(id).map(|r| r.data.clone())
                         }),
                         armor7: prep_state.equipped_armor7.and_then(|id| {
-                            equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == id)
-                                .map(|a| a.armor.clone())
+                            dm.armor.find_by_id(id).map(|r| r.data.clone())
                         }),
                         armor8: prep_state.equipped_armor8.and_then(|id| {
-                            equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == id)
-                                .map(|a| a.armor.clone())
+                            dm.armor.find_by_id(id).map(|r| r.data.clone())
                         }),
                     };
 
@@ -1902,14 +1805,14 @@ fn build_equipment_content(
                                     ..default()
                                 })
                                 .with_children(|weapon_col| {
-                                    if let Some(weapon_data) = weapon1_data {
+                                    if let Some(weapon_record) = weapon1_data {
                                         let performance =
-                                            weapon_data.weapon.performance(&current_ability);
+                                            weapon_record.data.performance(&current_ability);
                                         build_weapon_performance_display(
                                             weapon_col,
                                             font.clone(),
                                             "右手武器",
-                                            &weapon_data.weapon,
+                                            &weapon_record.data,
                                             &performance,
                                         );
                                     } else {
@@ -1946,14 +1849,14 @@ fn build_equipment_content(
                                     ..default()
                                 })
                                 .with_children(|weapon_col| {
-                                    if let Some(weapon_data) = weapon2_data {
+                                    if let Some(weapon_record) = weapon2_data {
                                         let performance =
-                                            weapon_data.weapon.performance(&current_ability);
+                                            weapon_record.data.performance(&current_ability);
                                         build_weapon_performance_display(
                                             weapon_col,
                                             font.clone(),
                                             "左手武器",
-                                            &weapon_data.weapon,
+                                            &weapon_record.data,
                                             &performance,
                                         );
                                     } else {
@@ -2000,10 +1903,8 @@ fn build_equipment_content(
                         prep_state.equipped_armor8,
                     ];
                     for armor_id in armor_ids.iter().flatten() {
-                        if let Some(armor_data) =
-                            equipment_db.armors.iter().find(|a| a.id == *armor_id)
-                        {
-                            equipment_defense.add(&armor_data.armor.defense);
+                        if let Some(armor_record) = dm.armor.find_by_id(*armor_id) {
+                            equipment_defense.add(&armor_record.data.defense);
                         }
                     }
 
@@ -2264,7 +2165,7 @@ fn build_arts_content(
     parent: &mut RelatedSpawnerCommands<ChildOf>,
     font: Handle<Font>,
     prep_state: &PreparationState,
-    arts_db: &ArtsDatabase,
+    dm: &DataManager,
 ) {
     parent.spawn((
         Text::new("技術設定"),
@@ -2331,7 +2232,7 @@ fn build_arts_content(
                         let selected_art = prep_state
                             .selected_arts
                             .get(slot_index)
-                            .and_then(|&art_id| arts_db.arts.iter().find(|a| a.id == art_id));
+                            .and_then(|&art_id| dm.art.find_by_id(art_id));
 
                         slots_parent
                             .spawn((
@@ -2355,16 +2256,16 @@ fn build_arts_content(
                                 BorderColor::all(Color::WHITE),
                             ))
                             .with_children(|slot| {
-                                if let Some(art) = selected_art {
+                                if let Some(art_record) = selected_art {
                                     // 必要能力を満たしているかチェック
                                     let meets_requirement =
-                                        check_art_requirement(prep_state, &art.art.requirement);
+                                        check_art_requirement(prep_state, &art_record.data.requirement);
 
                                     // 技術名（必要能力が足りない場合は×を表示）
                                     let name_text = if meets_requirement {
-                                        format!("{}. {}", slot_index + 1, art.name)
+                                        format!("{}. {}", slot_index + 1, art_record.data.name)
                                     } else {
-                                        format!("{}. {} ×", slot_index + 1, art.name)
+                                        format!("{}. {} ×", slot_index + 1, art_record.data.name)
                                     };
                                     let text_color = if meets_requirement {
                                         Color::WHITE
@@ -2384,7 +2285,7 @@ fn build_arts_content(
                                     // 技術情報
                                     let info = format!(
                                         "SP:{} / ST:{}",
-                                        art.art.sp_cost, art.art.stamina_cost
+                                        art_record.data.sp_cost, art_record.data.stamina_cost
                                     );
                                     slot.spawn((
                                         Text::new(info),
@@ -2444,7 +2345,7 @@ fn build_arts_content(
                             ..default()
                         })
                         .with_children(|grid| {
-                            for art_data in &arts_db.arts {
+                            for art_record in dm.art.find_all() {
                                 grid.spawn(Node {
                                     width: Val::Percent(32.0), // 3列表示（100% / 3 ≈ 33%、ギャップを考慮して32%）
                                     flex_direction: FlexDirection::Column,
@@ -2455,7 +2356,7 @@ fn build_arts_content(
                                 .with_children(|art_panel| {
                                     // 技術名
                                     art_panel.spawn((
-                                        Text::new(&art_data.name),
+                                        Text::new(&art_record.data.name),
                                         TextFont {
                                             font: font.clone(),
                                             font_size: 18.0,
@@ -2468,7 +2369,7 @@ fn build_arts_content(
                                     art_panel.spawn((
                                         Text::new(format!(
                                             "SP: {} / スタミナ: {}",
-                                            art_data.art.sp_cost, art_data.art.stamina_cost
+                                            art_record.data.sp_cost, art_record.data.stamina_cost
                                         )),
                                         TextFont {
                                             font: font.clone(),
@@ -2479,7 +2380,7 @@ fn build_arts_content(
                                     ));
 
                                     // 必要能力
-                                    let req = &art_data.art.requirement;
+                                    let req = &art_record.data.requirement;
                                     let mut req_parts = Vec::new();
                                     if req.strength > 0 {
                                         req_parts.push(format!("筋力{}", req.strength));
@@ -2728,7 +2629,7 @@ pub fn equipment_selection_system(
     mut prep_state: ResMut<PreparationState>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    equipment_db: Res<EquipmentDatabase>,
+    dm: Res<DataManager>,
     screen_query: Query<Entity, With<PreparationScreen>>,
 ) {
     for (interaction, equipment_button, mut color) in &mut interaction_query {
@@ -2745,7 +2646,7 @@ pub fn equipment_selection_system(
                             parent,
                             font,
                             equipment_button.slot,
-                            &equipment_db,
+                            &dm,
                         );
                     });
                 }
@@ -3822,6 +3723,7 @@ fn create_round_shield() -> Weapon {
 // 防具生成関数
 fn create_iron_helmet() -> Armor {
     Armor {
+        name: "鉄の兜".to_string(),
         kind: ArmorKind::Helmet,
         weight: 8,
         defense: DefensePower {
@@ -3845,6 +3747,7 @@ fn create_iron_helmet() -> Armor {
 
 fn create_iron_armor() -> Armor {
     Armor {
+        name: "鉄の鎧".to_string(),
         kind: ArmorKind::ChestArmor,
         weight: 20,
         defense: DefensePower {
@@ -3868,6 +3771,7 @@ fn create_iron_armor() -> Armor {
 
 fn create_iron_gauntlets() -> Armor {
     Armor {
+        name: "鉄の籠手".to_string(),
         kind: ArmorKind::Gauntlets,
         weight: 6,
         defense: DefensePower {
@@ -3891,6 +3795,7 @@ fn create_iron_gauntlets() -> Armor {
 
 fn create_iron_leggings() -> Armor {
     Armor {
+        name: "鉄の脚甲".to_string(),
         kind: ArmorKind::LegArmor,
         weight: 12,
         defense: DefensePower {
@@ -3914,6 +3819,7 @@ fn create_iron_leggings() -> Armor {
 
 fn create_leather_helmet() -> Armor {
     Armor {
+        name: "革の兜".to_string(),
         kind: ArmorKind::Helmet,
         weight: 3,
         defense: DefensePower {
@@ -3937,6 +3843,7 @@ fn create_leather_helmet() -> Armor {
 
 fn create_leather_armor() -> Armor {
     Armor {
+        name: "革の鎧".to_string(),
         kind: ArmorKind::ChestArmor,
         weight: 8,
         defense: DefensePower {
@@ -3960,6 +3867,7 @@ fn create_leather_armor() -> Armor {
 
 fn create_leather_gauntlets() -> Armor {
     Armor {
+        name: "革の籠手".to_string(),
         kind: ArmorKind::Gauntlets,
         weight: 2,
         defense: DefensePower {
@@ -3983,6 +3891,7 @@ fn create_leather_gauntlets() -> Armor {
 
 fn create_leather_leggings() -> Armor {
     Armor {
+        name: "革の脚甲".to_string(),
         kind: ArmorKind::LegArmor,
         weight: 5,
         defense: DefensePower {
@@ -4059,7 +3968,7 @@ struct EquipmentSelectionDialog;
 
 #[derive(Component)]
 struct EquipmentListButton {
-    equipment_id: usize,
+    equipment_id: u32,
 }
 
 #[derive(Component)]
@@ -4069,7 +3978,7 @@ fn build_equipment_selection_dialog(
     parent: &mut RelatedSpawnerCommands<ChildOf>,
     font: Handle<Font>,
     slot: EquipmentSlot,
-    equipment_db: &EquipmentDatabase,
+    dm: &DataManager,
 ) {
     parent
         .spawn((
@@ -4179,10 +4088,10 @@ fn build_equipment_selection_dialog(
                             match slot {
                                 EquipmentSlot::Weapon1 | EquipmentSlot::Weapon2 => {
                                     // 武器リスト
-                                    for weapon_data in &equipment_db.weapons {
+                                    for weapon_record in dm.weapon.find_all() {
                                         list.spawn((
                                             EquipmentListButton {
-                                                equipment_id: weapon_data.id,
+                                                equipment_id: weapon_record.id,
                                             },
                                             Button,
                                             Node {
@@ -4204,7 +4113,7 @@ fn build_equipment_selection_dialog(
                                         .with_children(
                                             |btn| {
                                                 btn.spawn((
-                                                    Text::new(&weapon_data.name),
+                                                    Text::new(&weapon_record.data.name),
                                                     TextFont {
                                                         font: font.clone(),
                                                         font_size: 20.0,
@@ -4218,10 +4127,10 @@ fn build_equipment_selection_dialog(
                                 }
                                 _ => {
                                     // 防具リスト
-                                    for armor_data in &equipment_db.armors {
+                                    for armor_record in dm.armor.find_all() {
                                         list.spawn((
                                             EquipmentListButton {
-                                                equipment_id: armor_data.id,
+                                                equipment_id: armor_record.id,
                                             },
                                             Button,
                                             Node {
@@ -4243,7 +4152,7 @@ fn build_equipment_selection_dialog(
                                         .with_children(
                                             |btn| {
                                                 btn.spawn((
-                                                    Text::new(&armor_data.name),
+                                                    Text::new(&armor_record.data.name),
                                                     TextFont {
                                                         font: font.clone(),
                                                         font_size: 20.0,
@@ -4270,7 +4179,7 @@ pub fn equipment_list_button_system(
     mut prep_state: ResMut<PreparationState>,
     mut commands: Commands,
     dialog_query: Query<Entity, With<EquipmentSelectionDialog>>,
-    equipment_db: Res<EquipmentDatabase>,
+    dm: Res<DataManager>,
 ) {
     for (interaction, list_button, mut color) in &mut interaction_query {
         match *interaction {
@@ -4292,87 +4201,43 @@ pub fn equipment_list_button_system(
                         | EquipmentSlot::Armor7
                         | EquipmentSlot::Armor8 => {
                             // 選択された防具を取得
-                            if let Some(armor_data) = equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == list_button.equipment_id)
-                            {
+                            if let Some(armor_record) = dm.armor.find_by_id(list_button.equipment_id) {
                                 // 現在の装備状態からEquipmentを構築
                                 let current_equipment = Equipment {
                                     weapon1: prep_state.equipped_weapon1.and_then(|id| {
-                                        equipment_db
-                                            .weapons
-                                            .iter()
-                                            .find(|w| w.id == id)
-                                            .map(|w| w.weapon.clone())
+                                        dm.weapon.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     weapon2: prep_state.equipped_weapon2.and_then(|id| {
-                                        equipment_db
-                                            .weapons
-                                            .iter()
-                                            .find(|w| w.id == id)
-                                            .map(|w| w.weapon.clone())
+                                        dm.weapon.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     armor1: prep_state.equipped_armor1.and_then(|id| {
-                                        equipment_db
-                                            .armors
-                                            .iter()
-                                            .find(|a| a.id == id)
-                                            .map(|a| a.armor.clone())
+                                        dm.armor.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     armor2: prep_state.equipped_armor2.and_then(|id| {
-                                        equipment_db
-                                            .armors
-                                            .iter()
-                                            .find(|a| a.id == id)
-                                            .map(|a| a.armor.clone())
+                                        dm.armor.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     armor3: prep_state.equipped_armor3.and_then(|id| {
-                                        equipment_db
-                                            .armors
-                                            .iter()
-                                            .find(|a| a.id == id)
-                                            .map(|a| a.armor.clone())
+                                        dm.armor.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     armor4: prep_state.equipped_armor4.and_then(|id| {
-                                        equipment_db
-                                            .armors
-                                            .iter()
-                                            .find(|a| a.id == id)
-                                            .map(|a| a.armor.clone())
+                                        dm.armor.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     armor5: prep_state.equipped_armor5.and_then(|id| {
-                                        equipment_db
-                                            .armors
-                                            .iter()
-                                            .find(|a| a.id == id)
-                                            .map(|a| a.armor.clone())
+                                        dm.armor.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     armor6: prep_state.equipped_armor6.and_then(|id| {
-                                        equipment_db
-                                            .armors
-                                            .iter()
-                                            .find(|a| a.id == id)
-                                            .map(|a| a.armor.clone())
+                                        dm.armor.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     armor7: prep_state.equipped_armor7.and_then(|id| {
-                                        equipment_db
-                                            .armors
-                                            .iter()
-                                            .find(|a| a.id == id)
-                                            .map(|a| a.armor.clone())
+                                        dm.armor.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     armor8: prep_state.equipped_armor8.and_then(|id| {
-                                        equipment_db
-                                            .armors
-                                            .iter()
-                                            .find(|a| a.id == id)
-                                            .map(|a| a.armor.clone())
+                                        dm.armor.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                 };
 
                                 // 装備可能かチェック
-                                if current_equipment.is_equippable(&armor_data.armor) {
+                                if current_equipment.is_equippable(&armor_record.data) {
                                     match slot {
                                         EquipmentSlot::Armor1 => {
                                             prep_state.equipped_armor1 =
@@ -4511,7 +4376,7 @@ struct ArtsListContainer;
 
 #[derive(Component)]
 struct ArtsListButton {
-    arts_id: usize,
+    arts_id: u32,
 }
 
 #[derive(Component)]
@@ -4529,7 +4394,7 @@ fn arts_slot_button_system(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut prep_state: ResMut<PreparationState>,
-    arts_db: Res<ArtsDatabase>,
+    dm: Res<DataManager>,
 ) {
     for (interaction, slot_button, mut color) in &mut interaction_query {
         match *interaction {
@@ -4755,12 +4620,11 @@ fn arts_slot_button_system(
                                             ArtTypeTab::Sorcery => ArtType::Sorcery,
                                         };
 
-                                        for art_data in arts_db
-                                            .arts
-                                            .iter()
-                                            .filter(|a| a.art.art_type == target_art_type)
+                                        for art_record in dm
+                                            .art
+                                            .find_many(|r| r.data.art_type == target_art_type)
                                         {
-                                            spawn_art_list_item(list, art_data, &font);
+                                            spawn_art_list_item(list, art_record, &font);
                                         }
                                     });
                             });
@@ -4930,7 +4794,7 @@ fn arts_tab_button_system(
     mut commands: Commands,
     dialog_query: Query<Entity, With<ArtsSelectionDialog>>,
     mut prep_state: ResMut<PreparationState>,
-    arts_db: Res<ArtsDatabase>,
+    dm: Res<DataManager>,
     asset_server: Res<AssetServer>,
 ) {
     for (interaction, tab_button, mut color, mut border) in &mut interaction_query {
@@ -4952,7 +4816,7 @@ fn arts_tab_button_system(
                         &mut commands,
                         &asset_server,
                         &prep_state,
-                        &arts_db,
+                        &dm,
                     );
                 }
             }
@@ -4984,10 +4848,10 @@ fn arts_tab_button_system(
 }
 
 /// 技術リストのアイテムをスポーンするヘルパー関数
-fn spawn_art_list_item(list: &mut ChildSpawnerCommands, art_data: &ArtsData, font: &Handle<Font>) {
+fn spawn_art_list_item(list: &mut ChildSpawnerCommands, art_record: &crate::data::ArtRecord, font: &Handle<Font>) {
     list.spawn((
         ArtsListButton {
-            arts_id: art_data.id,
+            arts_id: art_record.id,
         },
         Button,
         Node {
@@ -5008,7 +4872,7 @@ fn spawn_art_list_item(list: &mut ChildSpawnerCommands, art_data: &ArtsData, fon
     .with_children(|btn| {
         // 技術名
         btn.spawn((
-            Text::new(&art_data.name),
+            Text::new(&art_record.data.name),
             TextFont {
                 font: font.clone(),
                 font_size: 20.0,
@@ -5021,7 +4885,7 @@ fn spawn_art_list_item(list: &mut ChildSpawnerCommands, art_data: &ArtsData, fon
         btn.spawn((
             Text::new(format!(
                 "SP: {} / スタミナ: {}",
-                art_data.art.sp_cost, art_data.art.stamina_cost
+                art_record.data.sp_cost, art_record.data.stamina_cost
             )),
             TextFont {
                 font: font.clone(),
@@ -5032,7 +4896,7 @@ fn spawn_art_list_item(list: &mut ChildSpawnerCommands, art_data: &ArtsData, fon
         ));
 
         // 必要能力
-        let req = &art_data.art.requirement;
+        let req = &art_record.data.requirement;
         let mut req_parts = Vec::new();
         if req.strength > 0 {
             req_parts.push(format!("筋力{}", req.strength));
@@ -5066,7 +4930,7 @@ fn spawn_art_list_item(list: &mut ChildSpawnerCommands, art_data: &ArtsData, fon
         }
 
         // 使用可能武器種（Allの場合は表示しない）
-        if let ArtUsableWeapon::Specific(weapon_kinds) = &art_data.art.usable_weapon {
+        if let ArtUsableWeapon::Specific(weapon_kinds) = &art_record.data.usable_weapon {
             let weapon_names: Vec<&str> = weapon_kinds
                 .iter()
                 .map(|kind| weapon_kind_to_string(kind))
@@ -5104,7 +4968,7 @@ fn spawn_arts_selection_dialog(
     commands: &mut Commands,
     asset_server: &Res<AssetServer>,
     prep_state: &ResMut<PreparationState>,
-    arts_db: &Res<ArtsDatabase>,
+    dm: &Res<DataManager>,
 ) {
     let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
 
@@ -5323,12 +5187,11 @@ fn spawn_arts_selection_dialog(
                                 ArtTypeTab::Sorcery => ArtType::Sorcery,
                             };
 
-                            for art_data in arts_db
-                                .arts
-                                .iter()
-                                .filter(|a| a.art.art_type == target_art_type)
+                            for art_record in dm
+                                .art
+                                .find_many(|r| r.data.art_type == target_art_type)
                             {
-                                spawn_art_list_item(list, art_data, &font);
+                                spawn_art_list_item(list, art_record, &font);
                             }
                         });
                 });

@@ -152,6 +152,7 @@ pub struct WeaponPerformancePenalty {
 // 防具
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Armor {
+    pub name: String,                // 名前
     pub kind: ArmorKind,             // 種類
     pub weight: u32,                 // 重量
     pub defense: DefensePower,       // 防御力
