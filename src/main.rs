@@ -9,6 +9,7 @@ use bevy::prelude::*;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_plugins(DataManagerPlugin)
         .add_plugins(PreparationPlugin)
         .add_plugins(InBattlePlugin)
         .init_state::<GameState>()
