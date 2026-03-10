@@ -148,7 +148,7 @@ pub struct BattleWeapon {
     pub weapon: Weapon,     // 武器情報
 }
 // 武器ID
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct BattleWeaponId(pub u32);
 
 #[derive(Clone, Debug)]

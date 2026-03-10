@@ -1,3 +1,12 @@
+use serde::{Deserialize, Serialize};
+
+// JSONエクスポート用レコード（idとdataを保持）
+#[derive(Serialize, Deserialize)]
+struct ExportRecord<T> {
+    id: u32,
+    data: T,
+}
+
 // 汎用リポジトリ
 pub struct Record<T> {
     pub id: u32,
@@ -74,5 +83,38 @@ impl<T: Clone> Repository<T> {
     /// 登録件数を返す
     pub fn count(&self) -> usize {
         self.records.len()
+    }
+
+    /// 全レコードをJSONファイルにエクスポートする
+    /// idとdataを保持するため、インポート時に同じidで復元される
+    pub fn export_to_file(&self, path: &str) -> Result<(), Box<dyn std::error::Error>>
+    where
+        T: Serialize,
+    {
+        let export: Vec<ExportRecord<&T>> = self
+            .records
+            .iter()
+            .map(|r| ExportRecord { id: r.id, data: &r.data })
+            .collect();
+        let json = serde_json::to_string_pretty(&export)?;
+        std::fs::write(path, json)?;
+        Ok(())
+    }
+
+    /// JSONファイルからインポートする
+    /// 現在のデータを全削除してからインポートする
+    pub fn import_from_file(&mut self, path: &str) -> Result<(), Box<dyn std::error::Error>>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
+        let json = std::fs::read_to_string(path)?;
+        let export: Vec<ExportRecord<T>> = serde_json::from_str(&json)?;
+        self.records.clear();
+        let max_id = export.iter().map(|r| r.id).max().unwrap_or(0);
+        for record in export {
+            self.records.push(Record { id: record.id, data: record.data });
+        }
+        self.next_id = max_id + 1;
+        Ok(())
     }
 }
