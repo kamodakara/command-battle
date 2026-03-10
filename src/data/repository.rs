@@ -66,6 +66,11 @@ impl<T: Clone> Repository<T> {
         }
     }
 
+    /// 全レコードを削除する
+    pub fn clear(&mut self) {
+        self.records.clear();
+    }
+
     /// 登録件数を返す
     pub fn count(&self) -> usize {
         self.records.len()
