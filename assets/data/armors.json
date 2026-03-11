@@ -1,0 +1,90 @@
+[
+  {
+    "id": 1,
+    "data": {
+      "name": "鉄の兜",
+      "kind": "Helmet",
+      "weight": 8,
+      "defense": { "slash": 15, "strike": 15, "thrust": 15, "impact": 12, "magic": 8,  "fire": 10, "lightning": 10, "chaos": 8  },
+      "resistance": { "immunity": 10, "robustness": 12, "sanity": 8  },
+      "slots": ["Head"]
+    }
+  },
+  {
+    "id": 2,
+    "data": {
+      "name": "鉄の鎧",
+      "kind": "ChestArmor",
+      "weight": 20,
+      "defense": { "slash": 30, "strike": 30, "thrust": 30, "impact": 25, "magic": 15, "fire": 20, "lightning": 20, "chaos": 15 },
+      "resistance": { "immunity": 20, "robustness": 25, "sanity": 15 },
+      "slots": ["Chest"]
+    }
+  },
+  {
+    "id": 3,
+    "data": {
+      "name": "鉄の籠手",
+      "kind": "Gauntlets",
+      "weight": 6,
+      "defense": { "slash": 10, "strike": 10, "thrust": 10, "impact": 8,  "magic": 5,  "fire": 7,  "lightning": 7,  "chaos": 5  },
+      "resistance": { "immunity": 7, "robustness": 8, "sanity": 5 },
+      "slots": ["Arms"]
+    }
+  },
+  {
+    "id": 4,
+    "data": {
+      "name": "鉄の脚甲",
+      "kind": "LegArmor",
+      "weight": 12,
+      "defense": { "slash": 18, "strike": 18, "thrust": 18, "impact": 15, "magic": 10, "fire": 12, "lightning": 12, "chaos": 10 },
+      "resistance": { "immunity": 12, "robustness": 15, "sanity": 10 },
+      "slots": ["Legs"]
+    }
+  },
+  {
+    "id": 5,
+    "data": {
+      "name": "革の兜",
+      "kind": "Helmet",
+      "weight": 3,
+      "defense": { "slash": 8, "strike": 7, "thrust": 8, "impact": 6, "magic": 5, "fire": 6, "lightning": 5, "chaos": 5 },
+      "resistance": { "immunity": 8, "robustness": 7, "sanity": 10 },
+      "slots": ["Head"]
+    }
+  },
+  {
+    "id": 6,
+    "data": {
+      "name": "革の鎧",
+      "kind": "ChestArmor",
+      "weight": 8,
+      "defense": { "slash": 15, "strike": 12, "thrust": 15, "impact": 10, "magic": 10, "fire": 12, "lightning": 10, "chaos": 10 },
+      "resistance": { "immunity": 15, "robustness": 12, "sanity": 20 },
+      "slots": ["Chest"]
+    }
+  },
+  {
+    "id": 7,
+    "data": {
+      "name": "革の籠手",
+      "kind": "Gauntlets",
+      "weight": 2,
+      "defense": { "slash": 5, "strike": 4, "thrust": 5, "impact": 3, "magic": 4, "fire": 4, "lightning": 4, "chaos": 4 },
+      "resistance": { "immunity": 5, "robustness": 4, "sanity": 7 },
+      "slots": ["Arms"]
+    }
+  },
+  {
+    "id": 8,
+    "data": {
+      "name": "革の脚甲",
+      "kind": "LegArmor",
+      "weight": 5,
+      "defense": { "slash": 10, "strike": 8, "thrust": 10, "impact": 7, "magic": 7, "fire": 8, "lightning": 7, "chaos": 7 },
+      "resistance": { "immunity": 10, "robustness": 8, "sanity": 15 },
+      "slots": ["Legs"]
+    }
+  }
+]

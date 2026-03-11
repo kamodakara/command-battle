@@ -1,6 +1,7 @@
 use bevy::{ecs::relationship::RelatedSpawnerCommands, prelude::*};
 
 use super::*;
+use crate::data::DataManager;
 use crate::fundamental::{
     Ability, AbilityScaling, AbilityType, Armor, ArmorKind, ArmorResistance, ArmorSlot, Art,
     ArtPerk, ArtPotency, ArtPotencyAttack, ArtPotencySupport, ArtPotencySupportRecover,
@@ -60,18 +61,18 @@ pub struct PreparationState {
     pub temp_intelligence: u32,
     pub temp_faith: u32,
     pub temp_arcane: u32,
-    pub equipped_weapon1: Option<usize>,
-    pub equipped_weapon2: Option<usize>,
-    pub equipped_armor1: Option<usize>,
-    pub equipped_armor2: Option<usize>,
-    pub equipped_armor3: Option<usize>,
-    pub equipped_armor4: Option<usize>,
-    pub equipped_armor5: Option<usize>,
-    pub equipped_armor6: Option<usize>,
-    pub equipped_armor7: Option<usize>,
-    pub equipped_armor8: Option<usize>,
+    pub equipped_weapon1: Option<u32>,
+    pub equipped_weapon2: Option<u32>,
+    pub equipped_armor1: Option<u32>,
+    pub equipped_armor2: Option<u32>,
+    pub equipped_armor3: Option<u32>,
+    pub equipped_armor4: Option<u32>,
+    pub equipped_armor5: Option<u32>,
+    pub equipped_armor6: Option<u32>,
+    pub equipped_armor7: Option<u32>,
+    pub equipped_armor8: Option<u32>,
     pub selecting_slot: Option<EquipmentSlot>,
-    pub selected_arts: Vec<usize>, // 選択された技術のID (最大8つ)
+    pub selected_arts: Vec<u32>, // 選択された技術のID (最大8つ)
     pub selecting_arts_slot: Option<usize>, // 選択中のスロット (0-7)
     pub selected_art_tab: ArtTypeTab, // 技術選択ダイアログの選択中タブ
     pub error_message: Option<String>,
@@ -87,14 +88,14 @@ pub struct EquipmentDatabase {
 
 #[derive(Clone)]
 pub struct WeaponData {
-    pub id: usize,
+    pub id: u32,
     pub name: String,
     pub weapon: Weapon,
 }
 
 #[derive(Clone)]
 pub struct ArmorData {
-    pub id: usize,
+    pub id: u32,
     pub name: String,
     pub armor: Armor,
 }
@@ -107,7 +108,7 @@ pub struct ArtsDatabase {
 
 #[derive(Clone)]
 pub struct ArtsData {
-    pub id: usize,
+    pub id: u32,
     pub name: String,
     pub art: Art,
 }
@@ -118,8 +119,6 @@ pub struct PreparationPlugin;
 impl Plugin for PreparationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<PreparationState>()
-            .insert_resource(create_equipment_database())
-            .insert_resource(create_arts_database())
             .add_systems(OnEnter(GameState::Preparation), setup_preparation_screen)
             .add_systems(
                 Update,
@@ -434,8 +433,7 @@ pub fn update_content_panel(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     prep_state: Res<PreparationState>,
-    equipment_db: Res<EquipmentDatabase>,
-    arts_db: Res<ArtsDatabase>,
+    dm: Res<DataManager>,
     panel_query: Query<Entity, With<ContentPanel>>,
     children_query: Query<&Children>,
 ) {
@@ -461,13 +459,13 @@ pub fn update_content_panel(
             .entity(panel_entity)
             .with_children(|parent| match current_menu {
                 MenuType::Status => {
-                    build_status_content(parent, font_clone.clone(), &prep_state, &equipment_db);
+                    build_status_content(parent, font_clone.clone(), &prep_state, &dm);
                 }
                 MenuType::Equipment => {
-                    build_equipment_content(parent, font_clone.clone(), &prep_state, &equipment_db);
+                    build_equipment_content(parent, font_clone.clone(), &prep_state, &dm);
                 }
                 MenuType::Arts => {
-                    build_arts_content(parent, font_clone.clone(), &prep_state, &arts_db);
+                    build_arts_content(parent, font_clone.clone(), &prep_state, &dm);
                 }
                 MenuType::StartBattle => {
                     build_start_battle_content(parent, font_clone);
@@ -481,7 +479,7 @@ fn build_status_content(
     parent: &mut RelatedSpawnerCommands<ChildOf>,
     font: Handle<Font>,
     prep_state: &PreparationState,
-    equipment_db: &EquipmentDatabase,
+    dm: &DataManager,
 ) {
     parent.spawn((
         Text::new("ステータス"),
@@ -807,8 +805,8 @@ fn build_status_content(
 
                 // 武器1の攻撃力を計算
                 let weapon1_attack_power = if let Some(weapon_id) = prep_state.equipped_weapon1 {
-                    if let Some(weapon_data) = equipment_db.weapons.get(weapon_id) {
-                        let weapon_performance = weapon_data.weapon.performance(&current_ability);
+                    if let Some(weapon_record) = dm.weapon.find_by_id(weapon_id) {
+                        let weapon_performance = weapon_record.data.performance(&current_ability);
                         println!(
                             "Weapon 1 Attack Power Calculation: {:?}",
                             weapon_performance.final_attack_power()
@@ -827,8 +825,8 @@ fn build_status_content(
 
                 // 武器2の攻撃力を計算
                 let weapon2_attack_power = if let Some(weapon_id) = prep_state.equipped_weapon2 {
-                    if let Some(weapon_data) = equipment_db.weapons.get(weapon_id) {
-                        let weapon_performance = weapon_data.weapon.performance(&current_ability);
+                    if let Some(weapon_record) = dm.weapon.find_by_id(weapon_id) {
+                        let weapon_performance = weapon_record.data.performance(&current_ability);
                         weapon_performance.final_attack_power().total_power()
                     } else {
                         WeaponPerformance::unarmed_weapon_performance()
@@ -890,8 +888,8 @@ fn build_status_content(
 
                 // 武器1の術力を計算
                 let weapon1_sorcery_power = if let Some(weapon_id) = prep_state.equipped_weapon1 {
-                    if let Some(weapon_data) = equipment_db.weapons.get(weapon_id) {
-                        let weapon_performance = weapon_data.weapon.performance(&current_ability);
+                    if let Some(weapon_record) = dm.weapon.find_by_id(weapon_id) {
+                        let weapon_performance = weapon_record.data.performance(&current_ability);
                         weapon_performance.final_sorcery_power()
                     } else {
                         WeaponPerformance::unarmed_weapon_performance().final_sorcery_power()
@@ -902,8 +900,8 @@ fn build_status_content(
 
                 // 武器2の術力を計算
                 let weapon2_sorcery_power = if let Some(weapon_id) = prep_state.equipped_weapon2 {
-                    if let Some(weapon_data) = equipment_db.weapons.get(weapon_id) {
-                        let weapon_performance = weapon_data.weapon.performance(&current_ability);
+                    if let Some(weapon_record) = dm.weapon.find_by_id(weapon_id) {
+                        let weapon_performance = weapon_record.data.performance(&current_ability);
                         weapon_performance.final_sorcery_power()
                     } else {
                         WeaponPerformance::unarmed_weapon_performance().final_sorcery_power()
@@ -1353,7 +1351,7 @@ fn build_equipment_content(
     parent: &mut RelatedSpawnerCommands<ChildOf>,
     font: Handle<Font>,
     prep_state: &PreparationState,
-    equipment_db: &EquipmentDatabase,
+    dm: &DataManager,
 ) {
     parent.spawn((
         Text::new("装備"),
@@ -1385,22 +1383,23 @@ fn build_equipment_content(
     // 装備スロット一覧（武器の場合は武器データも保持）
     let weapon1_data = prep_state
         .equipped_weapon1
-        .and_then(|id| equipment_db.weapons.iter().find(|w| w.id == id));
+        .and_then(|id| dm.weapon.find_by_id(id));
     let weapon2_data = prep_state
         .equipped_weapon2
-        .and_then(|id| equipment_db.weapons.iter().find(|w| w.id == id));
+        .and_then(|id| dm.weapon.find_by_id(id));
 
-    let equipment_slots: Vec<(&str, EquipmentSlot, Option<String>, Option<&WeaponData>)> = vec![
+    use crate::data::WeaponRecord;
+    let equipment_slots: Vec<(&str, EquipmentSlot, Option<String>, Option<&WeaponRecord>)> = vec![
         (
             "右手武器",
             EquipmentSlot::Weapon1,
-            weapon1_data.map(|w| w.name.clone()),
+            weapon1_data.map(|w| w.data.name.clone()),
             weapon1_data,
         ),
         (
             "左手武器",
             EquipmentSlot::Weapon2,
-            weapon2_data.map(|w| w.name.clone()),
+            weapon2_data.map(|w| w.data.name.clone()),
             weapon2_data,
         ),
         (
@@ -1408,14 +1407,7 @@ fn build_equipment_content(
             EquipmentSlot::Armor1,
             prep_state
                 .equipped_armor1
-                .map(|id| {
-                    equipment_db
-                        .armors
-                        .iter()
-                        .find(|a| a.id == id)
-                        .map(|a| a.name.clone())
-                })
-                .flatten(),
+                .and_then(|id| dm.armor.find_by_id(id).map(|a| a.data.name.clone())),
             None,
         ),
         (
@@ -1423,14 +1415,7 @@ fn build_equipment_content(
             EquipmentSlot::Armor2,
             prep_state
                 .equipped_armor2
-                .map(|id| {
-                    equipment_db
-                        .armors
-                        .iter()
-                        .find(|a| a.id == id)
-                        .map(|a| a.name.clone())
-                })
-                .flatten(),
+                .and_then(|id| dm.armor.find_by_id(id).map(|a| a.data.name.clone())),
             None,
         ),
         (
@@ -1438,14 +1423,7 @@ fn build_equipment_content(
             EquipmentSlot::Armor3,
             prep_state
                 .equipped_armor3
-                .map(|id| {
-                    equipment_db
-                        .armors
-                        .iter()
-                        .find(|a| a.id == id)
-                        .map(|a| a.name.clone())
-                })
-                .flatten(),
+                .and_then(|id| dm.armor.find_by_id(id).map(|a| a.data.name.clone())),
             None,
         ),
         (
@@ -1453,14 +1431,7 @@ fn build_equipment_content(
             EquipmentSlot::Armor4,
             prep_state
                 .equipped_armor4
-                .map(|id| {
-                    equipment_db
-                        .armors
-                        .iter()
-                        .find(|a| a.id == id)
-                        .map(|a| a.name.clone())
-                })
-                .flatten(),
+                .and_then(|id| dm.armor.find_by_id(id).map(|a| a.data.name.clone())),
             None,
         ),
         (
@@ -1468,14 +1439,7 @@ fn build_equipment_content(
             EquipmentSlot::Armor5,
             prep_state
                 .equipped_armor5
-                .map(|id| {
-                    equipment_db
-                        .armors
-                        .iter()
-                        .find(|a| a.id == id)
-                        .map(|a| a.name.clone())
-                })
-                .flatten(),
+                .and_then(|id| dm.armor.find_by_id(id).map(|a| a.data.name.clone())),
             None,
         ),
         (
@@ -1483,14 +1447,7 @@ fn build_equipment_content(
             EquipmentSlot::Armor6,
             prep_state
                 .equipped_armor6
-                .map(|id| {
-                    equipment_db
-                        .armors
-                        .iter()
-                        .find(|a| a.id == id)
-                        .map(|a| a.name.clone())
-                })
-                .flatten(),
+                .and_then(|id| dm.armor.find_by_id(id).map(|a| a.data.name.clone())),
             None,
         ),
         (
@@ -1498,14 +1455,7 @@ fn build_equipment_content(
             EquipmentSlot::Armor7,
             prep_state
                 .equipped_armor7
-                .map(|id| {
-                    equipment_db
-                        .armors
-                        .iter()
-                        .find(|a| a.id == id)
-                        .map(|a| a.name.clone())
-                })
-                .flatten(),
+                .and_then(|id| dm.armor.find_by_id(id).map(|a| a.data.name.clone())),
             None,
         ),
         (
@@ -1513,14 +1463,7 @@ fn build_equipment_content(
             EquipmentSlot::Armor8,
             prep_state
                 .equipped_armor8
-                .map(|id| {
-                    equipment_db
-                        .armors
-                        .iter()
-                        .find(|a| a.id == id)
-                        .map(|a| a.name.clone())
-                })
-                .flatten(),
+                .and_then(|id| dm.armor.find_by_id(id).map(|a| a.data.name.clone())),
             None,
         ),
     ];
@@ -1585,9 +1528,9 @@ fn build_equipment_content(
 
                                     if let Some(eq_name) = equipped_name {
                                         // 武器の場合、使用可能かチェック
-                                        let is_usable = if let Some(weapon_data) = weapon_data {
-                                            let not_enough_abilities = weapon_data
-                                                .weapon
+                                        let is_usable = if let Some(weapon_record) = weapon_data {
+                                            let not_enough_abilities = weapon_record
+                                                .data
                                                 .not_enough_abilities(&current_ability);
                                             not_enough_abilities.is_empty()
                                         } else {
@@ -1693,76 +1636,36 @@ fn build_equipment_content(
 
                     // 装備重量・荷重表示
                     let current_equipment = Equipment {
-                        weapon1: prep_state.equipped_weapon1.and_then(|id| {
-                            equipment_db
-                                .weapons
-                                .iter()
-                                .find(|w| w.id == id)
-                                .map(|w| w.weapon.clone())
-                        }),
-                        weapon2: prep_state.equipped_weapon2.and_then(|id| {
-                            equipment_db
-                                .weapons
-                                .iter()
-                                .find(|w| w.id == id)
-                                .map(|w| w.weapon.clone())
-                        }),
-                        armor1: prep_state.equipped_armor1.and_then(|id| {
-                            equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == id)
-                                .map(|a| a.armor.clone())
-                        }),
-                        armor2: prep_state.equipped_armor2.and_then(|id| {
-                            equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == id)
-                                .map(|a| a.armor.clone())
-                        }),
-                        armor3: prep_state.equipped_armor3.and_then(|id| {
-                            equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == id)
-                                .map(|a| a.armor.clone())
-                        }),
-                        armor4: prep_state.equipped_armor4.and_then(|id| {
-                            equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == id)
-                                .map(|a| a.armor.clone())
-                        }),
-                        armor5: prep_state.equipped_armor5.and_then(|id| {
-                            equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == id)
-                                .map(|a| a.armor.clone())
-                        }),
-                        armor6: prep_state.equipped_armor6.and_then(|id| {
-                            equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == id)
-                                .map(|a| a.armor.clone())
-                        }),
-                        armor7: prep_state.equipped_armor7.and_then(|id| {
-                            equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == id)
-                                .map(|a| a.armor.clone())
-                        }),
-                        armor8: prep_state.equipped_armor8.and_then(|id| {
-                            equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == id)
-                                .map(|a| a.armor.clone())
-                        }),
+                        weapon1: prep_state
+                            .equipped_weapon1
+                            .and_then(|id| dm.weapon.find_by_id(id).map(|r| r.data.clone())),
+                        weapon2: prep_state
+                            .equipped_weapon2
+                            .and_then(|id| dm.weapon.find_by_id(id).map(|r| r.data.clone())),
+                        armor1: prep_state
+                            .equipped_armor1
+                            .and_then(|id| dm.armor.find_by_id(id).map(|r| r.data.clone())),
+                        armor2: prep_state
+                            .equipped_armor2
+                            .and_then(|id| dm.armor.find_by_id(id).map(|r| r.data.clone())),
+                        armor3: prep_state
+                            .equipped_armor3
+                            .and_then(|id| dm.armor.find_by_id(id).map(|r| r.data.clone())),
+                        armor4: prep_state
+                            .equipped_armor4
+                            .and_then(|id| dm.armor.find_by_id(id).map(|r| r.data.clone())),
+                        armor5: prep_state
+                            .equipped_armor5
+                            .and_then(|id| dm.armor.find_by_id(id).map(|r| r.data.clone())),
+                        armor6: prep_state
+                            .equipped_armor6
+                            .and_then(|id| dm.armor.find_by_id(id).map(|r| r.data.clone())),
+                        armor7: prep_state
+                            .equipped_armor7
+                            .and_then(|id| dm.armor.find_by_id(id).map(|r| r.data.clone())),
+                        armor8: prep_state
+                            .equipped_armor8
+                            .and_then(|id| dm.armor.find_by_id(id).map(|r| r.data.clone())),
                     };
 
                     let player_stats = current_ability.player_stats();
@@ -1902,14 +1805,14 @@ fn build_equipment_content(
                                     ..default()
                                 })
                                 .with_children(|weapon_col| {
-                                    if let Some(weapon_data) = weapon1_data {
+                                    if let Some(weapon_record) = weapon1_data {
                                         let performance =
-                                            weapon_data.weapon.performance(&current_ability);
+                                            weapon_record.data.performance(&current_ability);
                                         build_weapon_performance_display(
                                             weapon_col,
                                             font.clone(),
                                             "右手武器",
-                                            &weapon_data.weapon,
+                                            &weapon_record.data,
                                             &performance,
                                         );
                                     } else {
@@ -1946,14 +1849,14 @@ fn build_equipment_content(
                                     ..default()
                                 })
                                 .with_children(|weapon_col| {
-                                    if let Some(weapon_data) = weapon2_data {
+                                    if let Some(weapon_record) = weapon2_data {
                                         let performance =
-                                            weapon_data.weapon.performance(&current_ability);
+                                            weapon_record.data.performance(&current_ability);
                                         build_weapon_performance_display(
                                             weapon_col,
                                             font.clone(),
                                             "左手武器",
-                                            &weapon_data.weapon,
+                                            &weapon_record.data,
                                             &performance,
                                         );
                                     } else {
@@ -2000,10 +1903,8 @@ fn build_equipment_content(
                         prep_state.equipped_armor8,
                     ];
                     for armor_id in armor_ids.iter().flatten() {
-                        if let Some(armor_data) =
-                            equipment_db.armors.iter().find(|a| a.id == *armor_id)
-                        {
-                            equipment_defense.add(&armor_data.armor.defense);
+                        if let Some(armor_record) = dm.armor.find_by_id(*armor_id) {
+                            equipment_defense.add(&armor_record.data.defense);
                         }
                     }
 
@@ -2264,7 +2165,7 @@ fn build_arts_content(
     parent: &mut RelatedSpawnerCommands<ChildOf>,
     font: Handle<Font>,
     prep_state: &PreparationState,
-    arts_db: &ArtsDatabase,
+    dm: &DataManager,
 ) {
     parent.spawn((
         Text::new("技術設定"),
@@ -2331,7 +2232,7 @@ fn build_arts_content(
                         let selected_art = prep_state
                             .selected_arts
                             .get(slot_index)
-                            .and_then(|&art_id| arts_db.arts.iter().find(|a| a.id == art_id));
+                            .and_then(|&art_id| dm.art.find_by_id(art_id));
 
                         slots_parent
                             .spawn((
@@ -2355,16 +2256,18 @@ fn build_arts_content(
                                 BorderColor::all(Color::WHITE),
                             ))
                             .with_children(|slot| {
-                                if let Some(art) = selected_art {
+                                if let Some(art_record) = selected_art {
                                     // 必要能力を満たしているかチェック
-                                    let meets_requirement =
-                                        check_art_requirement(prep_state, &art.art.requirement);
+                                    let meets_requirement = check_art_requirement(
+                                        prep_state,
+                                        &art_record.data.requirement,
+                                    );
 
                                     // 技術名（必要能力が足りない場合は×を表示）
                                     let name_text = if meets_requirement {
-                                        format!("{}. {}", slot_index + 1, art.name)
+                                        format!("{}. {}", slot_index + 1, art_record.data.name)
                                     } else {
-                                        format!("{}. {} ×", slot_index + 1, art.name)
+                                        format!("{}. {} ×", slot_index + 1, art_record.data.name)
                                     };
                                     let text_color = if meets_requirement {
                                         Color::WHITE
@@ -2384,7 +2287,7 @@ fn build_arts_content(
                                     // 技術情報
                                     let info = format!(
                                         "SP:{} / ST:{}",
-                                        art.art.sp_cost, art.art.stamina_cost
+                                        art_record.data.sp_cost, art_record.data.stamina_cost
                                     );
                                     slot.spawn((
                                         Text::new(info),
@@ -2444,7 +2347,7 @@ fn build_arts_content(
                             ..default()
                         })
                         .with_children(|grid| {
-                            for art_data in &arts_db.arts {
+                            for art_record in dm.art.find_all() {
                                 grid.spawn(Node {
                                     width: Val::Percent(32.0), // 3列表示（100% / 3 ≈ 33%、ギャップを考慮して32%）
                                     flex_direction: FlexDirection::Column,
@@ -2455,7 +2358,7 @@ fn build_arts_content(
                                 .with_children(|art_panel| {
                                     // 技術名
                                     art_panel.spawn((
-                                        Text::new(&art_data.name),
+                                        Text::new(&art_record.data.name),
                                         TextFont {
                                             font: font.clone(),
                                             font_size: 18.0,
@@ -2468,7 +2371,7 @@ fn build_arts_content(
                                     art_panel.spawn((
                                         Text::new(format!(
                                             "SP: {} / スタミナ: {}",
-                                            art_data.art.sp_cost, art_data.art.stamina_cost
+                                            art_record.data.sp_cost, art_record.data.stamina_cost
                                         )),
                                         TextFont {
                                             font: font.clone(),
@@ -2479,7 +2382,7 @@ fn build_arts_content(
                                     ));
 
                                     // 必要能力
-                                    let req = &art_data.art.requirement;
+                                    let req = &art_record.data.requirement;
                                     let mut req_parts = Vec::new();
                                     if req.strength > 0 {
                                         req_parts.push(format!("筋力{}", req.strength));
@@ -2728,7 +2631,7 @@ pub fn equipment_selection_system(
     mut prep_state: ResMut<PreparationState>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    equipment_db: Res<EquipmentDatabase>,
+    dm: Res<DataManager>,
     screen_query: Query<Entity, With<PreparationScreen>>,
 ) {
     for (interaction, equipment_button, mut color) in &mut interaction_query {
@@ -2741,12 +2644,7 @@ pub fn equipment_selection_system(
                     let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
 
                     commands.entity(screen_entity).with_children(|parent| {
-                        build_equipment_selection_dialog(
-                            parent,
-                            font,
-                            equipment_button.slot,
-                            &equipment_db,
-                        );
+                        build_equipment_selection_dialog(parent, font, equipment_button.slot, &dm);
                     });
                 }
             }
@@ -2848,1210 +2746,6 @@ pub fn start_battle_system(
     }
 }
 
-// ================== 装備データベース生成 ==================
-
-fn create_equipment_database() -> EquipmentDatabase {
-    let weapons = vec![
-        WeaponData {
-            id: 0,
-            name: "ロングソード".to_string(),
-            weapon: create_longsword(),
-        },
-        WeaponData {
-            id: 1,
-            name: "賢者の杖".to_string(),
-            weapon: create_wizard_staff(),
-        },
-        // WeaponData {
-        //     id: 1,
-        //     name: "グレートソード".to_string(),
-        //     weapon: create_greatsword(),
-        // },
-        // WeaponData {
-        //     id: 2,
-        //     name: "スピア".to_string(),
-        //     weapon: create_spear(),
-        // },
-        // WeaponData {
-        //     id: 3,
-        //     name: "バトルアックス".to_string(),
-        //     weapon: create_axe(),
-        // },
-        WeaponData {
-            id: 4,
-            name: "ラウンドシールド".to_string(),
-            weapon: create_round_shield(),
-        },
-    ];
-
-    let armors = vec![
-        ArmorData {
-            id: 0,
-            name: "鉄の兜".to_string(),
-            armor: create_iron_helmet(),
-        },
-        ArmorData {
-            id: 1,
-            name: "鉄の鎧".to_string(),
-            armor: create_iron_armor(),
-        },
-        ArmorData {
-            id: 2,
-            name: "鉄の籠手".to_string(),
-            armor: create_iron_gauntlets(),
-        },
-        ArmorData {
-            id: 3,
-            name: "鉄の脚甲".to_string(),
-            armor: create_iron_leggings(),
-        },
-        ArmorData {
-            id: 4,
-            name: "革の兜".to_string(),
-            armor: create_leather_helmet(),
-        },
-        ArmorData {
-            id: 5,
-            name: "革の鎧".to_string(),
-            armor: create_leather_armor(),
-        },
-        ArmorData {
-            id: 6,
-            name: "革の籠手".to_string(),
-            armor: create_leather_gauntlets(),
-        },
-        ArmorData {
-            id: 7,
-            name: "革の脚甲".to_string(),
-            armor: create_leather_leggings(),
-        },
-    ];
-
-    EquipmentDatabase { weapons, armors }
-}
-
-// ================== 技術データベース生成 ==================
-
-fn create_arts_database() -> ArtsDatabase {
-    let arts = vec![
-        ArtsData {
-            id: 0,
-            name: "なぎ払い".to_string(),
-            art: Art {
-                name: "なぎ払い".to_string(),
-                sp_cost: 8,
-                stamina_cost: 40,
-                perks: vec![ArtPerk::Melee],
-                requirement: ArtRequirement {
-                    strength: 15,
-                    dexterity: 10,
-                    intelligence: 0,
-                    faith: 0,
-                    arcane: 0,
-                    agility: 0,
-                },
-                usable_weapon: ArtUsableWeapon::Specific(vec![
-                    WeaponKind::StraightSword,
-                    WeaponKind::Greatsword,
-                    WeaponKind::Staff,
-                ]),
-                art_type: ArtType::Skill,
-                always_hits: false,
-                priority: 0,
-                rank1: ArtRank {
-                    threshold: 0,
-                    target: ArtTarget::Single,
-                    potency: ArtPotency::Attack(ArtPotencyAttack {
-                        attack_power: AttackPower {
-                            slash: 50,
-                            strike: 50,
-                            thrust: 0,
-                            impact: 0,
-                            magic: 0,
-                            fire: 0,
-                            lightning: 0,
-                            chaos: 0,
-                        },
-                        weapon_attack_power_scaling: AttackPowerScaling {
-                            slash: 1.5,
-                            strike: 1.5,
-                            thrust: 0.0,
-                            impact: 0.0,
-                            magic: 1.0,
-                            fire: 1.0,
-                            lightning: 1.0,
-                            chaos: 1.0,
-                        },
-                        break_power: 80,
-                        weapon_break_power_scaling: 2.0,
-                    }),
-                },
-                rank2: None,
-                rank3: None,
-            },
-        },
-        ArtsData {
-            id: 1,
-            name: "雷鳴剣".to_string(),
-            art: Art {
-                name: "雷鳴剣".to_string(),
-                sp_cost: 40,
-                stamina_cost: 30,
-                perks: vec![],
-                requirement: ArtRequirement {
-                    strength: 15,
-                    dexterity: 15,
-                    intelligence: 0,
-                    faith: 20,
-                    arcane: 0,
-                    agility: 0,
-                },
-                usable_weapon: ArtUsableWeapon::Specific(vec![
-                    WeaponKind::StraightSword,
-                    WeaponKind::Greatsword,
-                ]),
-                art_type: ArtType::Skill,
-                always_hits: false,
-                priority: 0,
-                rank1: ArtRank {
-                    threshold: 0,
-                    target: ArtTarget::Single,
-                    potency: ArtPotency::Attack(ArtPotencyAttack {
-                        attack_power: AttackPower {
-                            slash: 100,
-                            strike: 50,
-                            thrust: 0,
-                            impact: 0,
-                            magic: 0,
-                            fire: 0,
-                            lightning: 150,
-                            chaos: 0,
-                        },
-                        weapon_attack_power_scaling: AttackPowerScaling {
-                            slash: 2.0,
-                            strike: 1.0,
-                            thrust: 1.0,
-                            impact: 1.0,
-                            magic: 1.0,
-                            fire: 0.0,
-                            lightning: 2.0,
-                            chaos: 0.0,
-                        },
-                        break_power: 100,
-                        weapon_break_power_scaling: 3.0,
-                    }),
-                },
-                rank2: None,
-                rank3: None,
-            },
-        },
-        ArtsData {
-            id: 2,
-            name: "マジックアロー".to_string(),
-            art: Art {
-                name: "マジックアロー".to_string(),
-                sp_cost: 25,
-                stamina_cost: 10,
-                perks: vec![ArtPerk::Ranged],
-                requirement: ArtRequirement {
-                    strength: 0,
-                    dexterity: 0,
-                    intelligence: 15,
-                    faith: 0,
-                    arcane: 0,
-                    agility: 0,
-                },
-                usable_weapon: ArtUsableWeapon::All,
-                always_hits: false,
-                art_type: ArtType::Sorcery,
-                priority: 0,
-                rank1: ArtRank {
-                    threshold: 0,
-                    target: ArtTarget::Single,
-                    potency: ArtPotency::Attack(ArtPotencyAttack {
-                        attack_power: AttackPower {
-                            slash: 0,
-                            strike: 0,
-                            thrust: 100,
-                            impact: 0,
-                            magic: 150,
-                            fire: 0,
-                            lightning: 0,
-                            chaos: 0,
-                        },
-                        weapon_attack_power_scaling: AttackPowerScaling::default(),
-                        break_power: 50,
-                        weapon_break_power_scaling: 0.0,
-                    }),
-                },
-                rank2: Some(ArtRank {
-                    threshold: 30,
-                    target: ArtTarget::Single,
-                    potency: ArtPotency::Attack(ArtPotencyAttack {
-                        attack_power: AttackPower {
-                            slash: 0,
-                            strike: 0,
-                            thrust: 150,
-                            impact: 0,
-                            magic: 350,
-                            fire: 0,
-                            lightning: 0,
-                            chaos: 0,
-                        },
-                        weapon_attack_power_scaling: AttackPowerScaling::default(),
-                        break_power: 100,
-                        weapon_break_power_scaling: 0.0,
-                    }),
-                }),
-                rank3: Some(ArtRank {
-                    threshold: 65,
-                    target: ArtTarget::Single,
-                    potency: ArtPotency::Attack(ArtPotencyAttack {
-                        attack_power: AttackPower {
-                            slash: 0,
-                            strike: 0,
-                            thrust: 400,
-                            impact: 0,
-                            magic: 500,
-                            fire: 0,
-                            lightning: 0,
-                            chaos: 0,
-                        },
-                        weapon_attack_power_scaling: AttackPowerScaling::default(),
-                        break_power: 200,
-                        weapon_break_power_scaling: 0.0,
-                    }),
-                }),
-            },
-        },
-        ArtsData {
-            id: 3,
-            name: "雷撃".to_string(),
-            art: Art {
-                name: "雷撃".to_string(),
-                sp_cost: 55,
-                stamina_cost: 30,
-                perks: vec![ArtPerk::Ranged],
-                requirement: ArtRequirement {
-                    strength: 0,
-                    dexterity: 0,
-                    intelligence: 15,
-                    faith: 18,
-                    arcane: 0,
-                    agility: 0,
-                },
-                usable_weapon: ArtUsableWeapon::All,
-                always_hits: false,
-                art_type: ArtType::Sorcery,
-                priority: 0,
-                rank1: ArtRank {
-                    threshold: 0,
-                    target: ArtTarget::Single,
-                    potency: ArtPotency::Attack(ArtPotencyAttack {
-                        attack_power: AttackPower {
-                            slash: 0,
-                            strike: 0,
-                            thrust: 0,
-                            impact: 0,
-                            magic: 0,
-                            fire: 0,
-                            lightning: 300,
-                            chaos: 0,
-                        },
-                        weapon_attack_power_scaling: AttackPowerScaling::default(),
-                        break_power: 100,
-                        weapon_break_power_scaling: 0.0,
-                    }),
-                },
-                rank2: Some(ArtRank {
-                    threshold: 0,
-                    target: ArtTarget::Single,
-                    potency: ArtPotency::Attack(ArtPotencyAttack {
-                        attack_power: AttackPower {
-                            slash: 0,
-                            strike: 0,
-                            thrust: 0,
-                            impact: 0,
-                            magic: 0,
-                            fire: 0,
-                            lightning: 500,
-                            chaos: 0,
-                        },
-                        weapon_attack_power_scaling: AttackPowerScaling::default(),
-                        break_power: 150,
-                        weapon_break_power_scaling: 0.0,
-                    }),
-                }),
-                rank3: Some(ArtRank {
-                    threshold: 0,
-                    target: ArtTarget::Single,
-                    potency: ArtPotency::Attack(ArtPotencyAttack {
-                        attack_power: AttackPower {
-                            slash: 0,
-                            strike: 0,
-                            thrust: 0,
-                            impact: 0,
-                            magic: 0,
-                            fire: 0,
-                            lightning: 700,
-                            chaos: 0,
-                        },
-                        weapon_attack_power_scaling: AttackPowerScaling::default(),
-                        break_power: 300,
-                        weapon_break_power_scaling: 0.0,
-                    }),
-                }),
-            },
-        },
-        ArtsData {
-            id: 4,
-            name: "渾身の一撃".to_string(),
-            art: Art {
-                name: "渾身の一撃".to_string(),
-                sp_cost: 30,
-                stamina_cost: 40,
-                perks: vec![ArtPerk::Melee],
-                requirement: ArtRequirement {
-                    strength: 20,
-                    dexterity: 8,
-                    intelligence: 0,
-                    faith: 0,
-                    arcane: 0,
-                    agility: 0,
-                },
-                usable_weapon: ArtUsableWeapon::Specific(vec![
-                    WeaponKind::Greatsword,
-                    WeaponKind::Axe,
-                ]),
-                always_hits: true,
-                art_type: ArtType::Skill,
-                priority: 0,
-                rank1: ArtRank {
-                    threshold: 0,
-                    target: ArtTarget::Single,
-                    potency: ArtPotency::Attack(ArtPotencyAttack {
-                        attack_power: AttackPower {
-                            slash: 250,
-                            strike: 100,
-                            thrust: 0,
-                            impact: 50,
-                            magic: 0,
-                            fire: 0,
-                            lightning: 0,
-                            chaos: 0,
-                        },
-                        weapon_attack_power_scaling: AttackPowerScaling {
-                            slash: 2.0,
-                            strike: 1.5,
-                            thrust: 0.0,
-                            impact: 1.0,
-                            magic: 0.0,
-                            fire: 0.0,
-                            lightning: 0.0,
-                            chaos: 0.0,
-                        },
-                        break_power: 50,
-                        weapon_break_power_scaling: 1.5,
-                    }),
-                },
-                rank2: None,
-                rank3: None,
-            },
-        },
-        ArtsData {
-            id: 5,
-            name: "ヒール".to_string(),
-            art: Art {
-                name: "ヒール".to_string(),
-                sp_cost: 25,
-                stamina_cost: 10,
-                perks: vec![ArtPerk::Ranged, ArtPerk::AtFeet],
-                requirement: ArtRequirement {
-                    strength: 0,
-                    dexterity: 0,
-                    intelligence: 12,
-                    faith: 0,
-                    arcane: 0,
-                    agility: 0,
-                },
-                usable_weapon: ArtUsableWeapon::All,
-                always_hits: false,
-                art_type: ArtType::Sorcery,
-                priority: 0,
-                rank1: ArtRank {
-                    threshold: 0,
-                    target: ArtTarget::Single,
-                    potency: ArtPotency::Support(ArtPotencySupport::Recover(
-                        ArtPotencySupportRecover {
-                            potencies: vec![SupportRecoverPotency::Hp(SupportRecoverPotencyHp {
-                                hp_recover: 50,
-                            })],
-                        },
-                    )),
-                },
-                rank2: Some(ArtRank {
-                    threshold: 25,
-                    target: ArtTarget::Single,
-                    potency: ArtPotency::Support(ArtPotencySupport::Recover(
-                        ArtPotencySupportRecover {
-                            potencies: vec![SupportRecoverPotency::Hp(SupportRecoverPotencyHp {
-                                hp_recover: 70,
-                            })],
-                        },
-                    )),
-                }),
-                rank3: None,
-            },
-        },
-        // 基本タイプのアーツ
-        ArtsData {
-            id: 6,
-            name: "回避".to_string(),
-            art: Art {
-                name: "回避".to_string(),
-                sp_cost: 0,
-                stamina_cost: 15,
-                perks: vec![],
-                requirement: ArtRequirement {
-                    strength: 0,
-                    dexterity: 0,
-                    intelligence: 0,
-                    faith: 0,
-                    arcane: 0,
-                    agility: 10,
-                },
-                usable_weapon: ArtUsableWeapon::All,
-                art_type: ArtType::Basic,
-                always_hits: true,
-                priority: 10,
-                rank1: ArtRank {
-                    threshold: 0,
-                    target: ArtTarget::Single,
-                    potency: ArtPotency::Support(ArtPotencySupport::StatusCondition(
-                        ArtPotencySupportStatusCondition {
-                            status_conditions: vec![StatusCondition {
-                                potency: StatusConditionPotency::Evasion,
-                                duration: StatusConditionDuration::Turn(
-                                    StatusConditionDurationTurn { turns: 1 },
-                                ),
-                            }],
-                        },
-                    )),
-                },
-                rank2: None,
-                rank3: None,
-            },
-        },
-        ArtsData {
-            id: 7,
-            name: "瞑想".to_string(),
-            art: Art {
-                name: "瞑想".to_string(),
-                sp_cost: 0,
-                stamina_cost: 25,
-                perks: vec![],
-                requirement: ArtRequirement {
-                    strength: 0,
-                    dexterity: 0,
-                    intelligence: 0,
-                    faith: 0,
-                    arcane: 0,
-                    agility: 0,
-                },
-                art_type: ArtType::Basic,
-                usable_weapon: ArtUsableWeapon::All,
-                always_hits: true,
-                priority: 0,
-                rank1: ArtRank {
-                    threshold: 0,
-                    target: ArtTarget::Single,
-                    potency: ArtPotency::Support(ArtPotencySupport::Recover(
-                        ArtPotencySupportRecover {
-                            potencies: vec![SupportRecoverPotency::Sp(SupportRecoverPotencySp {
-                                sp_recover: 30,
-                            })],
-                        },
-                    )),
-                },
-                rank2: None,
-                rank3: None,
-            },
-        },
-        ArtsData {
-            id: 8,
-            name: "バックステップ".to_string(),
-            art: Art {
-                name: "バックステップ".to_string(),
-                sp_cost: 0,
-                stamina_cost: 5,
-                perks: vec![],
-                requirement: ArtRequirement {
-                    strength: 0,
-                    dexterity: 0,
-                    intelligence: 0,
-                    faith: 0,
-                    arcane: 0,
-                    agility: 10,
-                },
-                usable_weapon: ArtUsableWeapon::All,
-                art_type: ArtType::Basic,
-                always_hits: true,
-                priority: 5,
-                rank1: ArtRank {
-                    threshold: 0,
-                    target: ArtTarget::Single,
-                    potency: ArtPotency::Support(ArtPotencySupport::StatusCondition(
-                        ArtPotencySupportStatusCondition {
-                            status_conditions: vec![StatusCondition {
-                                potency: StatusConditionPotency::Ranged,
-                                duration: StatusConditionDuration::Turn(
-                                    StatusConditionDurationTurn { turns: 1 },
-                                ),
-                            }],
-                        },
-                    )),
-                },
-                rank2: None,
-                rank3: None,
-            },
-        },
-        ArtsData {
-            id: 9,
-            name: "ジャンプ".to_string(),
-            art: Art {
-                name: "ジャンプ".to_string(),
-                sp_cost: 0,
-                stamina_cost: 5,
-                perks: vec![],
-                requirement: ArtRequirement {
-                    strength: 0,
-                    dexterity: 0,
-                    intelligence: 0,
-                    faith: 0,
-                    arcane: 0,
-                    agility: 10,
-                },
-                usable_weapon: ArtUsableWeapon::All,
-                art_type: ArtType::Basic,
-                always_hits: true,
-                priority: 5,
-                rank1: ArtRank {
-                    threshold: 0,
-                    target: ArtTarget::Single,
-                    potency: ArtPotency::Support(ArtPotencySupport::StatusCondition(
-                        ArtPotencySupportStatusCondition {
-                            status_conditions: vec![StatusCondition {
-                                potency: StatusConditionPotency::Floating,
-                                duration: StatusConditionDuration::Turn(
-                                    StatusConditionDurationTurn { turns: 1 },
-                                ),
-                            }],
-                        },
-                    )),
-                },
-                rank2: None,
-                rank3: None,
-            },
-        },
-    ];
-
-    ArtsDatabase { arts }
-}
-
-// 武器生成関数（簡略化のため一部のみ実装）
-fn create_longsword() -> Weapon {
-    Weapon {
-        name: "ロングソード".to_string(),
-        kind: WeaponKind::StraightSword,
-        weight: 10,
-        ability_requirement: WeaponAbilityRequirement {
-            strength: 10,
-            dexterity: 10,
-            intelligence: 0,
-            faith: 0,
-            arcane: 0,
-            agility: 0,
-        },
-        attack_power: WeaponAttackPower {
-            base: AttackPower {
-                slash: 100,
-                strike: 50,
-                thrust: 100,
-                impact: 0,
-                magic: 0,
-                fire: 0,
-                lightning: 0,
-                chaos: 0,
-            },
-            ability_scaling: WeaponAttackPowerAbilityScaling {
-                slash: AbilityScaling {
-                    strength: 3.0,
-                    dexterity: 3.0,
-                    intelligence: 0.0,
-                    faith: 0.0,
-                    arcane: 0.0,
-                    agility: 0.0,
-                },
-                strike: AbilityScaling {
-                    strength: 3.0,
-                    dexterity: 0.0,
-                    intelligence: 0.0,
-                    faith: 0.0,
-                    arcane: 0.0,
-                    agility: 0.0,
-                },
-                thrust: AbilityScaling {
-                    strength: 3.0,
-                    dexterity: 0.0,
-                    intelligence: 0.0,
-                    faith: 0.0,
-                    arcane: 0.0,
-                    agility: 0.0,
-                },
-                impact: create_default_ability_scaling(),
-                magic: create_default_ability_scaling(),
-                fire: create_default_ability_scaling(),
-                lightning: create_default_ability_scaling(),
-                chaos: create_default_ability_scaling(),
-            },
-        },
-        sorcery_power: create_default_sorcery_power(),
-        break_power: WeaponBreakPower {
-            base_power: 20,
-            scaling: AbilityScaling {
-                strength: 2.0,
-                dexterity: 2.0,
-                intelligence: 0.0,
-                faith: 0.0,
-                arcane: 0.0,
-                agility: 0.0,
-            },
-        },
-        guard: WeaponGuard {
-            cut_rate: GuardCutRate {
-                slash: 0.4,
-                strike: 0.6,
-                thrust: 0.7,
-                impact: 0.7,
-                magic: 0.9,
-                fire: 0.9,
-                lightning: 0.8,
-                chaos: 0.9,
-            },
-            guard_strength: 30,
-        },
-    }
-}
-
-fn create_wizard_staff() -> Weapon {
-    Weapon {
-        name: "賢者の杖".to_string(),
-        kind: WeaponKind::Staff,
-        weight: 5,
-        ability_requirement: WeaponAbilityRequirement {
-            strength: 0,
-            dexterity: 0,
-            intelligence: 15,
-            faith: 0,
-            arcane: 0,
-            agility: 0,
-        },
-        attack_power: WeaponAttackPower {
-            base: AttackPower {
-                slash: 0,
-                strike: 10,
-                thrust: 10,
-                impact: 0,
-                magic: 10,
-                fire: 0,
-                lightning: 0,
-                chaos: 0,
-            },
-            ability_scaling: WeaponAttackPowerAbilityScaling {
-                slash: create_default_ability_scaling(),
-                strike: AbilityScaling {
-                    strength: 3.0,
-                    dexterity: 0.0,
-                    intelligence: 0.0,
-                    faith: 0.0,
-                    arcane: 0.0,
-                    agility: 0.0,
-                },
-                thrust: create_default_ability_scaling(),
-                impact: create_default_ability_scaling(),
-                magic: AbilityScaling {
-                    strength: 0.0,
-                    dexterity: 0.0,
-                    intelligence: 5.0,
-                    faith: 0.0,
-                    arcane: 0.0,
-                    agility: 0.0,
-                },
-                fire: create_default_ability_scaling(),
-                lightning: create_default_ability_scaling(),
-                chaos: create_default_ability_scaling(),
-            },
-        },
-        sorcery_power: WeaponSorceryPower {
-            base: 30,
-            scaling: AbilityScaling {
-                strength: 0.0,
-                dexterity: 0.0,
-                intelligence: 1.0,
-                faith: 0.5,
-                arcane: 0.0,
-                agility: 0.0,
-            },
-        },
-        break_power: WeaponBreakPower {
-            base_power: 10,
-            scaling: AbilityScaling {
-                strength: 2.0,
-                dexterity: 0.0,
-                intelligence: 0.0,
-                faith: 0.0,
-                arcane: 0.0,
-                agility: 0.0,
-            },
-        },
-        guard: WeaponGuard {
-            cut_rate: GuardCutRate {
-                slash: 0.8,
-                strike: 0.8,
-                thrust: 0.9,
-                impact: 0.9,
-                magic: 0.5,
-                fire: 0.7,
-                lightning: 0.6,
-                chaos: 0.5,
-            },
-            guard_strength: 30,
-        },
-    }
-}
-
-fn create_greatsword() -> Weapon {
-    Weapon {
-        name: "大剣".to_string(),
-        kind: WeaponKind::Greatsword,
-        weight: 20,
-        ability_requirement: WeaponAbilityRequirement {
-            strength: 20,
-            dexterity: 10,
-            intelligence: 0,
-            faith: 0,
-            arcane: 0,
-            agility: 0,
-        },
-        attack_power: WeaponAttackPower {
-            base: AttackPower {
-                slash: 150,
-                strike: 50,
-                thrust: 80,
-                impact: 0,
-                magic: 0,
-                fire: 0,
-                lightning: 0,
-                chaos: 0,
-            },
-            ability_scaling: WeaponAttackPowerAbilityScaling {
-                slash: AbilityScaling {
-                    strength: 0.5,
-                    dexterity: 0.5,
-                    intelligence: 0.0,
-                    faith: 0.0,
-                    arcane: 0.0,
-                    agility: 0.0,
-                },
-                strike: AbilityScaling {
-                    strength: 0.5,
-                    dexterity: 0.0,
-                    intelligence: 0.0,
-                    faith: 0.0,
-                    arcane: 0.0,
-                    agility: 0.0,
-                },
-                thrust: create_default_ability_scaling(),
-                impact: create_default_ability_scaling(),
-                magic: create_default_ability_scaling(),
-                fire: create_default_ability_scaling(),
-                lightning: create_default_ability_scaling(),
-                chaos: create_default_ability_scaling(),
-            },
-        },
-        sorcery_power: create_default_sorcery_power(),
-        break_power: WeaponBreakPower {
-            base_power: 40,
-            scaling: AbilityScaling {
-                strength: 1.0,
-                dexterity: 0.0,
-                intelligence: 0.0,
-                faith: 0.0,
-                arcane: 0.0,
-                agility: 0.0,
-            },
-        },
-        guard: create_default_guard(),
-    }
-}
-
-fn create_spear() -> Weapon {
-    Weapon {
-        name: "槍".to_string(),
-        kind: WeaponKind::Spear,
-        weight: 12,
-        ability_requirement: WeaponAbilityRequirement {
-            strength: 12,
-            dexterity: 15,
-            intelligence: 0,
-            faith: 0,
-            arcane: 0,
-            agility: 0,
-        },
-        attack_power: WeaponAttackPower {
-            base: AttackPower {
-                slash: 30,
-                strike: 0,
-                thrust: 120,
-                impact: 0,
-                magic: 0,
-                fire: 0,
-                lightning: 0,
-                chaos: 0,
-            },
-            ability_scaling: create_default_weapon_scaling(),
-        },
-        sorcery_power: create_default_sorcery_power(),
-        break_power: WeaponBreakPower {
-            base_power: 25,
-            scaling: create_default_ability_scaling(),
-        },
-        guard: create_default_guard(),
-    }
-}
-
-fn create_axe() -> Weapon {
-    Weapon {
-        name: "斧".to_string(),
-        kind: WeaponKind::Axe,
-        weight: 18,
-        ability_requirement: WeaponAbilityRequirement {
-            strength: 18,
-            dexterity: 8,
-            intelligence: 0,
-            faith: 0,
-            arcane: 0,
-            agility: 0,
-        },
-        attack_power: WeaponAttackPower {
-            base: AttackPower {
-                slash: 130,
-                strike: 40,
-                thrust: 20,
-                impact: 0,
-                magic: 0,
-                fire: 0,
-                lightning: 0,
-                chaos: 0,
-            },
-            ability_scaling: create_default_weapon_scaling(),
-        },
-        sorcery_power: create_default_sorcery_power(),
-        break_power: WeaponBreakPower {
-            base_power: 35,
-            scaling: create_default_ability_scaling(),
-        },
-        guard: create_default_guard(),
-    }
-}
-
-fn create_round_shield() -> Weapon {
-    Weapon {
-        name: "ラウンドシールド".to_string(),
-        kind: WeaponKind::Shield,
-        weight: 10,
-        ability_requirement: WeaponAbilityRequirement {
-            strength: 10,
-            dexterity: 0,
-            intelligence: 0,
-            faith: 0,
-            arcane: 0,
-            agility: 0,
-        },
-        attack_power: WeaponAttackPower {
-            base: AttackPower {
-                slash: 0,
-                strike: 35,
-                thrust: 0,
-                impact: 35,
-                magic: 0,
-                fire: 0,
-                lightning: 0,
-                chaos: 0,
-            },
-            ability_scaling: create_default_weapon_scaling(),
-        },
-        sorcery_power: create_default_sorcery_power(),
-        break_power: WeaponBreakPower {
-            base_power: 10,
-            scaling: AbilityScaling {
-                strength: 1.0,
-                dexterity: 0.0,
-                intelligence: 0.0,
-                faith: 0.0,
-                arcane: 0.0,
-                agility: 0.0,
-            },
-        },
-        guard: WeaponGuard {
-            cut_rate: GuardCutRate {
-                slash: 0.2,
-                strike: 0.2,
-                thrust: 0.2,
-                impact: 0.2,
-                magic: 0.6,
-                fire: 0.6,
-                lightning: 0.5,
-                chaos: 0.5,
-            },
-            guard_strength: 30,
-        },
-    }
-}
-
-// 防具生成関数
-fn create_iron_helmet() -> Armor {
-    Armor {
-        kind: ArmorKind::Helmet,
-        weight: 8,
-        defense: DefensePower {
-            slash: 15,
-            strike: 15,
-            thrust: 15,
-            impact: 12,
-            magic: 8,
-            fire: 10,
-            lightning: 10,
-            chaos: 8,
-        },
-        resistance: ArmorResistance {
-            immunity: 10,
-            robustness: 12,
-            sanity: 8,
-        },
-        slots: vec![ArmorSlot::Head],
-    }
-}
-
-fn create_iron_armor() -> Armor {
-    Armor {
-        kind: ArmorKind::ChestArmor,
-        weight: 20,
-        defense: DefensePower {
-            slash: 30,
-            strike: 30,
-            thrust: 30,
-            impact: 25,
-            magic: 15,
-            fire: 20,
-            lightning: 20,
-            chaos: 15,
-        },
-        resistance: ArmorResistance {
-            immunity: 20,
-            robustness: 25,
-            sanity: 15,
-        },
-        slots: vec![ArmorSlot::Chest],
-    }
-}
-
-fn create_iron_gauntlets() -> Armor {
-    Armor {
-        kind: ArmorKind::Gauntlets,
-        weight: 6,
-        defense: DefensePower {
-            slash: 10,
-            strike: 10,
-            thrust: 10,
-            impact: 8,
-            magic: 5,
-            fire: 7,
-            lightning: 7,
-            chaos: 5,
-        },
-        slots: vec![ArmorSlot::Arms],
-        resistance: ArmorResistance {
-            immunity: 7,
-            robustness: 8,
-            sanity: 5,
-        },
-    }
-}
-
-fn create_iron_leggings() -> Armor {
-    Armor {
-        kind: ArmorKind::LegArmor,
-        weight: 12,
-        defense: DefensePower {
-            slash: 18,
-            strike: 18,
-            thrust: 18,
-            impact: 15,
-            magic: 10,
-            fire: 12,
-            lightning: 12,
-            chaos: 10,
-        },
-        resistance: ArmorResistance {
-            immunity: 12,
-            robustness: 15,
-            sanity: 10,
-        },
-        slots: vec![ArmorSlot::Legs],
-    }
-}
-
-fn create_leather_helmet() -> Armor {
-    Armor {
-        kind: ArmorKind::Helmet,
-        weight: 3,
-        defense: DefensePower {
-            slash: 8,
-            strike: 7,
-            thrust: 8,
-            impact: 6,
-            magic: 5,
-            fire: 6,
-            lightning: 5,
-            chaos: 5,
-        },
-        resistance: ArmorResistance {
-            immunity: 8,
-            robustness: 7,
-            sanity: 10,
-        },
-        slots: vec![ArmorSlot::Head],
-    }
-}
-
-fn create_leather_armor() -> Armor {
-    Armor {
-        kind: ArmorKind::ChestArmor,
-        weight: 8,
-        defense: DefensePower {
-            slash: 15,
-            strike: 12,
-            thrust: 15,
-            impact: 10,
-            magic: 10,
-            fire: 12,
-            lightning: 10,
-            chaos: 10,
-        },
-        resistance: ArmorResistance {
-            immunity: 15,
-            robustness: 12,
-            sanity: 20,
-        },
-        slots: vec![ArmorSlot::Chest],
-    }
-}
-
-fn create_leather_gauntlets() -> Armor {
-    Armor {
-        kind: ArmorKind::Gauntlets,
-        weight: 2,
-        defense: DefensePower {
-            slash: 5,
-            strike: 4,
-            thrust: 5,
-            impact: 3,
-            magic: 4,
-            fire: 4,
-            lightning: 4,
-            chaos: 4,
-        },
-        resistance: ArmorResistance {
-            immunity: 5,
-            robustness: 4,
-            sanity: 7,
-        },
-        slots: vec![ArmorSlot::Arms],
-    }
-}
-
-fn create_leather_leggings() -> Armor {
-    Armor {
-        kind: ArmorKind::LegArmor,
-        weight: 5,
-        defense: DefensePower {
-            slash: 10,
-            strike: 8,
-            thrust: 10,
-            impact: 7,
-            magic: 7,
-            fire: 8,
-            lightning: 7,
-            chaos: 7,
-        },
-        resistance: ArmorResistance {
-            immunity: 10,
-            robustness: 8,
-            sanity: 15,
-        },
-        slots: vec![ArmorSlot::Legs],
-    }
-}
-
-// ヘルパー関数
-fn create_default_ability_scaling() -> AbilityScaling {
-    AbilityScaling {
-        strength: 0.0,
-        dexterity: 0.0,
-        intelligence: 0.0,
-        faith: 0.0,
-        arcane: 0.0,
-        agility: 0.0,
-    }
-}
-
-fn create_default_weapon_scaling() -> WeaponAttackPowerAbilityScaling {
-    WeaponAttackPowerAbilityScaling {
-        slash: create_default_ability_scaling(),
-        strike: create_default_ability_scaling(),
-        thrust: create_default_ability_scaling(),
-        impact: create_default_ability_scaling(),
-        magic: create_default_ability_scaling(),
-        fire: create_default_ability_scaling(),
-        lightning: create_default_ability_scaling(),
-        chaos: create_default_ability_scaling(),
-    }
-}
-
-fn create_default_sorcery_power() -> WeaponSorceryPower {
-    WeaponSorceryPower {
-        base: 0,
-        scaling: create_default_ability_scaling(),
-    }
-}
-
-fn create_default_guard() -> WeaponGuard {
-    WeaponGuard {
-        cut_rate: GuardCutRate {
-            slash: 0.8,
-            strike: 0.8,
-            thrust: 0.8,
-            impact: 0.8,
-            magic: 1.0,
-            fire: 1.0,
-            lightning: 1.0,
-            chaos: 1.0,
-        },
-        guard_strength: 10,
-    }
-}
-
 // ================== 装備選択ダイアログ ==================
 
 #[derive(Component)]
@@ -4059,7 +2753,7 @@ struct EquipmentSelectionDialog;
 
 #[derive(Component)]
 struct EquipmentListButton {
-    equipment_id: usize,
+    equipment_id: u32,
 }
 
 #[derive(Component)]
@@ -4069,7 +2763,7 @@ fn build_equipment_selection_dialog(
     parent: &mut RelatedSpawnerCommands<ChildOf>,
     font: Handle<Font>,
     slot: EquipmentSlot,
-    equipment_db: &EquipmentDatabase,
+    dm: &DataManager,
 ) {
     parent
         .spawn((
@@ -4179,10 +2873,10 @@ fn build_equipment_selection_dialog(
                             match slot {
                                 EquipmentSlot::Weapon1 | EquipmentSlot::Weapon2 => {
                                     // 武器リスト
-                                    for weapon_data in &equipment_db.weapons {
+                                    for weapon_record in dm.weapon.find_all() {
                                         list.spawn((
                                             EquipmentListButton {
-                                                equipment_id: weapon_data.id,
+                                                equipment_id: weapon_record.id,
                                             },
                                             Button,
                                             Node {
@@ -4204,7 +2898,7 @@ fn build_equipment_selection_dialog(
                                         .with_children(
                                             |btn| {
                                                 btn.spawn((
-                                                    Text::new(&weapon_data.name),
+                                                    Text::new(&weapon_record.data.name),
                                                     TextFont {
                                                         font: font.clone(),
                                                         font_size: 20.0,
@@ -4218,10 +2912,10 @@ fn build_equipment_selection_dialog(
                                 }
                                 _ => {
                                     // 防具リスト
-                                    for armor_data in &equipment_db.armors {
+                                    for armor_record in dm.armor.find_all() {
                                         list.spawn((
                                             EquipmentListButton {
-                                                equipment_id: armor_data.id,
+                                                equipment_id: armor_record.id,
                                             },
                                             Button,
                                             Node {
@@ -4243,7 +2937,7 @@ fn build_equipment_selection_dialog(
                                         .with_children(
                                             |btn| {
                                                 btn.spawn((
-                                                    Text::new(&armor_data.name),
+                                                    Text::new(&armor_record.data.name),
                                                     TextFont {
                                                         font: font.clone(),
                                                         font_size: 20.0,
@@ -4270,7 +2964,7 @@ pub fn equipment_list_button_system(
     mut prep_state: ResMut<PreparationState>,
     mut commands: Commands,
     dialog_query: Query<Entity, With<EquipmentSelectionDialog>>,
-    equipment_db: Res<EquipmentDatabase>,
+    dm: Res<DataManager>,
 ) {
     for (interaction, list_button, mut color) in &mut interaction_query {
         match *interaction {
@@ -4292,87 +2986,45 @@ pub fn equipment_list_button_system(
                         | EquipmentSlot::Armor7
                         | EquipmentSlot::Armor8 => {
                             // 選択された防具を取得
-                            if let Some(armor_data) = equipment_db
-                                .armors
-                                .iter()
-                                .find(|a| a.id == list_button.equipment_id)
+                            if let Some(armor_record) =
+                                dm.armor.find_by_id(list_button.equipment_id)
                             {
                                 // 現在の装備状態からEquipmentを構築
                                 let current_equipment = Equipment {
                                     weapon1: prep_state.equipped_weapon1.and_then(|id| {
-                                        equipment_db
-                                            .weapons
-                                            .iter()
-                                            .find(|w| w.id == id)
-                                            .map(|w| w.weapon.clone())
+                                        dm.weapon.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     weapon2: prep_state.equipped_weapon2.and_then(|id| {
-                                        equipment_db
-                                            .weapons
-                                            .iter()
-                                            .find(|w| w.id == id)
-                                            .map(|w| w.weapon.clone())
+                                        dm.weapon.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     armor1: prep_state.equipped_armor1.and_then(|id| {
-                                        equipment_db
-                                            .armors
-                                            .iter()
-                                            .find(|a| a.id == id)
-                                            .map(|a| a.armor.clone())
+                                        dm.armor.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     armor2: prep_state.equipped_armor2.and_then(|id| {
-                                        equipment_db
-                                            .armors
-                                            .iter()
-                                            .find(|a| a.id == id)
-                                            .map(|a| a.armor.clone())
+                                        dm.armor.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     armor3: prep_state.equipped_armor3.and_then(|id| {
-                                        equipment_db
-                                            .armors
-                                            .iter()
-                                            .find(|a| a.id == id)
-                                            .map(|a| a.armor.clone())
+                                        dm.armor.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     armor4: prep_state.equipped_armor4.and_then(|id| {
-                                        equipment_db
-                                            .armors
-                                            .iter()
-                                            .find(|a| a.id == id)
-                                            .map(|a| a.armor.clone())
+                                        dm.armor.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     armor5: prep_state.equipped_armor5.and_then(|id| {
-                                        equipment_db
-                                            .armors
-                                            .iter()
-                                            .find(|a| a.id == id)
-                                            .map(|a| a.armor.clone())
+                                        dm.armor.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     armor6: prep_state.equipped_armor6.and_then(|id| {
-                                        equipment_db
-                                            .armors
-                                            .iter()
-                                            .find(|a| a.id == id)
-                                            .map(|a| a.armor.clone())
+                                        dm.armor.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     armor7: prep_state.equipped_armor7.and_then(|id| {
-                                        equipment_db
-                                            .armors
-                                            .iter()
-                                            .find(|a| a.id == id)
-                                            .map(|a| a.armor.clone())
+                                        dm.armor.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                     armor8: prep_state.equipped_armor8.and_then(|id| {
-                                        equipment_db
-                                            .armors
-                                            .iter()
-                                            .find(|a| a.id == id)
-                                            .map(|a| a.armor.clone())
+                                        dm.armor.find_by_id(id).map(|r| r.data.clone())
                                     }),
                                 };
 
                                 // 装備可能かチェック
-                                if current_equipment.is_equippable(&armor_data.armor) {
+                                if current_equipment.is_equippable(&armor_record.data) {
                                     match slot {
                                         EquipmentSlot::Armor1 => {
                                             prep_state.equipped_armor1 =
@@ -4511,7 +3163,7 @@ struct ArtsListContainer;
 
 #[derive(Component)]
 struct ArtsListButton {
-    arts_id: usize,
+    arts_id: u32,
 }
 
 #[derive(Component)]
@@ -4529,7 +3181,7 @@ fn arts_slot_button_system(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut prep_state: ResMut<PreparationState>,
-    arts_db: Res<ArtsDatabase>,
+    dm: Res<DataManager>,
 ) {
     for (interaction, slot_button, mut color) in &mut interaction_query {
         match *interaction {
@@ -4755,12 +3407,10 @@ fn arts_slot_button_system(
                                             ArtTypeTab::Sorcery => ArtType::Sorcery,
                                         };
 
-                                        for art_data in arts_db
-                                            .arts
-                                            .iter()
-                                            .filter(|a| a.art.art_type == target_art_type)
+                                        for art_record in
+                                            dm.art.find_many(|r| r.data.art_type == target_art_type)
                                         {
-                                            spawn_art_list_item(list, art_data, &font);
+                                            spawn_art_list_item(list, art_record, &font);
                                         }
                                     });
                             });
@@ -4930,7 +3580,7 @@ fn arts_tab_button_system(
     mut commands: Commands,
     dialog_query: Query<Entity, With<ArtsSelectionDialog>>,
     mut prep_state: ResMut<PreparationState>,
-    arts_db: Res<ArtsDatabase>,
+    dm: Res<DataManager>,
     asset_server: Res<AssetServer>,
 ) {
     for (interaction, tab_button, mut color, mut border) in &mut interaction_query {
@@ -4948,12 +3598,7 @@ fn arts_tab_button_system(
                     }
 
                     // ダイアログを再生成
-                    spawn_arts_selection_dialog(
-                        &mut commands,
-                        &asset_server,
-                        &prep_state,
-                        &arts_db,
-                    );
+                    spawn_arts_selection_dialog(&mut commands, &asset_server, &prep_state, &dm);
                 }
             }
             Interaction::Hovered => {
@@ -4984,10 +3629,14 @@ fn arts_tab_button_system(
 }
 
 /// 技術リストのアイテムをスポーンするヘルパー関数
-fn spawn_art_list_item(list: &mut ChildSpawnerCommands, art_data: &ArtsData, font: &Handle<Font>) {
+fn spawn_art_list_item(
+    list: &mut ChildSpawnerCommands,
+    art_record: &crate::data::ArtRecord,
+    font: &Handle<Font>,
+) {
     list.spawn((
         ArtsListButton {
-            arts_id: art_data.id,
+            arts_id: art_record.id,
         },
         Button,
         Node {
@@ -5008,7 +3657,7 @@ fn spawn_art_list_item(list: &mut ChildSpawnerCommands, art_data: &ArtsData, fon
     .with_children(|btn| {
         // 技術名
         btn.spawn((
-            Text::new(&art_data.name),
+            Text::new(&art_record.data.name),
             TextFont {
                 font: font.clone(),
                 font_size: 20.0,
@@ -5021,7 +3670,7 @@ fn spawn_art_list_item(list: &mut ChildSpawnerCommands, art_data: &ArtsData, fon
         btn.spawn((
             Text::new(format!(
                 "SP: {} / スタミナ: {}",
-                art_data.art.sp_cost, art_data.art.stamina_cost
+                art_record.data.sp_cost, art_record.data.stamina_cost
             )),
             TextFont {
                 font: font.clone(),
@@ -5032,7 +3681,7 @@ fn spawn_art_list_item(list: &mut ChildSpawnerCommands, art_data: &ArtsData, fon
         ));
 
         // 必要能力
-        let req = &art_data.art.requirement;
+        let req = &art_record.data.requirement;
         let mut req_parts = Vec::new();
         if req.strength > 0 {
             req_parts.push(format!("筋力{}", req.strength));
@@ -5066,7 +3715,7 @@ fn spawn_art_list_item(list: &mut ChildSpawnerCommands, art_data: &ArtsData, fon
         }
 
         // 使用可能武器種（Allの場合は表示しない）
-        if let ArtUsableWeapon::Specific(weapon_kinds) = &art_data.art.usable_weapon {
+        if let ArtUsableWeapon::Specific(weapon_kinds) = &art_record.data.usable_weapon {
             let weapon_names: Vec<&str> = weapon_kinds
                 .iter()
                 .map(|kind| weapon_kind_to_string(kind))
@@ -5104,7 +3753,7 @@ fn spawn_arts_selection_dialog(
     commands: &mut Commands,
     asset_server: &Res<AssetServer>,
     prep_state: &ResMut<PreparationState>,
-    arts_db: &Res<ArtsDatabase>,
+    dm: &Res<DataManager>,
 ) {
     let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
 
@@ -5323,12 +3972,10 @@ fn spawn_arts_selection_dialog(
                                 ArtTypeTab::Sorcery => ArtType::Sorcery,
                             };
 
-                            for art_data in arts_db
-                                .arts
-                                .iter()
-                                .filter(|a| a.art.art_type == target_art_type)
+                            for art_record in
+                                dm.art.find_many(|r| r.data.art_type == target_art_type)
                             {
-                                spawn_art_list_item(list, art_data, &font);
+                                spawn_art_list_item(list, art_record, &font);
                             }
                         });
                 });
