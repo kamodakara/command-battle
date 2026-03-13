@@ -17,7 +17,47 @@ pub struct InBattlePlugin;
 
 impl Plugin for InBattlePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Battle), setup_battle_screen)
+        app.register_type::<BattleScreen>()
+            .register_type::<BackToPreparationButton>()
+            .register_type::<UiRoot>()
+            .register_type::<UiStatus>()
+            .register_type::<UiPhase>()
+            .register_type::<UiLog>()
+            .register_type::<UiEffAttack>()
+            .register_type::<UiEffSkill>()
+            .register_type::<UiEffHeal>()
+            .register_type::<UiEffDefend>()
+            .register_type::<UiBackground>()
+            .register_type::<UiPlayerStatus>()
+            .register_type::<UiHpText>()
+            .register_type::<UiHpGaugeFill>()
+            .register_type::<UiStaText>()
+            .register_type::<UiStaGaugeFill>()
+            .register_type::<UiSpText>()
+            .register_type::<UiSpGaugeFill>()
+            .register_type::<UiTranceText>()
+            .register_type::<UiTranceGaugeFill>()
+            .register_type::<UiTranceLevelText>()
+            .register_type::<UiTranceEffectText>()
+            .register_type::<UiKarmaCardsContainer>()
+            .register_type::<UiEnemy>()
+            .register_type::<UiEnemyStatus>()
+            .register_type::<UiEnemyHpGaugeFill>()
+            .register_type::<UiEnemyBreakGaugeFill>()
+            .register_type::<UiEnemyBreakLabel>()
+            .register_type::<UiEnemyNextActionText>()
+            .register_type::<UiEnemyDamageText>()
+            .register_type::<UiMessage>()
+            .register_type::<UiActionMenu>()
+            .register_type::<UiActionMenuContainer>()
+            .register_type::<UiCommand>()
+            .register_type::<UiCommandHelp>()
+            .register_type::<BossSlainText>()
+            .register_type::<BossSlainBanner>()
+            .register_type::<BossSlainBackdrop>()
+            .register_type::<BossSlainBackdropCenter>()
+            .register_type::<BossSlainBackdropRow>()
+            .add_systems(OnEnter(GameState::Battle), setup_battle_screen)
             .add_systems(OnExit(GameState::Battle), cleanup_battle_screen)
             .add_systems(
                 Update,
@@ -2217,89 +2257,122 @@ struct ConsecutiveCommandEntry {
 }
 
 // 戦闘画面全体のマーカー（クリーンアップ用）
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct BattleScreen;
 
 // 戻るボタン
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct BackToPreparationButton;
 
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiRoot;
 
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiStatus;
 
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiPhase;
 
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiLog;
 
 // 有効値（コマンド別表示用）
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiEffAttack;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiEffSkill;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiEffHeal;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiEffDefend;
 
 //
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiBackground;
 
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiPlayerStatus;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiHpText;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiHpGaugeFill;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiStaText;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiStaGaugeFill;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiSpText;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiSpGaugeFill;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiTranceText;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiTranceGaugeFill;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiTranceLevelText;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiTranceEffectText;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiKarmaCardsContainer;
 
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiEnemy;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiEnemyStatus;
 
 // UiEnemy 内部の更新ターゲット
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiEnemyHpGaugeFill;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiEnemyBreakGaugeFill;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiEnemyBreakLabel; // 「ブレイク中」表示用
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiEnemyNextActionText; // 「次の行動: ...」
 
 // 敵ダメージ表示テキスト（HPゲージの横に一時表示）
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiEnemyDamageText;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiMessage;
 
 // 行動選択メニュー用コンポーネント
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiActionMenu;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiActionMenuContainer;
 // メニューアイテム（ボタン）
 #[derive(Component)]
@@ -2328,30 +2401,39 @@ enum ConsecutiveActionType {
     ReselectThird, // 3つ目のコマンドを再選択
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiCommand;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct UiCommandHelp;
 
 // ================== Boss Slain Banner ==================
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct BossSlainText; // ボス撃破表示用
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 struct BossSlainBanner {
     elapsed: f32,
     phase: BannerPhase,
 }
 
 // バナー背面の黒帯（グラデーション）
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct BossSlainBackdrop;
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct BossSlainBackdropCenter; // 中央の帯（不透明）
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 struct BossSlainBackdropRow(u8); // グラデーション行（0=最上段）
 
+#[derive(Reflect, Default)]
 enum BannerPhase {
+    #[default]
     FadeIn,
     Hold,
     FadeOut,
