@@ -14,16 +14,6 @@ pub fn on_battle_log(mut events: EventReader<BattleLogEvent>, mut log: ResMut<Co
     }
 }
 
-pub fn on_enemy_damaged(
-    mut events: EventReader<EnemyDamagedEvent>,
-    mut popup: ResMut<EnemyDamagePopup>,
-) {
-    for event in events.read() {
-        popup.amount = event.amount as i32;
-        popup.timer = 1.0;
-    }
-}
-
 pub fn on_enemy_action_planned(
     mut events: EventReader<EnemyActionPlannedEvent>,
     mut display: ResMut<EnemyNextActionDisplay>,

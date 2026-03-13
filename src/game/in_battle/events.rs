@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::fundamental::{Art, BattleWeaponId};
+use crate::fundamental::{Art, BattleWeaponId, BattleIncidentConduct, BattleIncidentCharacter};
 use std::sync::Arc;
 
 // ─── 共有データ型 ─────────────────────────────────────────────────────────────
@@ -14,14 +14,23 @@ pub struct ConsecutiveCommandEntry {
 
 // ─── Logic → UI ──────────────────────────────────────────────────────────────
 
-/// 戦闘ログメッセージ（全ての戦闘テキストをまとめてUIへ通知）
+/// 汎用ログメッセージ（ターン番号・アーツ選択などのメタ情報）
 #[derive(Message)]
 pub struct BattleLogEvent(pub String);
 
-/// 敵がダメージを受けた（ダメージポップアップ専用）
+/// コンビネーション発動結果
 #[derive(Message)]
-pub struct EnemyDamagedEvent {
-    pub amount: u32,
+pub struct BattleCombinationEvent {
+    pub actor_character_id: u32,
+    pub incident: Arc<BattleIncidentCharacter>,
+}
+
+/// 1行動の実行結果（プレイヤー・敵それぞれ1回ずつ発火）
+#[derive(Message)]
+pub struct BattleConductResolvedEvent {
+    pub incident: Arc<BattleIncidentConduct>,
+    pub player_character_id: u32,
+    pub enemy_character_id: u32,
 }
 
 /// 敵の行動が決定した（次の行動表示用）

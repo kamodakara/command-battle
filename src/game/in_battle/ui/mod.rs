@@ -12,12 +12,20 @@ impl Plugin for BattleUiPlugin {
         let battle_state = in_state(crate::GameState::Battle);
         app.add_systems(OnEnter(crate::GameState::Battle), setup::setup_battle_ui)
             .add_systems(OnExit(crate::GameState::Battle), setup::cleanup_battle_ui)
-            // イベント受信 → UIリソース更新
+            // incidentイベント受信 → BattleLogEvent / UIリソース更新
+            .add_systems(
+                Update,
+                (
+                    systems::incidents::handle_combination_resolved,
+                    systems::incidents::handle_conduct_resolved,
+                )
+                    .run_if(battle_state.clone()),
+            )
+            // その他イベント受信 → UIリソース更新
             .add_systems(
                 Update,
                 (
                     systems::update::on_battle_log,
-                    systems::update::on_enemy_damaged,
                     systems::update::on_enemy_action_planned,
                 )
                     .run_if(battle_state.clone()),

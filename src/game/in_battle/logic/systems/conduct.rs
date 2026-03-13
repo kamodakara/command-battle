@@ -15,7 +15,8 @@ pub fn handle_execute_commands(
     mut planned: ResMut<EnemyPlannedAction>,
     mut battle_resource: ResMut<BattleResource>,
     mut log_ev: EventWriter<BattleLogEvent>,
-    mut enemy_damaged_ev: EventWriter<EnemyDamagedEvent>,
+    mut combination_ev: EventWriter<BattleCombinationEvent>,
+    mut conduct_ev: EventWriter<BattleConductResolvedEvent>,
     mut result_ev: EventWriter<BattleResultEvent>,
 ) {
     for event in events.read() {
@@ -37,19 +38,11 @@ pub fn handle_execute_commands(
         battle.player.initialize_current_conduct_log();
         if event.use_combination {
             let stamina_cost = cmd.art.stamina_cost;
-            let incident_character = battle.player.combination(stamina_cost);
-            log_ev.write(BattleLogEvent("コンビネーション発動！".to_string()));
-
-            for character_incident in incident_character.incidents.iter() {
-                for concrete in character_incident.concretes.iter() {
-                    if let BattleCharacterIncidentConcrete::TranceIncrease(t) = concrete {
-                        log_ev.write(BattleLogEvent(format!(
-                            "トランス値 +{} ({} → {})",
-                            t.increase, t.before, t.after
-                        )));
-                    }
-                }
-            }
+            let incident = battle.player.combination(stamina_cost);
+            combination_ev.write(BattleCombinationEvent {
+                actor_character_id: player_id,
+                incident: Arc::new(incident),
+            });
         }
 
         // ターゲット決定
@@ -73,7 +66,7 @@ pub fn handle_execute_commands(
             conducts: vec![&player_conduct, &enemy_conduct],
         });
 
-        // 行動実行
+        // 行動実行 → 構造化イベントを発火
         for actor_id in order {
             let conduct_to_execute = if actor_id == player_id {
                 player_conduct.clone()
@@ -85,97 +78,11 @@ pub fn handle_execute_commands(
                 conduct: conduct_to_execute,
             });
 
-            match incident.outcome {
-                BattleIncidentConductOutcome::Failure(_) => {
-                    log_ev.write(BattleLogEvent(format!(
-                        "{}は不発",
-                        incident.conduct.art.name
-                    )));
-                }
-                BattleIncidentConductOutcome::Success(s) => {
-                    // 攻撃側のインシデント
-                    for character_incident in s.attacker.incidents.iter() {
-                        for concrete in character_incident.concretes.iter() {
-                            match concrete {
-                                BattleCharacterIncidentConcrete::CombinationSkillActivated(c) => {
-                                    log_ev.write(BattleLogEvent(format!(
-                                        "コンビネーション技 {} 発動！",
-                                        c.combination_skill_name
-                                    )));
-                                }
-                                BattleCharacterIncidentConcrete::DamageSp(d) => {
-                                    log_ev.write(BattleLogEvent(format!(
-                                        "SP -{} ({} → {})",
-                                        d.damage, d.before, d.after
-                                    )));
-                                }
-                                BattleCharacterIncidentConcrete::DamageStamina(d) => {
-                                    log_ev.write(BattleLogEvent(format!(
-                                        "Stamina -{} ({} → {})",
-                                        d.damage, d.before, d.after
-                                    )));
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-
-                    // 防御側のインシデント
-                    for def in s.defenders.iter() {
-                        if def.is_evaded {
-                            log_ev.write(BattleLogEvent("回避した".to_string()));
-                        }
-                        if def.is_defended {
-                            log_ev.write(BattleLogEvent("防御した".to_string()));
-                        }
-
-                        for character_incident in def.character.incidents.iter() {
-                            for concrete in character_incident.concretes.iter() {
-                                match concrete {
-                                    BattleCharacterIncidentConcrete::DamageHp(d) => {
-                                        let who = if def.character.character_id == enemy_id {
-                                            "敵"
-                                        } else {
-                                            "プレイヤー"
-                                        };
-                                        log_ev.write(BattleLogEvent(format!(
-                                            "{} に{}ダメージ (HP {} → {})",
-                                            who, d.damage, d.before, d.after
-                                        )));
-                                        if def.character.character_id == enemy_id {
-                                            enemy_damaged_ev
-                                                .write(EnemyDamagedEvent { amount: d.damage });
-                                        }
-                                    }
-                                    BattleCharacterIncidentConcrete::RecoverHp(r) => {
-                                        let who = if def.character.character_id == player_id {
-                                            "プレイヤー"
-                                        } else {
-                                            "敵"
-                                        };
-                                        log_ev.write(BattleLogEvent(format!(
-                                            "{} のHPを{}回復 ({} → {})",
-                                            who, r.recover, r.before, r.after
-                                        )));
-                                    }
-                                    BattleCharacterIncidentConcrete::RecoverStamina(r) => {
-                                        let who = if def.character.character_id == player_id {
-                                            "プレイヤー"
-                                        } else {
-                                            "敵"
-                                        };
-                                        log_ev.write(BattleLogEvent(format!(
-                                            "{} のスタミナを{}回復 ({} → {})",
-                                            who, r.recover, r.before, r.after
-                                        )));
-                                    }
-                                    _ => {}
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            conduct_ev.write(BattleConductResolvedEvent {
+                incident: Arc::new(incident),
+                player_character_id: player_id,
+                enemy_character_id: enemy_id,
+            });
         }
 
         // バトル終了チェック
@@ -184,11 +91,9 @@ pub fn handle_execute_commands(
 
         if enemy_hp == 0 {
             *phase = BattlePhase::Finished;
-            log_ev.write(BattleLogEvent("勝利! 敵を倒しました".to_string()));
             result_ev.write(BattleResultEvent::Victory);
         } else if player_hp == 0 {
             *phase = BattlePhase::Finished;
-            log_ev.write(BattleLogEvent("敗北... プレイヤーのHPが0です".to_string()));
             result_ev.write(BattleResultEvent::Defeat);
         } else {
             turn.0 += 1;

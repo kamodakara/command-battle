@@ -13,7 +13,8 @@ impl Plugin for BattleLogicPlugin {
         app
             // イベント登録（Logic → UI）
             .add_message::<BattleLogEvent>()
-            .add_message::<EnemyDamagedEvent>()
+            .add_message::<BattleCombinationEvent>()
+            .add_message::<BattleConductResolvedEvent>()
             .add_message::<EnemyActionPlannedEvent>()
             .add_message::<BattleResultEvent>()
             // イベント登録（UI → Logic）
