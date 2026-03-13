@@ -1,0 +1,273 @@
+use super::super::super::events::*;
+use super::super::resources::*;
+use crate::battle::{
+    BattleCharacterController, BattleController, BattleDecideOrderRequest,
+    BattleExecuteConductRequest,
+};
+use crate::fundamental::*;
+use bevy::prelude::*;
+use std::sync::Arc;
+
+pub fn handle_player_art_selected(
+    mut events: EventReader<PlayerArtSelectedEvent>,
+    mut phase: ResMut<BattlePhase>,
+    mut consecutive: ResMut<ConsecutiveCommands>,
+    mut log_ev: EventWriter<BattleLogEvent>,
+) {
+    if *phase != BattlePhase::AwaitCommand {
+        for _ in events.read() {}
+        return;
+    }
+
+    for event in events.read() {
+        let turn_index = consecutive.commands.len() + 1;
+        consecutive.commands.push(ConsecutiveCommandEntry {
+            art: Arc::clone(&event.art),
+            weapon_index: event.weapon_index,
+            battle_weapon_id: event.battle_weapon_id.clone(),
+        });
+
+        log_ev.write(BattleLogEvent(format!(
+            "{}ターン目: {}を設定",
+            turn_index, event.art.name
+        )));
+
+        if turn_index >= 3 {
+            log_ev.write(BattleLogEvent(
+                "連続コマンド入力完了！ 内容を確認してください".to_string(),
+            ));
+            *phase = BattlePhase::ConfirmAllCommands;
+        }
+    }
+}
+
+pub fn handle_execute_queued(
+    mut events: EventReader<ExecuteQueuedEvent>,
+    mut phase: ResMut<BattlePhase>,
+    mut turn: ResMut<Turn>,
+    mut consecutive: ResMut<ConsecutiveCommands>,
+    mut planned: ResMut<EnemyPlannedAction>,
+    mut battle_resource: ResMut<BattleResource>,
+    mut log_ev: EventWriter<BattleLogEvent>,
+    mut enemy_damaged_ev: EventWriter<EnemyDamagedEvent>,
+    mut result_ev: EventWriter<BattleResultEvent>,
+) {
+    for event in events.read() {
+        if *phase != BattlePhase::ConfirmQueued
+            && *phase != BattlePhase::ConfirmAllCommands
+            && *phase != BattlePhase::AwaitCommand
+        {
+            continue;
+        }
+
+        let Some(cmd) = consecutive.commands.first().cloned() else {
+            continue;
+        };
+
+        let battle = &mut battle_resource.0;
+        let player_id = battle.player.character_id;
+        let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
+
+        log_ev.write(BattleLogEvent(format!(
+            "ターン {} プレイヤーは{}を選択",
+            turn.0, cmd.art.name
+        )));
+
+        // コンビネーション処理
+        battle.player.initialize_current_conduct_log();
+        if event.use_combination {
+            let stamina_cost = cmd.art.stamina_cost;
+            let incident_character = battle.player.combination(stamina_cost);
+            log_ev.write(BattleLogEvent("コンビネーション発動！".to_string()));
+
+            for character_incident in incident_character.incidents.iter() {
+                for concrete in character_incident.concretes.iter() {
+                    if let BattleCharacterIncidentConcrete::TranceIncrease(t) = concrete {
+                        log_ev.write(BattleLogEvent(format!(
+                            "トランス値 +{} ({} → {})",
+                            t.increase, t.before, t.after
+                        )));
+                    }
+                }
+            }
+        }
+
+        // ターゲット決定
+        let target = match &cmd.art.rank1.potency {
+            ArtPotency::Attack(_) => BattleConductTargetType::EnemySingle(enemy_id),
+            ArtPotency::Support(_) => BattleConductTargetType::Player,
+        };
+
+        let player_conduct = BattleConduct {
+            actor_character_id: player_id,
+            target,
+            art: Arc::clone(&cmd.art),
+            battle_weapon_id: cmd.battle_weapon_id.clone(),
+        };
+
+        let enemy_conduct = planned.0.clone().expect("敵の行動が未定");
+        planned.0 = None;
+
+        // 行動順決定
+        let order = battle.decide_order(BattleDecideOrderRequest {
+            conducts: vec![&player_conduct, &enemy_conduct],
+        });
+
+        // 行動実行
+        for actor_id in order {
+            let conduct_to_execute = if actor_id == player_id {
+                player_conduct.clone()
+            } else {
+                enemy_conduct.clone()
+            };
+
+            let incident = battle.execute_conduct(BattleExecuteConductRequest {
+                conduct: conduct_to_execute,
+            });
+
+            match incident.outcome {
+                BattleIncidentConductOutcome::Failure(_) => {
+                    log_ev.write(BattleLogEvent(format!(
+                        "{}は不発",
+                        incident.conduct.art.name
+                    )));
+                }
+                BattleIncidentConductOutcome::Success(s) => {
+                    // 攻撃側のインシデント
+                    for character_incident in s.attacker.incidents.iter() {
+                        for concrete in character_incident.concretes.iter() {
+                            match concrete {
+                                BattleCharacterIncidentConcrete::CombinationSkillActivated(c) => {
+                                    log_ev.write(BattleLogEvent(format!(
+                                        "コンビネーション技 {} 発動！",
+                                        c.combination_skill_name
+                                    )));
+                                }
+                                BattleCharacterIncidentConcrete::DamageSp(d) => {
+                                    log_ev.write(BattleLogEvent(format!(
+                                        "SP -{} ({} → {})",
+                                        d.damage, d.before, d.after
+                                    )));
+                                }
+                                BattleCharacterIncidentConcrete::DamageStamina(d) => {
+                                    log_ev.write(BattleLogEvent(format!(
+                                        "Stamina -{} ({} → {})",
+                                        d.damage, d.before, d.after
+                                    )));
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    // 防御側のインシデント
+                    for def in s.defenders.iter() {
+                        if def.is_evaded {
+                            log_ev.write(BattleLogEvent("回避した".to_string()));
+                        }
+                        if def.is_defended {
+                            log_ev.write(BattleLogEvent("防御した".to_string()));
+                        }
+
+                        for character_incident in def.character.incidents.iter() {
+                            for concrete in character_incident.concretes.iter() {
+                                match concrete {
+                                    BattleCharacterIncidentConcrete::DamageHp(d) => {
+                                        let who = if def.character.character_id == enemy_id {
+                                            "敵"
+                                        } else {
+                                            "プレイヤー"
+                                        };
+                                        log_ev.write(BattleLogEvent(format!(
+                                            "{} に{}ダメージ (HP {} → {})",
+                                            who, d.damage, d.before, d.after
+                                        )));
+                                        // 敵へのダメージはポップアップ用に通知
+                                        if def.character.character_id == enemy_id {
+                                            enemy_damaged_ev
+                                                .write(EnemyDamagedEvent { amount: d.damage });
+                                        }
+                                    }
+                                    BattleCharacterIncidentConcrete::RecoverHp(r) => {
+                                        let who = if def.character.character_id == player_id {
+                                            "プレイヤー"
+                                        } else {
+                                            "敵"
+                                        };
+                                        log_ev.write(BattleLogEvent(format!(
+                                            "{} のHPを{}回復 ({} → {})",
+                                            who, r.recover, r.before, r.after
+                                        )));
+                                    }
+                                    BattleCharacterIncidentConcrete::RecoverStamina(r) => {
+                                        let who = if def.character.character_id == player_id {
+                                            "プレイヤー"
+                                        } else {
+                                            "敵"
+                                        };
+                                        log_ev.write(BattleLogEvent(format!(
+                                            "{} のスタミナを{}回復 ({} → {})",
+                                            who, r.recover, r.before, r.after
+                                        )));
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // コマンドをキューから削除
+        consecutive.commands.remove(0);
+
+        // バトル終了チェック
+        let enemy_hp = battle.enemies.first().map(|e| e.hp.current_hp).unwrap_or(0);
+        let player_hp = battle.player.hp.current_hp;
+
+        if enemy_hp == 0 {
+            *phase = BattlePhase::Finished;
+            log_ev.write(BattleLogEvent("勝利! 敵を倒しました".to_string()));
+            result_ev.write(BattleResultEvent::Victory);
+        } else if player_hp == 0 {
+            *phase = BattlePhase::Finished;
+            log_ev.write(BattleLogEvent("敗北... プレイヤーのHPが0です".to_string()));
+            result_ev.write(BattleResultEvent::Defeat);
+        } else {
+            turn.0 += 1;
+            *phase = BattlePhase::TurnEnd;
+        }
+    }
+}
+
+pub fn handle_cancel_queued(
+    mut events: EventReader<CancelQueuedEvent>,
+    mut phase: ResMut<BattlePhase>,
+    mut consecutive: ResMut<ConsecutiveCommands>,
+    mut log_ev: EventWriter<BattleLogEvent>,
+) {
+    for _ in events.read() {
+        consecutive.commands.clear();
+        log_ev.write(BattleLogEvent("連続コマンドを破棄しました".to_string()));
+        *phase = BattlePhase::AwaitCommand;
+    }
+}
+
+pub fn handle_remove_last_queued(
+    mut events: EventReader<RemoveLastQueuedEvent>,
+    phase: Res<BattlePhase>,
+    mut consecutive: ResMut<ConsecutiveCommands>,
+    mut log_ev: EventWriter<BattleLogEvent>,
+) {
+    if *phase == BattlePhase::Finished {
+        for _ in events.read() {}
+        return;
+    }
+    for _ in events.read() {
+        if !consecutive.commands.is_empty() {
+            consecutive.commands.pop();
+            log_ev.write(BattleLogEvent("コマンドを取り消しました".to_string()));
+        }
+    }
+}
