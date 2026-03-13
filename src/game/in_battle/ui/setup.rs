@@ -1,6 +1,18 @@
 use bevy::prelude::*;
-use super::components::*;
 use super::resources::*;
+use super::handlers::input::BackToPreparationButton;
+use super::renderers::{
+    player_status::*,
+    enemy_status::*,
+    action_menu::{UiActionMenu, UiActionMenuContainer},
+    combat_log::UiMessage,
+    karma_cards::UiKarmaCardsContainer,
+    damage_popup::UiEnemyDamageText,
+};
+
+/// バトル画面全体のマーカー（クリーンアップ用）
+#[derive(Component)]
+pub struct BattleScreen;
 
 pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(CombatLog(vec!["行動を選択してください".to_string()]));

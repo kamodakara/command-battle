@@ -1,7 +1,7 @@
-pub mod components;
+pub mod handlers;
+pub mod renderers;
 pub mod resources;
 mod setup;
-pub mod systems;
 
 use bevy::prelude::*;
 
@@ -12,48 +12,54 @@ impl Plugin for BattleUiPlugin {
         let battle_state = in_state(crate::GameState::Battle);
         app.add_systems(OnEnter(crate::GameState::Battle), setup::setup_battle_ui)
             .add_systems(OnExit(crate::GameState::Battle), setup::cleanup_battle_ui)
-            // incidentイベント受信 → BattleLogEvent / UIリソース更新
+            // incident イベント → UIリソース更新・BattleLogEvent発火
             .add_systems(
                 Update,
                 (
-                    systems::incidents::handle_combination_resolved,
-                    systems::incidents::handle_conduct_resolved,
+                    handlers::battle_incidents::handle_combination_resolved,
+                    handlers::battle_incidents::handle_conduct_resolved,
                 )
                     .run_if(battle_state.clone()),
             )
-            // その他イベント受信 → UIリソース更新
+            // その他イベント → UIリソース更新
             .add_systems(
                 Update,
                 (
-                    systems::update::on_battle_log,
-                    systems::update::on_enemy_action_planned,
+                    handlers::battle_log::on_battle_log,
+                    handlers::battle_log::on_enemy_action_planned,
                 )
                     .run_if(battle_state.clone()),
             )
-            // UI描画更新
+            // 入力 → UIリソース更新・Logicへイベント発火
             .add_systems(
                 Update,
                 (
-                    systems::update::ui_update_system,
-                    systems::update::ui_update_enemy_system,
-                    systems::update::ui_update_enemy_damage_popup_system,
-                    systems::update::ui_update_player_status_system,
-                    systems::update::ui_update_command_system,
-                    systems::update::ui_update_message_system,
-                    systems::update::ui_update_skill_effect_system,
-                    systems::update::ui_update_karma_cards_system,
-                    systems::update::boss_slain_banner_system,
+                    handlers::action_menu::action_menu_click_system,
+                    handlers::input::back_button_system,
                 )
                     .run_if(battle_state.clone()),
             )
-            // アクションメニュー・バトル終了・入力
+            // UIリソース → Bevyコンポーネント描画
             .add_systems(
                 Update,
                 (
-                    systems::action_menu::action_menu_click_system,
-                    systems::action_menu::action_menu_update_system,
-                    systems::battle_end::battle_result_system,
-                    systems::input::back_button_system,
+                    renderers::player_status::render,
+                    renderers::enemy_status::render,
+                    renderers::action_menu::render,
+                    renderers::combat_log::render_message,
+                    renderers::combat_log::render_phase,
+                    renderers::karma_cards::render,
+                    renderers::damage_popup::render,
+                    renderers::skill_effect::render,
+                )
+                    .run_if(battle_state.clone()),
+            )
+            // 勝利演出（イベント起点だが描画処理を持つ）
+            .add_systems(
+                Update,
+                (
+                    renderers::victory_banner::on_battle_result,
+                    renderers::victory_banner::animate_banner,
                 )
                     .run_if(battle_state),
             );

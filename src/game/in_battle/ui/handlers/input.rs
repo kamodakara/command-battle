@@ -1,5 +1,8 @@
 use bevy::prelude::*;
-use super::super::components::*;
+
+/// 戻るボタンのマーカーコンポーネント
+#[derive(Component)]
+pub struct BackToPreparationButton;
 
 pub fn back_button_system(
     mut interaction_query: Query<

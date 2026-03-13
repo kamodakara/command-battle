@@ -50,7 +50,6 @@ pub fn handle_conduct_resolved(
                 )));
             }
             BattleIncidentConductOutcome::Success(s) => {
-                // 攻撃側のインシデント
                 for character_incident in s.attacker.incidents.iter() {
                     for concrete in character_incident.concretes.iter() {
                         match concrete {
@@ -77,7 +76,6 @@ pub fn handle_conduct_resolved(
                     }
                 }
 
-                // 防御側のインシデント
                 for def in s.defenders.iter() {
                     if def.is_evaded {
                         log_ev.write(BattleLogEvent("回避した".to_string()));
