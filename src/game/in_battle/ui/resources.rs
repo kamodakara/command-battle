@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use crate::fundamental::Art;
 use std::sync::Arc;
+use super::super::events::ConsecutiveCommandEntry;
 
 /// 戦闘ログ（BattleLogEventで更新、UI専有）
 #[derive(Resource, Default)]
@@ -20,6 +21,12 @@ pub struct KarmaCardsNeedsRedraw(pub bool);
 /// 敵の次の行動表示（EnemyActionPlannedEventで更新、UI専有）
 #[derive(Resource, Default)]
 pub struct EnemyNextActionDisplay(pub String);
+
+/// 連続コマンドキュー（UI専有、確定後にLogicへイベントで渡す）
+#[derive(Resource, Default)]
+pub struct ConsecutiveCommands {
+    pub commands: Vec<ConsecutiveCommandEntry>,
+}
 
 // ─── メニューUI状態 ──────────────────────────────────────────────────────────
 

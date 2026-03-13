@@ -1,15 +1,11 @@
 use bevy::prelude::*;
 use crate::fundamental::*;
-use std::sync::Arc;
 
 /// バトルフェーズ（ロジック書き込み、UIも読み取り可）
 #[derive(Resource, PartialEq, Eq)]
 pub enum BattlePhase {
     DecideEnemyConduct,
     AwaitCommand,
-    ConfirmQueued,
-    ConfirmAllCommands,
-    InBattle,
     TurnEnd,
     Finished,
 }
@@ -22,26 +18,13 @@ pub struct Turn(pub u32);
 #[derive(Resource)]
 pub struct EnemyPlannedAction(pub Option<BattleConduct>);
 
-/// 連続コマンドキュー（UIも表示用に参照可）
-#[derive(Resource, Default)]
-pub struct ConsecutiveCommands {
-    pub commands: Vec<ConsecutiveCommandEntry>,
-}
-
-#[derive(Clone)]
-pub struct ConsecutiveCommandEntry {
-    pub art: Arc<Art>,
-    pub weapon_index: Option<usize>,
-    pub battle_weapon_id: Option<BattleWeaponId>,
-}
-
 /// バトルデータ（UIも読み取り可）
 #[derive(Resource)]
 pub struct BattleResource(pub Battle);
 
 /// プレイヤーの基本アーツ（UIも読み取り可）
 #[derive(Resource)]
-pub struct PlayerBasicArts(pub Vec<Arc<Art>>);
+pub struct PlayerBasicArts(pub Vec<std::sync::Arc<Art>>);
 
 /// プレイヤーの装備武器（UIも読み取り可）
 #[derive(Resource)]
@@ -52,7 +35,7 @@ pub struct PlayerEquippedWeapons {
 #[derive(Clone)]
 pub struct EquippedWeaponWithArts {
     pub weapon: Weapon,
-    pub skills: Vec<Arc<Art>>,
-    pub sorceries: Vec<Arc<Art>>,
+    pub skills: Vec<std::sync::Arc<Art>>,
+    pub sorceries: Vec<std::sync::Arc<Art>>,
     pub battle_weapon_id: BattleWeaponId,
 }

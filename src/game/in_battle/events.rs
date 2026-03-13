@@ -2,6 +2,16 @@ use bevy::prelude::*;
 use crate::fundamental::{Art, BattleWeaponId};
 use std::sync::Arc;
 
+// ─── 共有データ型 ─────────────────────────────────────────────────────────────
+
+/// コマンドキューの1エントリ（UIが管理し、Logicに渡す）
+#[derive(Clone)]
+pub struct ConsecutiveCommandEntry {
+    pub art: Arc<Art>,
+    pub weapon_index: Option<usize>,
+    pub battle_weapon_id: Option<BattleWeaponId>,
+}
+
 // ─── Logic → UI ──────────────────────────────────────────────────────────────
 
 /// 戦闘ログメッセージ（全ての戦闘テキストをまとめてUIへ通知）
@@ -29,24 +39,9 @@ pub enum BattleResultEvent {
 
 // ─── UI → Logic ──────────────────────────────────────────────────────────────
 
-/// プレイヤーがアーツを選択した
+/// コマンドを1つ実行する（UIがキューを管理し、1ターン分を送る）
 #[derive(Message)]
-pub struct PlayerArtSelectedEvent {
-    pub art: Arc<Art>,
-    pub weapon_index: Option<usize>,
-    pub battle_weapon_id: Option<BattleWeaponId>,
-}
-
-/// キューの先頭コマンドを実行する
-#[derive(Message)]
-pub struct ExecuteQueuedEvent {
+pub struct ExecuteBattleCommandsEvent {
+    pub command: ConsecutiveCommandEntry,
     pub use_combination: bool,
 }
-
-/// キューのコマンドを全てキャンセル（入力しなおし）
-#[derive(Message)]
-pub struct CancelQueuedEvent;
-
-/// キューの末尾のコマンドを取り消し
-#[derive(Message)]
-pub struct RemoveLastQueuedEvent;

@@ -17,10 +17,7 @@ impl Plugin for BattleLogicPlugin {
             .add_message::<EnemyActionPlannedEvent>()
             .add_message::<BattleResultEvent>()
             // イベント登録（UI → Logic）
-            .add_message::<PlayerArtSelectedEvent>()
-            .add_message::<ExecuteQueuedEvent>()
-            .add_message::<CancelQueuedEvent>()
-            .add_message::<RemoveLastQueuedEvent>()
+            .add_message::<ExecuteBattleCommandsEvent>()
             // セットアップ
             .add_systems(OnEnter(crate::GameState::Battle), setup::setup_battle_logic)
             // システム登録
@@ -28,10 +25,7 @@ impl Plugin for BattleLogicPlugin {
                 Update,
                 (
                     systems::turn::phase_transition_system,
-                    systems::conduct::handle_player_art_selected,
-                    systems::conduct::handle_execute_queued,
-                    systems::conduct::handle_cancel_queued,
-                    systems::conduct::handle_remove_last_queued,
+                    systems::conduct::handle_execute_commands,
                 )
                     .run_if(in_state(crate::GameState::Battle)),
             );

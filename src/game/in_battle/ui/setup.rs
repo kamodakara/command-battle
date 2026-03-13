@@ -8,6 +8,7 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(KarmaCardsNeedsRedraw(true));
     commands.insert_resource(EnemyNextActionDisplay::default());
     commands.insert_resource(ActionMenuSelection::default());
+    commands.insert_resource(ConsecutiveCommands::default());
 
     let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
 

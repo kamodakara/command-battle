@@ -1,5 +1,5 @@
-use super::super::super::events::*;
 use super::super::resources::*;
+use super::super::super::events::*;
 use crate::battle::{
     BattleCharacterController, BattleController, BattleDecideOrderRequest,
     BattleExecuteConductRequest,
@@ -8,44 +8,10 @@ use crate::fundamental::*;
 use bevy::prelude::*;
 use std::sync::Arc;
 
-pub fn handle_player_art_selected(
-    mut events: EventReader<PlayerArtSelectedEvent>,
-    mut phase: ResMut<BattlePhase>,
-    mut consecutive: ResMut<ConsecutiveCommands>,
-    mut log_ev: EventWriter<BattleLogEvent>,
-) {
-    if *phase != BattlePhase::AwaitCommand {
-        for _ in events.read() {}
-        return;
-    }
-
-    for event in events.read() {
-        let turn_index = consecutive.commands.len() + 1;
-        consecutive.commands.push(ConsecutiveCommandEntry {
-            art: Arc::clone(&event.art),
-            weapon_index: event.weapon_index,
-            battle_weapon_id: event.battle_weapon_id.clone(),
-        });
-
-        log_ev.write(BattleLogEvent(format!(
-            "{}ターン目: {}を設定",
-            turn_index, event.art.name
-        )));
-
-        if turn_index >= 3 {
-            log_ev.write(BattleLogEvent(
-                "連続コマンド入力完了！ 内容を確認してください".to_string(),
-            ));
-            *phase = BattlePhase::ConfirmAllCommands;
-        }
-    }
-}
-
-pub fn handle_execute_queued(
-    mut events: EventReader<ExecuteQueuedEvent>,
+pub fn handle_execute_commands(
+    mut events: EventReader<ExecuteBattleCommandsEvent>,
     mut phase: ResMut<BattlePhase>,
     mut turn: ResMut<Turn>,
-    mut consecutive: ResMut<ConsecutiveCommands>,
     mut planned: ResMut<EnemyPlannedAction>,
     mut battle_resource: ResMut<BattleResource>,
     mut log_ev: EventWriter<BattleLogEvent>,
@@ -53,17 +19,11 @@ pub fn handle_execute_queued(
     mut result_ev: EventWriter<BattleResultEvent>,
 ) {
     for event in events.read() {
-        if *phase != BattlePhase::ConfirmQueued
-            && *phase != BattlePhase::ConfirmAllCommands
-            && *phase != BattlePhase::AwaitCommand
-        {
+        if *phase != BattlePhase::AwaitCommand {
             continue;
         }
 
-        let Some(cmd) = consecutive.commands.first().cloned() else {
-            continue;
-        };
-
+        let cmd = &event.command;
         let battle = &mut battle_resource.0;
         let player_id = battle.player.character_id;
         let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
@@ -182,7 +142,6 @@ pub fn handle_execute_queued(
                                             "{} に{}ダメージ (HP {} → {})",
                                             who, d.damage, d.before, d.after
                                         )));
-                                        // 敵へのダメージはポップアップ用に通知
                                         if def.character.character_id == enemy_id {
                                             enemy_damaged_ev
                                                 .write(EnemyDamagedEvent { amount: d.damage });
@@ -219,9 +178,6 @@ pub fn handle_execute_queued(
             }
         }
 
-        // コマンドをキューから削除
-        consecutive.commands.remove(0);
-
         // バトル終了チェック
         let enemy_hp = battle.enemies.first().map(|e| e.hp.current_hp).unwrap_or(0);
         let player_hp = battle.player.hp.current_hp;
@@ -237,37 +193,6 @@ pub fn handle_execute_queued(
         } else {
             turn.0 += 1;
             *phase = BattlePhase::TurnEnd;
-        }
-    }
-}
-
-pub fn handle_cancel_queued(
-    mut events: EventReader<CancelQueuedEvent>,
-    mut phase: ResMut<BattlePhase>,
-    mut consecutive: ResMut<ConsecutiveCommands>,
-    mut log_ev: EventWriter<BattleLogEvent>,
-) {
-    for _ in events.read() {
-        consecutive.commands.clear();
-        log_ev.write(BattleLogEvent("連続コマンドを破棄しました".to_string()));
-        *phase = BattlePhase::AwaitCommand;
-    }
-}
-
-pub fn handle_remove_last_queued(
-    mut events: EventReader<RemoveLastQueuedEvent>,
-    phase: Res<BattlePhase>,
-    mut consecutive: ResMut<ConsecutiveCommands>,
-    mut log_ev: EventWriter<BattleLogEvent>,
-) {
-    if *phase == BattlePhase::Finished {
-        for _ in events.read() {}
-        return;
-    }
-    for _ in events.read() {
-        if !consecutive.commands.is_empty() {
-            consecutive.commands.pop();
-            log_ev.write(BattleLogEvent("コマンドを取り消しました".to_string()));
         }
     }
 }

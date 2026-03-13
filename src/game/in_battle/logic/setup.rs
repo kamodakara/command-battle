@@ -12,7 +12,6 @@ pub fn setup_battle_logic(
     commands.insert_resource(BattlePhase::DecideEnemyConduct);
     commands.insert_resource(Turn(1));
     commands.insert_resource(EnemyPlannedAction(None));
-    commands.insert_resource(ConsecutiveCommands::default());
 
     let (basic_arts, equipped_weapons, battle_weapons) =
         create_equipped_weapons_from_preparation(&prep_state, &equipment_db, &arts_db);

@@ -2,29 +2,21 @@ use bevy::prelude::*;
 use std::sync::Arc;
 use super::super::components::*;
 use super::super::resources::*;
-use super::super::super::logic::resources::{
-    BattlePhase, ConsecutiveCommands, PlayerBasicArts, PlayerEquippedWeapons,
-};
+use super::super::super::logic::resources::{BattlePhase, PlayerBasicArts, PlayerEquippedWeapons};
 use super::super::super::events::*;
 
 pub fn action_menu_click_system(
     phase: Res<BattlePhase>,
     mut action_menu: ResMut<ActionMenuSelection>,
-    consecutive: Res<ConsecutiveCommands>,
+    mut consecutive: ResMut<ConsecutiveCommands>,
     equipped_weapons: Res<PlayerEquippedWeapons>,
     mut interaction_query: Query<
         (&Interaction, &ActionMenuItem),
         (Changed<Interaction>, With<Button>),
     >,
-    mut art_selected_ev: EventWriter<PlayerArtSelectedEvent>,
-    mut execute_ev: EventWriter<ExecuteQueuedEvent>,
-    mut cancel_ev: EventWriter<CancelQueuedEvent>,
-    mut remove_ev: EventWriter<RemoveLastQueuedEvent>,
+    mut execute_ev: EventWriter<ExecuteBattleCommandsEvent>,
 ) {
-    if *phase != BattlePhase::AwaitCommand
-        && *phase != BattlePhase::ConfirmQueued
-        && *phase != BattlePhase::ConfirmAllCommands
-    {
+    if *phase != BattlePhase::AwaitCommand {
         return;
     }
 
@@ -43,9 +35,7 @@ pub fn action_menu_click_system(
                 ActionMenuCategory::Back => {
                     // ConsecutiveInput 状態でのBackはコマンド取り消し
                     if let ActionMenuState::ConsecutiveInput = action_menu.menu_state {
-                        if !consecutive.commands.is_empty() {
-                            remove_ev.write(RemoveLastQueuedEvent);
-                        }
+                        consecutive.commands.pop();
                     }
                     action_menu.menu_state = ActionMenuState::ConsecutiveInput;
                 }
@@ -57,40 +47,81 @@ pub fn action_menu_click_system(
                             .weapons
                             .get(weapon_idx)
                             .map(|w| w.battle_weapon_id.clone());
-                        art_selected_ev.write(PlayerArtSelectedEvent {
+                        consecutive.commands.push(ConsecutiveCommandEntry {
                             art: Arc::clone(art),
                             weapon_index: Some(weapon_idx),
                             battle_weapon_id,
                         });
-                        action_menu.input();
+                        if consecutive.commands.len() >= 3 {
+                            action_menu.confirm_all();
+                        } else {
+                            action_menu.input();
+                        }
                     }
                     ActionMenuState::ConsecutiveBasicArts => {
-                        art_selected_ev.write(PlayerArtSelectedEvent {
+                        consecutive.commands.push(ConsecutiveCommandEntry {
                             art: Arc::clone(art),
                             weapon_index: None,
                             battle_weapon_id: None,
                         });
-                        action_menu.input();
+                        if consecutive.commands.len() >= 3 {
+                            action_menu.confirm_all();
+                        } else {
+                            action_menu.input();
+                        }
                     }
                     _ => {}
                 }
             }
             ActionMenuItemType::ConsecutiveAction(action_type) => match action_type {
                 ConsecutiveActionType::Execute => {
-                    execute_ev.write(ExecuteQueuedEvent { use_combination: true });
+                    if let Some(cmd) = consecutive.commands.first().cloned() {
+                        consecutive.commands.remove(0);
+                        execute_ev.write(ExecuteBattleCommandsEvent {
+                            command: cmd,
+                            use_combination: true,
+                        });
+                        if !consecutive.commands.is_empty() {
+                            action_menu.confirm();
+                        } else {
+                            action_menu.input();
+                        }
+                    }
                 }
                 ConsecutiveActionType::Reenter => {
-                    cancel_ev.write(CancelQueuedEvent);
+                    consecutive.commands.clear();
                     action_menu.input();
                 }
                 ConsecutiveActionType::FinishInput => {
-                    execute_ev.write(ExecuteQueuedEvent { use_combination: false });
+                    if let Some(cmd) = consecutive.commands.first().cloned() {
+                        consecutive.commands.remove(0);
+                        execute_ev.write(ExecuteBattleCommandsEvent {
+                            command: cmd,
+                            use_combination: false,
+                        });
+                        if !consecutive.commands.is_empty() {
+                            action_menu.confirm();
+                        } else {
+                            action_menu.input();
+                        }
+                    }
                 }
                 ConsecutiveActionType::ConfirmAll => {
-                    execute_ev.write(ExecuteQueuedEvent { use_combination: false });
+                    if let Some(cmd) = consecutive.commands.first().cloned() {
+                        consecutive.commands.remove(0);
+                        execute_ev.write(ExecuteBattleCommandsEvent {
+                            command: cmd,
+                            use_combination: false,
+                        });
+                        if !consecutive.commands.is_empty() {
+                            action_menu.confirm();
+                        } else {
+                            action_menu.input();
+                        }
+                    }
                 }
                 ConsecutiveActionType::ReselectThird => {
-                    remove_ev.write(RemoveLastQueuedEvent);
+                    consecutive.commands.pop();
                     action_menu.input();
                 }
             },
@@ -111,20 +142,14 @@ pub fn action_menu_update_system(
     menu_items_q: Query<Entity, With<ActionMenuItem>>,
 ) {
     if let Ok(mut vis) = menu_vis_q.single_mut() {
-        *vis = if *phase == BattlePhase::AwaitCommand
-            || *phase == BattlePhase::ConfirmQueued
-            || *phase == BattlePhase::ConfirmAllCommands
-        {
+        *vis = if *phase == BattlePhase::AwaitCommand {
             Visibility::Visible
         } else {
             Visibility::Hidden
         };
     }
 
-    if *phase != BattlePhase::AwaitCommand
-        && *phase != BattlePhase::ConfirmQueued
-        && *phase != BattlePhase::ConfirmAllCommands
-    {
+    if *phase != BattlePhase::AwaitCommand {
         return;
     }
 

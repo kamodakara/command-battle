@@ -6,7 +6,6 @@ use super::super::super::events::*;
 pub fn phase_transition_system(
     mut phase: ResMut<BattlePhase>,
     mut battle_resource: ResMut<BattleResource>,
-    consecutive: Res<ConsecutiveCommands>,
     mut planned: ResMut<EnemyPlannedAction>,
     mut enemy_planned_ev: EventWriter<EnemyActionPlannedEvent>,
 ) {
@@ -27,12 +26,7 @@ pub fn phase_transition_system(
             });
             planned.0 = Some(conduct);
 
-            // 連続コマンドが残っている場合は確認画面へ
-            if !consecutive.commands.is_empty() {
-                *phase = BattlePhase::ConfirmQueued;
-            } else {
-                *phase = BattlePhase::AwaitCommand;
-            }
+            *phase = BattlePhase::AwaitCommand;
         }
         BattlePhase::TurnEnd => {
             battle_resource.0.turn_end();

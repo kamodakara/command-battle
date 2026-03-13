@@ -120,9 +120,6 @@ pub fn ui_update_system(
             format!("敵の行動決定中... 次の行動: {}", enemy_action.0)
         }
         BattlePhase::AwaitCommand => "行動を選択してください".to_string(),
-        BattlePhase::ConfirmQueued => "連続コマンドを実行しますか？".to_string(),
-        BattlePhase::ConfirmAllCommands => "選択したコマンドを確認してください".to_string(),
-        BattlePhase::InBattle => "処理中".to_string(),
         BattlePhase::TurnEnd => "ターン終了".to_string(),
         BattlePhase::Finished => "終了".to_string(),
     };
