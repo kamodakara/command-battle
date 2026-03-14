@@ -7,7 +7,7 @@ pub fn phase_transition_system(
     mut phase: ResMut<BattlePhase>,
     mut battle_resource: ResMut<BattleResource>,
     mut planned: ResMut<EnemyPlannedAction>,
-    mut enemy_planned_ev: EventWriter<EnemyActionPlannedEvent>,
+    mut enemy_planned_ev: MessageWriter<EnemyActionPlannedEvent>,
 ) {
     match *phase {
         BattlePhase::DecideEnemyConduct => {

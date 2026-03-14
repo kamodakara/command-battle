@@ -29,7 +29,7 @@ pub enum BannerPhase {
 // ─── 勝利時スポーン ──────────────────────────────────────────────────────────
 
 pub fn on_battle_result(
-    mut events: EventReader<BattleResultEvent>,
+    mut events: MessageReader<BattleResultEvent>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut vis_params: ParamSet<(

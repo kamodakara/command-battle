@@ -1,11 +1,11 @@
-use bevy::prelude::*;
-use super::super::resources::*;
 use super::super::super::events::*;
+use super::super::resources::*;
 use crate::fundamental::*;
+use bevy::prelude::*;
 
 pub fn handle_combination_resolved(
-    mut events: EventReader<BattleCombinationEvent>,
-    mut log_ev: EventWriter<BattleLogEvent>,
+    mut events: MessageReader<BattleCombinationEvent>,
+    mut log_ev: MessageWriter<BattleLogEvent>,
 ) {
     for event in events.read() {
         log_ev.write(BattleLogEvent("コンビネーション発動！".to_string()));
@@ -27,8 +27,8 @@ pub fn handle_combination_resolved(
 }
 
 pub fn handle_conduct_resolved(
-    mut events: EventReader<BattleConductResolvedEvent>,
-    mut log_ev: EventWriter<BattleLogEvent>,
+    mut events: MessageReader<BattleConductResolvedEvent>,
+    mut log_ev: MessageWriter<BattleLogEvent>,
     mut popup: ResMut<EnemyDamagePopup>,
 ) {
     for event in events.read() {
@@ -39,7 +39,9 @@ pub fn handle_conduct_resolved(
         match &incident.outcome {
             BattleIncidentConductOutcome::Failure(f) => {
                 let reason = match f.reason {
-                    BattleIncidentConductOutcomeFailureReason::InsufficientStamina => "スタミナ不足",
+                    BattleIncidentConductOutcomeFailureReason::InsufficientStamina => {
+                        "スタミナ不足"
+                    }
                     BattleIncidentConductOutcomeFailureReason::InsufficientSp => "SP不足",
                     BattleIncidentConductOutcomeFailureReason::InsufficientAbility => "能力不足",
                     BattleIncidentConductOutcomeFailureReason::IsBreak => "ブレイク状態",

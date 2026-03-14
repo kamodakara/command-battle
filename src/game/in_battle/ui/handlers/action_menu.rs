@@ -14,7 +14,7 @@ pub fn action_menu_click_system(
         (&Interaction, &ActionMenuItem),
         (Changed<Interaction>, With<Button>),
     >,
-    mut execute_ev: EventWriter<ExecuteBattleCommandsEvent>,
+    mut execute_ev: MessageWriter<ExecuteBattleCommandsEvent>,
 ) {
     if *phase != BattlePhase::AwaitCommand {
         return;

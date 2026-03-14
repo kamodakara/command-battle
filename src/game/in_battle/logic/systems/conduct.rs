@@ -9,15 +9,15 @@ use bevy::prelude::*;
 use std::sync::Arc;
 
 pub fn handle_execute_commands(
-    mut events: EventReader<ExecuteBattleCommandsEvent>,
+    mut events: MessageReader<ExecuteBattleCommandsEvent>,
     mut phase: ResMut<BattlePhase>,
     mut turn: ResMut<Turn>,
     mut planned: ResMut<EnemyPlannedAction>,
     mut battle_resource: ResMut<BattleResource>,
-    mut log_ev: EventWriter<BattleLogEvent>,
-    mut combination_ev: EventWriter<BattleCombinationEvent>,
-    mut conduct_ev: EventWriter<BattleConductResolvedEvent>,
-    mut result_ev: EventWriter<BattleResultEvent>,
+    mut log_ev: MessageWriter<BattleLogEvent>,
+    mut combination_ev: MessageWriter<BattleCombinationEvent>,
+    mut conduct_ev: MessageWriter<BattleConductResolvedEvent>,
+    mut result_ev: MessageWriter<BattleResultEvent>,
 ) {
     for event in events.read() {
         if *phase != BattlePhase::AwaitCommand {
