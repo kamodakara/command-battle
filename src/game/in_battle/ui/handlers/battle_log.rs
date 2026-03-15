@@ -13,6 +13,6 @@ pub fn on_enemy_action_planned(
     mut display: ResMut<EnemyNextActionDisplay>,
 ) {
     for event in events.read() {
-        display.0 = event.action_name.clone();
+        display.0 = event.action_names.clone();
     }
 }

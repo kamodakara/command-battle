@@ -1,5 +1,5 @@
-use super::super::resources::*;
 use super::super::super::events::*;
+use super::super::resources::*;
 use crate::battle::{
     BattleCharacterController, BattleController, BattleDecideOrderRequest,
     BattleExecuteConductRequest,
@@ -12,7 +12,8 @@ pub fn handle_execute_commands(
     mut events: MessageReader<ExecuteBattleCommandsEvent>,
     mut phase: ResMut<BattlePhase>,
     mut turn: ResMut<Turn>,
-    mut planned: ResMut<EnemyPlannedAction>,
+    mut executed: ResMut<ActionsExecutedThisTurn>,
+    mut planned: ResMut<EnemyPlannedActions>,
     mut battle_resource: ResMut<BattleResource>,
     mut log_ev: MessageWriter<BattleLogEvent>,
     mut combination_ev: MessageWriter<BattleCombinationEvent>,
@@ -30,13 +31,15 @@ pub fn handle_execute_commands(
         let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
 
         log_ev.write(BattleLogEvent(format!(
-            "ターン {} プレイヤーは{}を選択",
-            turn.0, cmd.art.name
+            "ターン {} 行動{} プレイヤーは{}を選択",
+            turn.0,
+            executed.0 + 1,
+            cmd.art.name
         )));
 
-        // コンビネーション処理
+        // コンビネーション処理（1回目のみ）
         battle.player.initialize_current_conduct_log();
-        if event.use_combination {
+        if executed.0 == 0 {
             let stamina_cost = cmd.art.stamina_cost;
             let incident = battle.player.combination(stamina_cost);
             combination_ev.write(BattleCombinationEvent {
@@ -58,8 +61,7 @@ pub fn handle_execute_commands(
             battle_weapon_id: cmd.battle_weapon_id.clone(),
         };
 
-        let enemy_conduct = planned.0.clone().expect("敵の行動が未定");
-        planned.0 = None;
+        let enemy_conduct = planned.0.remove(0);
 
         // 行動順決定
         let order = battle.decide_order(BattleDecideOrderRequest {
@@ -90,14 +92,21 @@ pub fn handle_execute_commands(
         let player_hp = battle.player.hp.current_hp;
 
         if enemy_hp == 0 {
+            executed.0 = 0;
             *phase = BattlePhase::Finished;
             result_ev.write(BattleResultEvent::Victory);
         } else if player_hp == 0 {
+            executed.0 = 0;
             *phase = BattlePhase::Finished;
             result_ev.write(BattleResultEvent::Defeat);
         } else {
-            turn.0 += 1;
-            *phase = BattlePhase::TurnEnd;
+            executed.0 += 1;
+            if executed.0 >= 3 {
+                executed.0 = 0;
+                turn.0 += 1;
+                *phase = BattlePhase::TurnEnd;
+            }
+            // 1, 2回目はAwaitCommandのまま継続
         }
     }
 }

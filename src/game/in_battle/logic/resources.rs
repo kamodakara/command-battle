@@ -14,9 +14,13 @@ pub enum BattlePhase {
 #[derive(Resource)]
 pub struct Turn(pub u32);
 
-/// 次ターンの事前決定済み敵行動（ロジック専有）
-#[derive(Resource)]
-pub struct EnemyPlannedAction(pub Option<BattleConduct>);
+/// 1ターン内の実行済み行動数（3回でターン終了）
+#[derive(Resource, Default)]
+pub struct ActionsExecutedThisTurn(pub u32);
+
+/// 事前決定済み敵行動（3回分）
+#[derive(Resource, Default)]
+pub struct EnemyPlannedActions(pub Vec<BattleConduct>);
 
 /// バトルデータ（UIも読み取り可）
 #[derive(Resource)]

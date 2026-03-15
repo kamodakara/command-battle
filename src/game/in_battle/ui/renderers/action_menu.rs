@@ -33,9 +33,7 @@ pub enum ActionMenuCategory {
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum ConsecutiveActionType {
-    Execute,
     Reenter,
-    FinishInput,
     ConfirmAll,
     ReselectThird,
 }
@@ -54,15 +52,13 @@ pub fn render(
     container_q: Query<Entity, With<UiActionMenuContainer>>,
     menu_items_q: Query<Entity, With<ActionMenuItem>>,
 ) {
+    let visible = *phase == BattlePhase::AwaitCommand
+        && action_menu.menu_state != ActionMenuState::AutoExecuting;
     if let Ok(mut vis) = menu_vis_q.single_mut() {
-        *vis = if *phase == BattlePhase::AwaitCommand {
-            Visibility::Visible
-        } else {
-            Visibility::Hidden
-        };
+        *vis = if visible { Visibility::Visible } else { Visibility::Hidden };
     }
 
-    if *phase != BattlePhase::AwaitCommand {
+    if !visible {
         return;
     }
 
@@ -82,27 +78,7 @@ pub fn render(
     let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
 
     match &action_menu.menu_state {
-        ActionMenuState::ConsecutiveConfirm => {
-            commands.entity(container_entity).with_children(|parent| {
-                spawn_label(parent, &font, "【設定済み連続コマンド】");
-                for (i, cmd) in consecutive.commands.iter().enumerate() {
-                    spawn_label(parent, &font, &format!("{}ターン目: {}", i + 1, cmd.art.name));
-                }
-                spawn_label(parent, &font, "");
-                spawn_button(
-                    parent,
-                    &font,
-                    "▶ 連続コマンドを実行",
-                    ActionMenuItemType::ConsecutiveAction(ConsecutiveActionType::Execute),
-                );
-                spawn_button(
-                    parent,
-                    &font,
-                    "✕ コマンド入力しなおし",
-                    ActionMenuItemType::ConsecutiveAction(ConsecutiveActionType::Reenter),
-                );
-            });
-        }
+        ActionMenuState::AutoExecuting => {}
         ActionMenuState::ConfirmAllCommands => {
             commands.entity(container_entity).with_children(|parent| {
                 spawn_label(parent, &font, "【選択したコマンドの確認】");
@@ -152,12 +128,6 @@ pub fn render(
                 }
 
                 if !consecutive.commands.is_empty() {
-                    spawn_button(
-                        parent,
-                        &font,
-                        &format!("入力完了（{}ターン分）", consecutive.commands.len()),
-                        ActionMenuItemType::ConsecutiveAction(ConsecutiveActionType::FinishInput),
-                    );
                     spawn_button(
                         parent,
                         &font,

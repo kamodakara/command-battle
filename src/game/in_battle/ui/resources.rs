@@ -20,7 +20,7 @@ pub struct KarmaCardsNeedsRedraw(pub bool);
 
 /// 敵の次の行動表示（EnemyActionPlannedEventで更新、UI専有）
 #[derive(Resource, Default)]
-pub struct EnemyNextActionDisplay(pub String);
+pub struct EnemyNextActionDisplay(pub Vec<String>);
 
 /// 連続コマンドキュー（UI専有、確定後にLogicへイベントで渡す）
 #[derive(Resource, Default)]
@@ -32,11 +32,11 @@ pub struct ConsecutiveCommands {
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum ActionMenuState {
-    ConsecutiveConfirm,
     ConsecutiveInput,
     ConsecutiveBasicArts,
     ConsecutiveWeaponArts { weapon_idx: usize },
     ConfirmAllCommands,
+    AutoExecuting,
 }
 
 /// メニュー選択リソース（UI専有）
@@ -54,11 +54,11 @@ impl Default for ActionMenuSelection {
 }
 
 impl ActionMenuSelection {
-    pub fn confirm(&mut self) {
-        self.menu_state = ActionMenuState::ConsecutiveConfirm;
-    }
     pub fn confirm_all(&mut self) {
         self.menu_state = ActionMenuState::ConfirmAllCommands;
+    }
+    pub fn auto_executing(&mut self) {
+        self.menu_state = ActionMenuState::AutoExecuting;
     }
     pub fn input(&mut self) {
         self.menu_state = ActionMenuState::ConsecutiveInput;

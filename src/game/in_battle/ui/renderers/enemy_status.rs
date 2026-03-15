@@ -50,7 +50,10 @@ pub fn render(
         let display = if enemy_action.0.is_empty() {
             "不明".to_string()
         } else {
-            enemy_action.0.clone()
+            enemy_action.0.iter().enumerate()
+                .map(|(i, name)| format!("{}. {}", i + 1, name))
+                .collect::<Vec<_>>()
+                .join("  ")
         };
         t.0 = format!("次の行動: {}", display);
     }

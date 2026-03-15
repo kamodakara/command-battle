@@ -33,10 +33,10 @@ pub struct BattleConductResolvedEvent {
     pub enemy_character_id: u32,
 }
 
-/// 敵の行動が決定した（次の行動表示用）
+/// 敵の行動が決定した（3回分）
 #[derive(Message)]
 pub struct EnemyActionPlannedEvent {
-    pub action_name: String,
+    pub action_names: Vec<String>,
 }
 
 /// バトル結果
@@ -48,9 +48,8 @@ pub enum BattleResultEvent {
 
 // ─── UI → Logic ──────────────────────────────────────────────────────────────
 
-/// コマンドを1つ実行する（UIがキューを管理し、1ターン分を送る）
+/// コマンドを1つ実行する（auto_execute_commands が順番に送出）
 #[derive(Message)]
 pub struct ExecuteBattleCommandsEvent {
     pub command: ConsecutiveCommandEntry,
-    pub use_combination: bool,
 }
