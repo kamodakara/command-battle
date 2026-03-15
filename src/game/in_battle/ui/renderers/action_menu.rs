@@ -36,6 +36,7 @@ pub enum ConsecutiveActionType {
     Reenter,
     ConfirmAll,
     ReselectThird,
+    NextAction,
 }
 
 // ─── 描画システム ────────────────────────────────────────────────────────────
@@ -52,8 +53,7 @@ pub fn render(
     container_q: Query<Entity, With<UiActionMenuContainer>>,
     menu_items_q: Query<Entity, With<ActionMenuItem>>,
 ) {
-    let visible = *phase == BattlePhase::AwaitCommand
-        && action_menu.menu_state != ActionMenuState::AutoExecuting;
+    let visible = *phase == BattlePhase::AwaitCommand;
     if let Ok(mut vis) = menu_vis_q.single_mut() {
         *vis = if visible { Visibility::Visible } else { Visibility::Hidden };
     }
@@ -78,7 +78,20 @@ pub fn render(
     let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
 
     match &action_menu.menu_state {
-        ActionMenuState::AutoExecuting => {}
+        ActionMenuState::AutoExecuting => {
+            commands.entity(container_entity).with_children(|parent| {
+                let remaining = consecutive.commands.len();
+                let executed = 3 - remaining;
+                spawn_label(parent, &font, &format!("【実行中 {}/3】", executed));
+                spawn_label(parent, &font, "");
+                spawn_button(
+                    parent,
+                    &font,
+                    "次へ ▶",
+                    ActionMenuItemType::ConsecutiveAction(ConsecutiveActionType::NextAction),
+                );
+            });
+        }
         ActionMenuState::ConfirmAllCommands => {
             commands.entity(container_entity).with_children(|parent| {
                 spawn_label(parent, &font, "【選択したコマンドの確認】");

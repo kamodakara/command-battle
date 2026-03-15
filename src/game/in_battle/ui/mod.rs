@@ -35,7 +35,6 @@ impl Plugin for BattleUiPlugin {
                 Update,
                 (
                     handlers::action_menu::action_menu_click_system,
-                    handlers::command_executor::auto_execute_commands,
                     handlers::input::back_button_system,
                 )
                     .run_if(battle_state.clone()),
