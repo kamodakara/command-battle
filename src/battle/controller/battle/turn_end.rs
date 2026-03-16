@@ -60,25 +60,30 @@ pub fn update_status_condition(character: &mut BattleCharacter) -> BattleInciden
     let status_conditions = &mut character.status_conditions;
 
     // TODO: reason調整が必要?
-    let mut incident = BattleCharacterIncident::new(BattleCharacterIncidentReason::TurnEndRecovery);
-    let mut finished_conditions = vec![];
-    for (index, es) in status_conditions.iter_mut().enumerate() {
+    for (_, es) in status_conditions.iter_mut().enumerate() {
         if let BattleStatusConditionDuration::Turn(turn_duration) = &mut es.duration {
+            // ターン経過を増やす
             turn_duration.elapsed_turns += 1;
-            if turn_duration.elapsed_turns >= turn_duration.turns {
-                // 効果ターン終了の状態変化インシデント
-                finished_conditions.push(index);
-
-                incident.add_concrete(BattleCharacterIncidentConcrete::StatusConditionRemoved(
-                    BattleIncidentStatusConditionRemoved {
-                        status_condition: es.clone(),
-                    },
-                ));
-            }
         }
     }
-    for index in finished_conditions.iter() {
-        status_conditions.remove(*index);
+    // 終了する状態変化とのこる状態変化を分ける
+    let (to_remove, to_keep): (Vec<BattleStatusCondition>, Vec<BattleStatusCondition>) =
+        status_conditions.iter().cloned().partition(|conditions| {
+            if let BattleStatusConditionDuration::Turn(turn_duration) = &conditions.duration {
+                turn_duration.elapsed_turns >= turn_duration.turns
+            } else {
+                false
+            }
+        });
+    character.status_conditions = to_keep;
+
+    let mut incident = BattleCharacterIncident::new(BattleCharacterIncidentReason::TurnEndRecovery);
+    for condition in to_remove {
+        incident.add_concrete(BattleCharacterIncidentConcrete::StatusConditionRemoved(
+            BattleIncidentStatusConditionRemoved {
+                status_condition: condition,
+            },
+        ));
     }
 
     BattleIncidentCharacter {
