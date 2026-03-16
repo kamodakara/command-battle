@@ -8,7 +8,7 @@ use super::renderers::{
     combat_log::UiMessage,
     karma_cards::UiKarmaCardsContainer,
     damage_popup::UiEnemyDamageText,
-    turn_action_board::{UiActionBoardPlayerText, UiActionBoardEnemyText},
+    turn_action_board::{UiTurnActionBoard, UiActionBoardPlayerText, UiActionBoardEnemyText},
 };
 
 /// バトル画面全体のマーカー（クリーンアップ用）
@@ -43,8 +43,9 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
             ZIndex(10),
         ))
         .with_children(|col| {
-            // ターン行動ボード（上段）
+            // ターン行動ボード（上段・実行中のみ表示）
             col.spawn((
+                UiTurnActionBoard,
                 Node {
                     width: Val::Px(300.0),
                     height: Val::Auto,
@@ -56,6 +57,7 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 },
                 BackgroundColor(Color::from(LinearRgba { red: 0.0, green: 0.0, blue: 0.0, alpha: 0.7 })),
                 BorderColor::all(Color::WHITE),
+                Visibility::Hidden,
             ))
             .with_children(|panel| {
                 // ヘッダー行

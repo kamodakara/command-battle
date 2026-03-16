@@ -1,5 +1,8 @@
-use super::super::resources::TurnActionBoard;
+use super::super::resources::{ActionMenuState, ActionMenuSelection, TurnActionBoard};
 use bevy::prelude::*;
+
+#[derive(Component)]
+pub struct UiTurnActionBoard;
 
 #[derive(Component)]
 pub struct UiActionBoardPlayerText(pub usize);
@@ -9,6 +12,8 @@ pub struct UiActionBoardEnemyText(pub usize);
 
 pub fn render(
     board: Res<TurnActionBoard>,
+    action_menu: Res<ActionMenuSelection>,
+    mut panel_vis_q: Query<&mut Visibility, With<UiTurnActionBoard>>,
     mut player_texts: Query<
         (&UiActionBoardPlayerText, &mut Text, &mut TextColor),
         Without<UiActionBoardEnemyText>,
@@ -18,6 +23,13 @@ pub fn render(
         Without<UiActionBoardPlayerText>,
     >,
 ) {
+    let executing = action_menu.menu_state == ActionMenuState::AutoExecuting;
+    if let Ok(mut vis) = panel_vis_q.single_mut() {
+        *vis = if executing { Visibility::Visible } else { Visibility::Hidden };
+    }
+    if !executing {
+        return;
+    }
     let gray = Color::from(LinearRgba {
         red: 0.40,
         green: 0.40,
