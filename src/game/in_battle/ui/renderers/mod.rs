@@ -5,4 +5,5 @@ pub mod enemy_status;
 pub mod karma_cards;
 pub mod player_status;
 pub mod skill_effect;
+pub mod turn_action_board;
 pub mod victory_banner;

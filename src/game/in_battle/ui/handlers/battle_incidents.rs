@@ -30,11 +30,20 @@ pub fn handle_conduct_resolved(
     mut events: MessageReader<BattleConductResolvedEvent>,
     mut log_ev: MessageWriter<BattleLogEvent>,
     mut popup: ResMut<EnemyDamagePopup>,
+    mut board: ResMut<super::super::resources::TurnActionBoard>,
 ) {
     for event in events.read() {
         let player_id = event.player_character_id;
         let enemy_id = event.enemy_character_id;
         let incident = &event.incident;
+
+        // 行動ボード更新：敵が行動者なら行動名を公開、スロットを実行済みマーク
+        let enemy_art_name = if incident.conduct.actor_character_id == enemy_id {
+            Some(incident.conduct.art.name.as_str())
+        } else {
+            None
+        };
+        board.on_conduct(event.action_index as usize, enemy_art_name);
 
         match &incident.outcome {
             BattleIncidentConductOutcome::Failure(f) => {

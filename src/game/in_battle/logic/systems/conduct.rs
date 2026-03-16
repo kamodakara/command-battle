@@ -84,6 +84,7 @@ pub fn handle_execute_commands(
                 incident: Arc::new(incident),
                 player_character_id: player_id,
                 enemy_character_id: enemy_id,
+                action_index: executed.0,
             });
         }
 

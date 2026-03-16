@@ -8,6 +8,7 @@ use super::renderers::{
     combat_log::UiMessage,
     karma_cards::UiKarmaCardsContainer,
     damage_popup::UiEnemyDamageText,
+    turn_action_board::{UiActionBoardPlayerText, UiActionBoardEnemyText},
 };
 
 /// バトル画面全体のマーカー（クリーンアップ用）
@@ -21,43 +22,138 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(EnemyNextActionDisplay::default());
     commands.insert_resource(ActionMenuSelection::default());
     commands.insert_resource(ConsecutiveCommands::default());
+    commands.insert_resource(TurnActionBoard::default());
 
     let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
 
-    // 画面下のログメッセージ（白枠、最大20行）
+    // 右下：ターン行動ボード＋ログメッセージ（縦積みコンテナ）
+    let label_color = TextColor(Color::from(LinearRgba { red: 0.55, green: 0.55, blue: 0.55, alpha: 1.0 }));
     commands
         .spawn((
             BattleScreen,
             Node {
-                width: Val::Px(750.0),
-                height: Val::Auto,
                 position_type: PositionType::Absolute,
                 right: Val::Px(12.0),
                 bottom: Val::Px(12.0),
-                border: UiRect::all(Val::Px(1.0)),
-                padding: UiRect::all(Val::Px(8.0)),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(8.0),
+                align_items: AlignItems::FlexEnd,
                 ..default()
             },
-            BackgroundColor(Color::from(LinearRgba {
-                red: 0.0,
-                green: 0.0,
-                blue: 0.0,
-                alpha: 0.6,
-            })),
-            BorderColor::all(Color::WHITE),
             ZIndex(10),
         ))
         .with_children(|col| {
+            // ターン行動ボード（上段）
             col.spawn((
-                UiMessage,
-                Text::new(""),
-                TextFont {
-                    font: font.clone(),
-                    font_size: 16.0,
+                Node {
+                    width: Val::Px(300.0),
+                    height: Val::Auto,
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(6.0),
+                    border: UiRect::all(Val::Px(1.0)),
+                    padding: UiRect::all(Val::Px(8.0)),
                     ..default()
                 },
-                TextColor(Color::WHITE),
-            ));
+                BackgroundColor(Color::from(LinearRgba { red: 0.0, green: 0.0, blue: 0.0, alpha: 0.7 })),
+                BorderColor::all(Color::WHITE),
+            ))
+            .with_children(|panel| {
+                // ヘッダー行
+                panel
+                    .spawn((Node {
+                        flex_direction: FlexDirection::Row,
+                        width: Val::Percent(100.0),
+                        column_gap: Val::Px(8.0),
+                        ..default()
+                    },))
+                    .with_children(|row| {
+                        row.spawn((
+                            Node { width: Val::Px(36.0), ..default() },
+                            Text::new(""),
+                            TextFont { font: font.clone(), font_size: 13.0, ..default() },
+                            label_color,
+                        ));
+                        row.spawn((
+                            Node { width: Val::Px(120.0), ..default() },
+                            Text::new("プレイヤー"),
+                            TextFont { font: font.clone(), font_size: 13.0, ..default() },
+                            label_color,
+                        ));
+                        row.spawn((
+                            Text::new("敵"),
+                            TextFont { font: font.clone(), font_size: 13.0, ..default() },
+                            label_color,
+                        ));
+                    });
+
+                // 3スロット行
+                for i in 0..3usize {
+                    panel
+                        .spawn((Node {
+                            flex_direction: FlexDirection::Row,
+                            width: Val::Percent(100.0),
+                            align_items: AlignItems::Center,
+                            column_gap: Val::Px(8.0),
+                            ..default()
+                        },))
+                        .with_children(|row| {
+                            row.spawn((
+                                Node { width: Val::Px(36.0), ..default() },
+                                Text::new(format!("{}回目", i + 1)),
+                                TextFont { font: font.clone(), font_size: 13.0, ..default() },
+                                label_color,
+                            ));
+                            row.spawn((
+                                UiActionBoardPlayerText(i),
+                                Node { width: Val::Px(120.0), ..default() },
+                                Text::new("---"),
+                                TextFont { font: font.clone(), font_size: 14.0, ..default() },
+                                TextColor(Color::WHITE),
+                            ));
+                            row.spawn((
+                                UiActionBoardEnemyText(i),
+                                Text::new("？？？"),
+                                TextFont { font: font.clone(), font_size: 14.0, ..default() },
+                                TextColor(Color::from(LinearRgba {
+                                    red: 0.70,
+                                    green: 0.55,
+                                    blue: 0.30,
+                                    alpha: 1.0,
+                                })),
+                            ));
+                        });
+                }
+            });
+
+            // ログメッセージ（下段、最大5行）
+            col.spawn((
+                Node {
+                    width: Val::Px(750.0),
+                    height: Val::Auto,
+                    border: UiRect::all(Val::Px(1.0)),
+                    padding: UiRect::all(Val::Px(8.0)),
+                    ..default()
+                },
+                BackgroundColor(Color::from(LinearRgba {
+                    red: 0.0,
+                    green: 0.0,
+                    blue: 0.0,
+                    alpha: 0.6,
+                })),
+                BorderColor::all(Color::WHITE),
+            ))
+            .with_children(|log_box| {
+                log_box.spawn((
+                    UiMessage,
+                    Text::new(""),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 16.0,
+                        ..default()
+                    },
+                    TextColor(Color::WHITE),
+                ));
+            });
         });
 
     // 敵UI（中央配置）

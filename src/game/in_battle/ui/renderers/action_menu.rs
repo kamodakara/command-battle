@@ -63,7 +63,7 @@ pub fn render(
     }
 
     let has_menu_items = menu_items_q.iter().next().is_some();
-    if !action_menu.is_changed() && !consecutive.is_changed() && has_menu_items {
+    if !action_menu.is_changed() && !consecutive.is_changed() && !phase.is_changed() && has_menu_items {
         return;
     }
 

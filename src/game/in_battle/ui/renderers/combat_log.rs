@@ -19,7 +19,7 @@ pub fn render_message(
     let Ok(mut msg) = msg_q.single_mut() else {
         return;
     };
-    let max_lines = 20usize;
+    let max_lines = 5usize;
     let start = if log.0.len() > max_lines {
         log.0.len() - max_lines
     } else {

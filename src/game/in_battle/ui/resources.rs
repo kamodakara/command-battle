@@ -71,6 +71,38 @@ impl ActionMenuSelection {
     }
 }
 
+/// ターン行動ボード（UI専有）
+/// 3スロット分のプレイヤー・敵行動名と実行済みフラグを保持する
+#[derive(Resource, Default)]
+pub struct TurnActionBoard {
+    pub player_actions: [Option<String>; 3],
+    /// None = まだ行動していない（"？？？"表示）
+    pub enemy_actions: [Option<String>; 3],
+    pub executed: [bool; 3],
+    slot_conduct_counts: [u32; 3],
+}
+
+impl TurnActionBoard {
+    pub fn reset(&mut self) {
+        *self = TurnActionBoard::default();
+    }
+
+    /// 1conductイベントが来たときに呼ぶ。
+    /// `enemy_art_name` は敵が行動者のときのみ Some を渡す。
+    pub fn on_conduct(&mut self, action_index: usize, enemy_art_name: Option<&str>) {
+        if action_index >= 3 {
+            return;
+        }
+        if let Some(name) = enemy_art_name {
+            self.enemy_actions[action_index] = Some(name.to_string());
+        }
+        self.slot_conduct_counts[action_index] += 1;
+        if self.slot_conduct_counts[action_index] >= 2 {
+            self.executed[action_index] = true;
+        }
+    }
+}
+
 /// 武器アーツ選択時のアーツ情報保持（UIのみで使用）
 #[derive(Clone)]
 pub struct PendingWeaponArt {

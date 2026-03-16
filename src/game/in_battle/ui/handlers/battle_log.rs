@@ -11,8 +11,10 @@ pub fn on_battle_log(mut events: MessageReader<BattleLogEvent>, mut log: ResMut<
 pub fn on_enemy_action_planned(
     mut events: MessageReader<EnemyActionPlannedEvent>,
     mut display: ResMut<EnemyNextActionDisplay>,
+    mut board: ResMut<TurnActionBoard>,
 ) {
     for event in events.read() {
         display.0 = event.action_names.clone();
+        board.reset();
     }
 }

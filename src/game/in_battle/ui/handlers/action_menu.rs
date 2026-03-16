@@ -17,6 +17,7 @@ pub fn action_menu_click_system(
         (Changed<Interaction>, With<Button>),
     >,
     mut execute_ev: MessageWriter<ExecuteBattleCommandsEvent>,
+    mut board: ResMut<super::super::resources::TurnActionBoard>,
 ) {
     if *phase != BattlePhase::AwaitCommand {
         return;
@@ -88,6 +89,9 @@ pub fn action_menu_click_system(
                     action_menu.input();
                 }
                 ConsecutiveActionType::ConfirmAll => {
+                    for (i, cmd) in consecutive.commands.iter().enumerate().take(3) {
+                        board.player_actions[i] = Some(cmd.art.name.clone());
+                    }
                     action_menu.auto_executing();
                 }
                 ConsecutiveActionType::ReselectThird => {

@@ -31,6 +31,8 @@ pub struct BattleConductResolvedEvent {
     pub incident: Arc<BattleIncidentConduct>,
     pub player_character_id: u32,
     pub enemy_character_id: u32,
+    /// このターン内の行動インデックス（0〜2）
+    pub action_index: u32,
 }
 
 /// 敵の行動が決定した（3回分）

@@ -51,6 +51,7 @@ impl Plugin for BattleUiPlugin {
                     renderers::karma_cards::render,
                     renderers::damage_popup::render,
                     renderers::skill_effect::render,
+                    renderers::turn_action_board::render,
                 )
                     .run_if(battle_state.clone()),
             )
