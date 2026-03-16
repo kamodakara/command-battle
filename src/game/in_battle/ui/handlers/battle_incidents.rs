@@ -71,16 +71,20 @@ pub fn handle_conduct_resolved(
                                 )));
                             }
                             BattleCharacterIncidentConcrete::DamageSp(d) => {
-                                log_ev.write(BattleLogEvent(format!(
-                                    "SP -{} ({} → {})",
-                                    d.damage, d.before, d.after
-                                )));
+                                if d.damage > 0 {
+                                    log_ev.write(BattleLogEvent(format!(
+                                        "SP -{} ({} → {})",
+                                        d.damage, d.before, d.after
+                                    )));
+                                }
                             }
                             BattleCharacterIncidentConcrete::DamageStamina(d) => {
-                                log_ev.write(BattleLogEvent(format!(
-                                    "Stamina -{} ({} → {})",
-                                    d.damage, d.before, d.after
-                                )));
+                                if d.damage > 0 {
+                                    log_ev.write(BattleLogEvent(format!(
+                                        "Stamina -{} ({} → {})",
+                                        d.damage, d.before, d.after
+                                    )));
+                                }
                             }
                             _ => {}
                         }
