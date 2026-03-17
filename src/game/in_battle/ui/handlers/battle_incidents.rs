@@ -45,6 +45,13 @@ pub fn handle_conduct_resolved(
         };
         board.on_conduct(event.action_index as usize, enemy_art_name);
 
+        let actor = if incident.conduct.actor_character_id == player_id {
+            "プレイヤー"
+        } else {
+            "敵"
+        };
+        log_ev.write(BattleLogEvent(format!("{}の{}", actor, incident.conduct.art.name)));
+
         match &incident.outcome {
             BattleIncidentConductOutcome::Failure(f) => {
                 let reason = match f.reason {
