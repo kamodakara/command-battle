@@ -37,7 +37,7 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 bottom: Val::Px(12.0),
                 flex_direction: FlexDirection::Column,
                 row_gap: Val::Px(8.0),
-                align_items: AlignItems::FlexEnd,
+                align_items: AlignItems::FlexStart,
                 ..default()
             },
             ZIndex(10),
