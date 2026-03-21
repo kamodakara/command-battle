@@ -7,6 +7,15 @@ use super::super::events::ConsecutiveCommandEntry;
 #[derive(Resource, Default)]
 pub struct CombatLog(pub Vec<String>);
 
+/// メッセージ送りキュー（UI専有）
+/// BattleLogEvent を一旦ここに積み、タイマーで1件ずつ CombatLog へ移す
+#[derive(Resource, Default)]
+pub struct MessageQueue {
+    pub pending: std::collections::VecDeque<String>,
+    /// 次のメッセージを表示するまでの残り秒数
+    pub timer: f32,
+}
+
 /// 敵ダメージポップアップ（DamageHpEventで更新、UI専有）
 #[derive(Resource, Default)]
 pub struct EnemyDamagePopup {

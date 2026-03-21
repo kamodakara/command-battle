@@ -27,6 +27,7 @@ impl Plugin for BattleUiPlugin {
                 (
                     handlers::battle_log::on_battle_log,
                     handlers::battle_log::on_enemy_action_planned,
+                    handlers::battle_log::tick_message_queue,
                 )
                     .run_if(battle_state.clone()),
             )

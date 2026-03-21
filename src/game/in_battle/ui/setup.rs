@@ -17,6 +17,7 @@ pub struct BattleScreen;
 
 pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(CombatLog(vec!["行動を選択してください".to_string()]));
+    commands.insert_resource(MessageQueue::default());
     commands.insert_resource(EnemyDamagePopup::default());
     commands.insert_resource(KarmaCardsNeedsRedraw(true));
     commands.insert_resource(EnemyNextActionDisplay::default());

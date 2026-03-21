@@ -1,4 +1,4 @@
-use super::super::resources::{ActionMenuState, ActionMenuSelection, TurnActionBoard};
+use super::super::resources::{ActionMenuState, ActionMenuSelection, MessageQueue, TurnActionBoard};
 use bevy::prelude::*;
 
 #[derive(Component)]
@@ -13,6 +13,7 @@ pub struct UiActionBoardEnemyText(pub usize);
 pub fn render(
     board: Res<TurnActionBoard>,
     action_menu: Res<ActionMenuSelection>,
+    message_queue: Res<MessageQueue>,
     mut panel_vis_q: Query<&mut Visibility, With<UiTurnActionBoard>>,
     mut player_texts: Query<
         (&UiActionBoardPlayerText, &mut Text, &mut TextColor),
@@ -23,7 +24,8 @@ pub fn render(
         Without<UiActionBoardPlayerText>,
     >,
 ) {
-    let executing = action_menu.menu_state == ActionMenuState::AutoExecuting;
+    let executing = action_menu.menu_state == ActionMenuState::AutoExecuting
+        || !message_queue.pending.is_empty();
     if let Ok(mut vis) = panel_vis_q.single_mut() {
         *vis = if executing { Visibility::Visible } else { Visibility::Hidden };
     }

@@ -18,6 +18,7 @@ pub fn action_menu_click_system(
     >,
     mut execute_ev: MessageWriter<ExecuteBattleCommandsEvent>,
     mut board: ResMut<super::super::resources::TurnActionBoard>,
+    message_queue: Res<super::super::resources::MessageQueue>,
 ) {
     if *phase != BattlePhase::AwaitCommand {
         return;
@@ -99,6 +100,9 @@ pub fn action_menu_click_system(
                     action_menu.input();
                 }
                 ConsecutiveActionType::NextAction => {
+                    if !message_queue.pending.is_empty() {
+                        continue;
+                    }
                     if let Some(cmd) = consecutive.commands.first().cloned() {
                         consecutive.commands.remove(0);
                         execute_ev.write(ExecuteBattleCommandsEvent { command: cmd });
