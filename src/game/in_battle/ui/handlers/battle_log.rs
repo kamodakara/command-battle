@@ -18,7 +18,7 @@ pub fn tick_message_queue(
     if queue.timer <= 0.0 {
         if let Some(msg) = queue.pending.pop_front() {
             log.0.push(msg);
-            queue.timer = 1.0;
+            queue.timer = 0.5;
         }
     }
 }
