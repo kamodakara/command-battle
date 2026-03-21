@@ -48,12 +48,13 @@ pub fn render(
     basic_arts: Res<PlayerBasicArts>,
     equipped_weapons: Res<PlayerEquippedWeapons>,
     asset_server: Res<AssetServer>,
+    message_queue: Res<super::super::resources::MessageQueue>,
     mut commands: Commands,
     mut menu_vis_q: Query<&mut Visibility, With<UiActionMenu>>,
     container_q: Query<Entity, With<UiActionMenuContainer>>,
     menu_items_q: Query<Entity, With<ActionMenuItem>>,
 ) {
-    let visible = *phase == BattlePhase::AwaitCommand;
+    let visible = *phase == BattlePhase::AwaitCommand && message_queue.pending.is_empty();
     if let Ok(mut vis) = menu_vis_q.single_mut() {
         *vis = if visible { Visibility::Visible } else { Visibility::Hidden };
     }
