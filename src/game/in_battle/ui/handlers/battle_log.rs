@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use rand::Rng;
 use super::super::resources::*;
 use super::super::super::events::*;
 
@@ -25,11 +26,14 @@ pub fn tick_message_queue(
 
 pub fn on_enemy_action_planned(
     mut events: MessageReader<EnemyActionPlannedEvent>,
-    mut display: ResMut<EnemyNextActionDisplay>,
     mut board: ResMut<TurnActionBoard>,
 ) {
     for event in events.read() {
-        display.0 = event.action_names.clone();
         board.reset();
+        // 3つの敵行動のうち1つをランダムで行動ボードにヒントとして表示
+        if !event.action_names.is_empty() {
+            let hint_idx = rand::rng().random_range(0..event.action_names.len());
+            board.enemy_actions[hint_idx] = Some(event.action_names[hint_idx].clone());
+        }
     }
 }

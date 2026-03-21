@@ -27,10 +27,6 @@ pub struct EnemyDamagePopup {
 #[derive(Resource, Default)]
 pub struct KarmaCardsNeedsRedraw(pub bool);
 
-/// 敵の次の行動表示（EnemyActionPlannedEventで更新、UI専有）
-#[derive(Resource, Default)]
-pub struct EnemyNextActionDisplay(pub Vec<String>);
-
 /// 連続コマンドキュー（UI専有、確定後にLogicへイベントで渡す）
 #[derive(Resource, Default)]
 pub struct ConsecutiveCommands {

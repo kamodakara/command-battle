@@ -3,7 +3,7 @@ use super::resources::*;
 use super::handlers::input::BackToPreparationButton;
 use super::renderers::{
     player_status::*,
-    enemy_status::*,
+    enemy_status::{UiEnemy, UiEnemyHpGaugeFill, UiEnemyBreakGaugeFill, UiEnemyBreakLabel},
     action_menu::{UiActionMenu, UiActionMenuContainer},
     combat_log::UiMessage,
     karma_cards::UiKarmaCardsContainer,
@@ -20,7 +20,6 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(MessageQueue::default());
     commands.insert_resource(EnemyDamagePopup::default());
     commands.insert_resource(KarmaCardsNeedsRedraw(true));
-    commands.insert_resource(EnemyNextActionDisplay::default());
     commands.insert_resource(ActionMenuSelection::default());
     commands.insert_resource(ConsecutiveCommands::default());
     commands.insert_resource(TurnActionBoard::default());
@@ -58,7 +57,6 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 },
                 BackgroundColor(Color::from(LinearRgba { red: 0.0, green: 0.0, blue: 0.0, alpha: 0.7 })),
                 BorderColor::all(Color::WHITE),
-                Visibility::Hidden,
             ))
             .with_children(|panel| {
                 // ヘッダー行
@@ -315,17 +313,6 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                                     ));
                                 });
 
-                            // 次の行動
-                            col.spawn((
-                                UiEnemyNextActionText,
-                                Text::new(""),
-                                TextFont {
-                                    font: font.clone(),
-                                    font_size: 16.0,
-                                    ..default()
-                                },
-                                TextColor(Color::WHITE),
-                            ));
                         });
                 });
         });

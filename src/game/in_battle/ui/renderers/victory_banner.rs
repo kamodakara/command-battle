@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use super::enemy_status::{UiEnemy, UiEnemyBreakLabel, UiEnemyHpGaugeFill, UiEnemyBreakGaugeFill, UiEnemyNextActionText};
+use super::enemy_status::{UiEnemy, UiEnemyBreakLabel, UiEnemyHpGaugeFill, UiEnemyBreakGaugeFill};
 use super::super::super::events::BattleResultEvent;
 
 // ─── コンポーネント定義 ──────────────────────────────────────────────────────
@@ -36,7 +36,6 @@ pub fn on_battle_result(
         Query<&mut Visibility, With<UiEnemy>>,
         Query<&mut Visibility, With<UiEnemyBreakLabel>>,
     )>,
-    mut ui_enemy_next_text_q: Query<&mut Text, With<UiEnemyNextActionText>>,
     mut gauge_params_end: ParamSet<(
         Query<&mut Node, With<UiEnemyHpGaugeFill>>,
         Query<&mut Node, With<UiEnemyBreakGaugeFill>>,
@@ -50,9 +49,6 @@ pub fn on_battle_result(
                 }
                 if let Ok(mut br_vis) = vis_params.p1().single_mut() {
                     *br_vis = Visibility::Hidden;
-                }
-                if let Ok(mut next_text) = ui_enemy_next_text_q.single_mut() {
-                    next_text.0 = String::new();
                 }
                 if let Ok(mut hp_node) = gauge_params_end.p0().single_mut() {
                     hp_node.width = Val::Percent(0.0);
