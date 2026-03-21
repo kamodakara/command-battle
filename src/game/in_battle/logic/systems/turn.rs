@@ -11,8 +11,10 @@ pub fn phase_transition_system(
 ) {
     match *phase {
         BattlePhase::DecideEnemyConduct => {
-            // カルマドロー
-            battle_resource.0.karma_draw_card();
+            // カルマドロー（3枚）
+            for _ in 0..3 {
+                battle_resource.0.karma_draw_card();
+            }
 
             // 敵の行動を3回分決定
             let enemy_id = battle_resource.0.enemies.first().map(|e| e.character_id).unwrap_or(2);
