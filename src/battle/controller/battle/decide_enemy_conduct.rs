@@ -1,11 +1,5 @@
-use bevy::ecs::system::command;
-
 use super::*;
 use std::sync::Arc;
-
-// TODO: 実装
-// 敵キャラクターの行動決定
-// どういうデータを返すか
 
 pub struct DecideEnemyConductRequest {
     pub enemy_character_id: BattleCharacterId,
@@ -15,96 +9,59 @@ pub fn decide_enemy_conduct(
     battle: &mut Battle,
     request: DecideEnemyConductRequest,
 ) -> BattleConduct {
-    // TODO: 実装
-
-    // 仮実装
-
-    if let Some(progress_action) = battle.enemy_action_progress.as_mut() {
-        if progress_action.enemy_action.commands.len() > progress_action.current_command_index {
-            let command_id = progress_action.enemy_action.commands
-                [progress_action.current_command_index]
-                .clone();
-
-            // インデックスを進める
-            progress_action.current_command_index += 1;
-            if progress_action.current_command_index >= progress_action.enemy_action.commands.len()
-            {
-                // 行動が終了したらリセット
-                battle.enemy_action_progress = None;
-            }
-
-            if let Some(command) = battle.enemy_commands.iter().find(|c| c.id == command_id) {
-                // コマンドに対応する行動を返す
-                return BattleConduct {
-                    actor_character_id: request.enemy_character_id,
-                    target: BattleConductTargetType::Player,
-                    art: Arc::clone(&command.art),
-                    battle_weapon_id: command.battle_weapon_id.clone(),
-                };
-            } else {
-                // TODO: コマンドが見つからない場合のエラーハンドリング
-                panic!("Command with id {:?} not found", command_id);
-            }
+    // 行動進行中の場合は次のコマンドを返す
+    if let Some(progress) = battle.enemy_action_progress.as_mut() {
+        let command_id = progress.enemy_action.commands[progress.current_command_index];
+        progress.current_command_index += 1;
+        if progress.current_command_index >= progress.enemy_action.commands.len() {
+            battle.enemy_action_progress = None;
         }
+        return find_conduct(&battle.enemy_commands, request.enemy_character_id, command_id);
     }
 
-    let enemy = battle
+    // ビヘイビアツリーで行動セット（3コマンド固定）を選択
+    let hp_percent = battle
         .enemies
         .iter()
         .find(|e| e.character_id == request.enemy_character_id)
-        .expect("Enemy character not found");
-    if enemy.hp.current_hp < (enemy.hp.max_hp as f32 * 0.6) as u32 {
-        battle.enemy_second_stage = true;
-    }
+        .map(|e| e.hp.current_hp as f32 / e.hp.max_hp as f32)
+        .unwrap_or(1.0);
 
-    let command_lots = if battle.enemy_second_stage {
-        &battle.enemy_second_stage_action_lots
-    } else {
-        &battle.enemy_action_lots
+    let mut context = AiContext {
+        hp_percent,
+        turn: 0, // TODO: ターン数をBattleで管理して渡す
+        ai_state: &mut battle.enemy_ai_state,
     };
-
-    // 行動パターンをランダムで選択
-    let total_weight: u32 = command_lots.iter().map(|lot| lot.weight).sum();
     let mut rng = rand::rng();
-    let mut random_weight = rand::Rng::random_range(&mut rng, 0..total_weight);
-    let selected_action = command_lots
-        .iter()
-        .find(|lot| {
-            if random_weight < lot.weight {
-                true
-            } else {
-                random_weight -= lot.weight;
-                false
-            }
-        })
-        .expect("No enemy actions available")
-        .action
-        .clone();
+    let action_set = evaluate_turn(&battle.enemy_behavior_tree, &mut context, &mut rng)
+        .expect("behavior tree returned None - no fallback defined");
+
+    // 1コマンド目を即座に返し、残り2コマンドをプログレスに保存
+    let first = action_set.commands[0];
     battle.enemy_action_progress = Some(EnemyActionProgress {
-        enemy_action: selected_action,
+        enemy_action: EnemyAction {
+            name: action_set.name,
+            commands: vec![action_set.commands[1], action_set.commands[2]],
+        },
         current_command_index: 0,
     });
 
-    // let random_index = rand::random::<u32>() % battle.enemy_actions.len() as u32;
-    // let action = &battle.enemy_actions[random_index as usize];
-    // battle.enemy_action_progress = Some(EnemyActionProgress {
-    //     enemy_action: action.clone(),
-    //     current_command_index: 0,
-    // });
+    find_conduct(&battle.enemy_commands, request.enemy_character_id, first)
+}
 
-    // このターンは待機
-    if let Some(command) = battle
-        .enemy_commands
+fn find_conduct(
+    commands: &[EnemyCommand],
+    character_id: BattleCharacterId,
+    command_id: EnemyCommandId,
+) -> BattleConduct {
+    let command = commands
         .iter()
-        .find(|c| c.id == EnemyCommandId(0))
-    {
-        return BattleConduct {
-            actor_character_id: request.enemy_character_id,
-            target: BattleConductTargetType::Player,
-            art: Arc::clone(&command.art),
-            battle_weapon_id: command.battle_weapon_id.clone(),
-        };
-    } else {
-        panic!("Command with id {:?} not found", EnemyCommandId(0));
+        .find(|c| c.id == command_id)
+        .unwrap_or_else(|| panic!("Command {:?} not found", command_id));
+    BattleConduct {
+        actor_character_id: character_id,
+        target: BattleConductTargetType::Player,
+        art: Arc::clone(&command.art),
+        battle_weapon_id: command.battle_weapon_id.clone(),
     }
 }

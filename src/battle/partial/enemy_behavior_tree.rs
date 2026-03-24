@@ -141,8 +141,8 @@ mod tests {
         EnemyCommandId(id)
     }
 
-    fn action(name: &str, ids: Vec<u32>) -> ActionSet {
-        ActionSet::new(name, ids.into_iter().map(cmd).collect())
+    fn action(name: &str, ids: [u32; 3]) -> ActionSet {
+        ActionSet::new(name, ids.map(cmd))
     }
 
     fn ctx<'a>(hp_percent: f32, turn: u32, state: &'a mut EnemyAiState) -> AiContext<'a> {
@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn fixed_always_returns_action() {
-        let a = action("attack", vec![1, 2, 3]);
+        let a = action("attack", [1, 2, 3]);
         let tree = EnemyBehaviorTree {
             phases: vec![EnemyPhase {
                 enter_condition: None,
@@ -175,8 +175,8 @@ mod tests {
 
     #[test]
     fn selector_returns_first_success() {
-        let first = action("first", vec![1]);
-        let second = action("second", vec![2]);
+        let first = action("first", [1, 0, 0]);
+        let second = action("second", [2, 0, 0]);
         let tree = EnemyBehaviorTree {
             phases: vec![EnemyPhase {
                 enter_condition: None,
@@ -196,7 +196,7 @@ mod tests {
     #[test]
     fn selector_falls_through_to_next_on_failure() {
         // Gate(HpBelow(0.5)) は HP100% のとき失敗 → 第2子が選ばれる
-        let fallback = action("fallback", vec![99]);
+        let fallback = action("fallback", [99, 0, 0]);
         let tree = EnemyBehaviorTree {
             phases: vec![EnemyPhase {
                 enter_condition: None,
@@ -206,7 +206,7 @@ mod tests {
                         condition: BehaviorCondition::HpBelow {
                             threshold_percent: 0.5,
                         },
-                        child: Box::new(BehaviorNode::Fixed(action("special", vec![1]))),
+                        child: Box::new(BehaviorNode::Fixed(action("special", [1, 0, 0]))),
                     },
                     BehaviorNode::Fixed(fallback.clone()),
                 ]),
@@ -229,13 +229,13 @@ mod tests {
                         condition: BehaviorCondition::HpBelow {
                             threshold_percent: 0.5,
                         },
-                        child: Box::new(BehaviorNode::Fixed(action("a", vec![1]))),
+                        child: Box::new(BehaviorNode::Fixed(action("a", [1, 0, 0]))),
                     },
                     BehaviorNode::Gate {
                         condition: BehaviorCondition::HpBelow {
                             threshold_percent: 0.3,
                         },
-                        child: Box::new(BehaviorNode::Fixed(action("b", vec![2]))),
+                        child: Box::new(BehaviorNode::Fixed(action("b", [2, 0, 0]))),
                     },
                 ]),
             }],
@@ -251,7 +251,7 @@ mod tests {
 
     #[test]
     fn gate_hp_below_passes_when_hp_low() {
-        let a = action("rage", vec![10]);
+        let a = action("rage", [10, 0, 0]);
         let tree = EnemyBehaviorTree {
             phases: vec![EnemyPhase {
                 enter_condition: None,
@@ -281,7 +281,7 @@ mod tests {
                     condition: BehaviorCondition::HpBelow {
                         threshold_percent: 0.3,
                     },
-                    child: Box::new(BehaviorNode::Fixed(action("rage", vec![10]))),
+                    child: Box::new(BehaviorNode::Fixed(action("rage", [10, 0, 0]))),
                 },
             }],
         };
@@ -294,7 +294,7 @@ mod tests {
 
     #[test]
     fn gate_turn_count_in_range() {
-        let a = action("early", vec![5]);
+        let a = action("early", [5, 0, 0]);
         let tree = EnemyBehaviorTree {
             phases: vec![EnemyPhase {
                 enter_condition: None,
@@ -326,7 +326,7 @@ mod tests {
                         min: Some(1),
                         max: Some(3),
                     },
-                    child: Box::new(BehaviorNode::Fixed(action("early", vec![5]))),
+                    child: Box::new(BehaviorNode::Fixed(action("early", [5, 0, 0]))),
                 },
             }],
         };
@@ -341,7 +341,7 @@ mod tests {
 
     #[test]
     fn weighted_random_single_choice_always_selected() {
-        let a = action("only", vec![1, 2, 3]);
+        let a = action("only", [1, 2, 3]);
         let tree = EnemyBehaviorTree {
             phases: vec![EnemyPhase {
                 enter_condition: None,
@@ -364,8 +364,8 @@ mod tests {
     #[test]
     fn weighted_random_respects_weight_distribution() {
         // weight: high=90, low=10 → high が約90%選ばれることを確認
-        let high = action("high", vec![1]);
-        let low = action("low", vec![2]);
+        let high = action("high", [1, 0, 0]);
+        let low = action("low", [2, 0, 0]);
 
         let tree = EnemyBehaviorTree {
             phases: vec![EnemyPhase {
@@ -412,7 +412,7 @@ mod tests {
                 entry_action: None,
                 root: BehaviorNode::WeightedRandom(vec![WeightedChoice {
                     weight: 0,
-                    node: BehaviorNode::Fixed(action("x", vec![])),
+                    node: BehaviorNode::Fixed(action("x", [0, 0, 0])),
                 }]),
             }],
         };
@@ -426,8 +426,8 @@ mod tests {
 
     #[test]
     fn one_shot_fires_only_once() {
-        let desperate = action("desperate", vec![99]);
-        let normal = action("normal", vec![1]);
+        let desperate = action("desperate", [99, 0, 0]);
+        let normal = action("normal", [1, 0, 0]);
 
         let tree = EnemyBehaviorTree {
             phases: vec![EnemyPhase {
@@ -471,7 +471,7 @@ mod tests {
                         condition: BehaviorCondition::HpBelow {
                             threshold_percent: 0.1, // HP 100% では失敗
                         },
-                        child: Box::new(BehaviorNode::Fixed(action("x", vec![1]))),
+                        child: Box::new(BehaviorNode::Fixed(action("x", [1, 0, 0]))),
                     }),
                 },
             }],
@@ -495,8 +495,8 @@ mod tests {
 
     #[test]
     fn phase_transition_switches_at_hp_threshold() {
-        let phase0 = action("phase0", vec![1]);
-        let phase1 = action("phase1", vec![2]);
+        let phase0 = action("phase0", [1, 0, 0]);
+        let phase1 = action("phase1", [2, 0, 0]);
 
         let tree = EnemyBehaviorTree {
             phases: vec![
@@ -536,13 +536,13 @@ mod tests {
 
     #[test]
     fn phase_transition_is_irreversible() {
-        let phase1 = action("phase1", vec![10]);
+        let phase1 = action("phase1", [10, 0, 0]);
         let tree = EnemyBehaviorTree {
             phases: vec![
                 EnemyPhase {
                     enter_condition: None,
                     entry_action: None,
-                    root: BehaviorNode::Fixed(action("phase0", vec![1])),
+                    root: BehaviorNode::Fixed(action("phase0", [1, 0, 0])),
                 },
                 EnemyPhase {
                     enter_condition: Some(PhaseCondition::HpBelow {
@@ -570,15 +570,15 @@ mod tests {
 
     #[test]
     fn phase_entry_action_fires_once_on_transition() {
-        let entry = action("roar", vec![99, 98, 97]);
-        let normal = action("phase1_normal", vec![10]);
+        let entry = action("roar", [99, 98, 97]);
+        let normal = action("phase1_normal", [10, 0, 0]);
 
         let tree = EnemyBehaviorTree {
             phases: vec![
                 EnemyPhase {
                     enter_condition: None,
                     entry_action: None,
-                    root: BehaviorNode::Fixed(action("phase0", vec![1])),
+                    root: BehaviorNode::Fixed(action("phase0", [1, 0, 0])),
                 },
                 EnemyPhase {
                     enter_condition: Some(PhaseCondition::HpBelow {
@@ -610,21 +610,21 @@ mod tests {
     #[test]
     fn phase_jump_skips_middle_phase_entry_action() {
         // HP が一気に 80% → 10% に落ちたとき、中間フェーズを飛ばして最終フェーズへ
-        let phase2 = action("phase2", vec![20]);
+        let phase2 = action("phase2", [20, 0, 0]);
 
         let tree = EnemyBehaviorTree {
             phases: vec![
                 EnemyPhase {
                     enter_condition: None,
                     entry_action: None,
-                    root: BehaviorNode::Fixed(action("phase0", vec![1])),
+                    root: BehaviorNode::Fixed(action("phase0", [1, 0, 0])),
                 },
                 EnemyPhase {
                     enter_condition: Some(PhaseCondition::HpBelow {
                         threshold_percent: 0.5,
                     }),
-                    entry_action: Some(action("phase1_entry", vec![99])),
-                    root: BehaviorNode::Fixed(action("phase1", vec![10])),
+                    entry_action: Some(action("phase1_entry", [99, 0, 0])),
+                    root: BehaviorNode::Fixed(action("phase1", [10, 0, 0])),
                 },
                 EnemyPhase {
                     enter_condition: Some(PhaseCondition::HpBelow {
@@ -655,11 +655,11 @@ mod tests {
     /// フェーズ2 (HP20%以下): 連続攻撃
     #[test]
     fn complex_boss_scenario() {
-        let roar = action("咆哮", vec![99]);
-        let normal_a = action("ひっかき", vec![1, 2, 3]);
-        let normal_b = action("噛みつき", vec![4]);
-        let desperate = action("絶望の一撃", vec![50, 51, 52]);
-        let combo = action("乱れ爪", vec![60, 61, 62]);
+        let roar = action("咆哮", [99, 0, 0]);
+        let normal_a = action("ひっかき", [1, 2, 3]);
+        let normal_b = action("噛みつき", [4, 0, 0]);
+        let desperate = action("絶望の一撃", [50, 51, 52]);
+        let combo = action("乱れ爪", [60, 61, 62]);
 
         let tree = EnemyBehaviorTree {
             phases: vec![

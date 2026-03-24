@@ -5,6 +5,7 @@ mod trance;
 
 use super::StatusAilment;
 use super::art::Art;
+use super::enemy_behavior::{ActionSet, AiContext, BehaviorNode, EnemyAiState, EnemyBehaviorTree, EnemyPhase, PhaseCondition, WeightedChoice};
 use super::character::Ability;
 use super::character::AbilityType;
 use super::common::*;
@@ -105,36 +106,24 @@ pub struct Battle {
     pub player: BattleCharacter,
     pub enemies: Vec<BattleCharacter>,
 
-    // TODO: 敵の行動関係仮
-    pub enemy_commands: Vec<EnemyCommand>, // 敵の行動コマンド
-    pub enemy_action_lots: Vec<EnemyActionLot>, // 敵の行動抽選
-    // 敵第二段階の行動抽選
-    pub enemy_second_stage_action_lots: Vec<EnemyActionLot>,
-    // 敵第二段階
-    pub enemy_second_stage: bool,
-
-    // 敵の行動進行状況
-    pub enemy_action_progress: Option<EnemyActionProgress>,
+    pub enemy_commands: Vec<EnemyCommand>,           // 敵の行動コマンド定義
+    pub enemy_behavior_tree: EnemyBehaviorTree,      // 敵の行動決定ビヘイビアツリー
+    pub enemy_ai_state: EnemyAiState,                // 敵AIのランタイム状態
+    pub enemy_action_progress: Option<EnemyActionProgress>, // 敵の行動進行状況
 }
 
-// TODO: 敵行動周りは仮
 #[derive(Clone, Debug)]
 pub struct EnemyCommand {
     pub id: EnemyCommandId,
     pub art: Arc<Art>,                            // 使用アーツ
     pub battle_weapon_id: Option<BattleWeaponId>, // 使用武器ID
 }
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct EnemyCommandId(pub u32);
 #[derive(Debug, Clone)]
 pub struct EnemyAction {
     pub name: String,                  // 行動名
     pub commands: Vec<EnemyCommandId>, // 実行コマンドID
-}
-#[derive(Debug)]
-pub struct EnemyActionLot {
-    pub action: EnemyAction,
-    pub weight: u32,
 }
 #[derive(Debug)]
 pub struct EnemyActionProgress {

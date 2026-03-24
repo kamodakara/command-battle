@@ -829,100 +829,111 @@ pub fn create_battle_from_preparation(
         }],
 
         enemy_action_progress: None,
-        enemy_second_stage: false,
-        enemy_action_lots: vec![
-            EnemyActionLot {
-                action: EnemyAction {
-                    name: "ひっかき（単）".to_string(),
-                    commands: vec![EnemyCommandId(1)],
+        enemy_ai_state: EnemyAiState::default(),
+        enemy_behavior_tree: EnemyBehaviorTree {
+            phases: vec![
+                // フェーズ0: 通常段階（HP60%超）
+                EnemyPhase {
+                    enter_condition: None,
+                    entry_action: None,
+                    root: BehaviorNode::WeightedRandom(vec![
+                        WeightedChoice {
+                            weight: 40,
+                            node: BehaviorNode::Fixed(ActionSet::new(
+                                "ひっかき（単）",
+                                [EnemyCommandId(1), EnemyCommandId(0), EnemyCommandId(0)],
+                            )),
+                        },
+                        WeightedChoice {
+                            weight: 10,
+                            node: BehaviorNode::Fixed(ActionSet::new(
+                                "ひっかき（2連）",
+                                [EnemyCommandId(4), EnemyCommandId(5), EnemyCommandId(0)],
+                            )),
+                        },
+                        WeightedChoice {
+                            weight: 20,
+                            node: BehaviorNode::Fixed(ActionSet::new(
+                                "噛みつき",
+                                [EnemyCommandId(2), EnemyCommandId(0), EnemyCommandId(0)],
+                            )),
+                        },
+                        WeightedChoice {
+                            weight: 20,
+                            node: BehaviorNode::Fixed(ActionSet::new(
+                                "尾撃（単）",
+                                [EnemyCommandId(3), EnemyCommandId(0), EnemyCommandId(0)],
+                            )),
+                        },
+                        WeightedChoice {
+                            weight: 10,
+                            node: BehaviorNode::Fixed(ActionSet::new(
+                                "尾撃（2連）",
+                                [EnemyCommandId(3), EnemyCommandId(3), EnemyCommandId(0)],
+                            )),
+                        },
+                    ]),
                 },
-                weight: 40,
-            },
-            EnemyActionLot {
-                action: EnemyAction {
-                    name: "ひっかき（2連）".to_string(),
-                    commands: vec![EnemyCommandId(4), EnemyCommandId(5)],
+                // フェーズ1: 強化段階（HP60%以下）
+                EnemyPhase {
+                    enter_condition: Some(PhaseCondition::HpBelow {
+                        threshold_percent: 0.6,
+                    }),
+                    entry_action: None,
+                    root: BehaviorNode::WeightedRandom(vec![
+                        WeightedChoice {
+                            weight: 10,
+                            node: BehaviorNode::Fixed(ActionSet::new(
+                                "ひっかき（単）",
+                                [EnemyCommandId(1), EnemyCommandId(0), EnemyCommandId(0)],
+                            )),
+                        },
+                        WeightedChoice {
+                            weight: 20,
+                            node: BehaviorNode::Fixed(ActionSet::new(
+                                "ひっかき（2連）",
+                                [EnemyCommandId(4), EnemyCommandId(5), EnemyCommandId(0)],
+                            )),
+                        },
+                        WeightedChoice {
+                            weight: 20,
+                            node: BehaviorNode::Fixed(ActionSet::new(
+                                "ひっかき（3連）",
+                                [EnemyCommandId(4), EnemyCommandId(5), EnemyCommandId(6)],
+                            )),
+                        },
+                        WeightedChoice {
+                            weight: 30,
+                            node: BehaviorNode::Fixed(ActionSet::new(
+                                "噛みつき",
+                                [EnemyCommandId(2), EnemyCommandId(0), EnemyCommandId(0)],
+                            )),
+                        },
+                        WeightedChoice {
+                            weight: 10,
+                            node: BehaviorNode::Fixed(ActionSet::new(
+                                "尾撃（単）",
+                                [EnemyCommandId(3), EnemyCommandId(0), EnemyCommandId(0)],
+                            )),
+                        },
+                        WeightedChoice {
+                            weight: 20,
+                            node: BehaviorNode::Fixed(ActionSet::new(
+                                "尾撃（2連）",
+                                [EnemyCommandId(3), EnemyCommandId(3), EnemyCommandId(0)],
+                            )),
+                        },
+                        WeightedChoice {
+                            weight: 20,
+                            node: BehaviorNode::Fixed(ActionSet::new(
+                                "ファイアブレス",
+                                [EnemyCommandId(7), EnemyCommandId(8), EnemyCommandId(8)],
+                            )),
+                        },
+                    ]),
                 },
-                weight: 10,
-            },
-            EnemyActionLot {
-                action: EnemyAction {
-                    name: "噛みつき".to_string(),
-                    commands: vec![EnemyCommandId(2)],
-                },
-                weight: 20,
-            },
-            EnemyActionLot {
-                action: EnemyAction {
-                    name: "尾撃（単）".to_string(),
-                    commands: vec![EnemyCommandId(3)],
-                },
-                weight: 20,
-            },
-            EnemyActionLot {
-                action: EnemyAction {
-                    name: "尾撃（2連）".to_string(),
-                    commands: vec![EnemyCommandId(3), EnemyCommandId(3)],
-                },
-                weight: 10,
-            },
-        ],
-        enemy_second_stage_action_lots: vec![
-            EnemyActionLot {
-                action: EnemyAction {
-                    name: "ひっかき（単）".to_string(),
-                    commands: vec![EnemyCommandId(1)],
-                },
-                weight: 10,
-            },
-            EnemyActionLot {
-                action: EnemyAction {
-                    name: "ひっかき（2連）".to_string(),
-                    commands: vec![EnemyCommandId(4), EnemyCommandId(5)],
-                },
-                weight: 20,
-            },
-            EnemyActionLot {
-                action: EnemyAction {
-                    name: "ひっかき（3連）".to_string(),
-                    commands: vec![EnemyCommandId(4), EnemyCommandId(5), EnemyCommandId(6)],
-                },
-                weight: 20,
-            },
-            EnemyActionLot {
-                action: EnemyAction {
-                    name: "噛みつき".to_string(),
-                    commands: vec![EnemyCommandId(2)],
-                },
-                weight: 30,
-            },
-            EnemyActionLot {
-                action: EnemyAction {
-                    name: "尾撃（単）".to_string(),
-                    commands: vec![EnemyCommandId(3)],
-                },
-                weight: 10,
-            },
-            EnemyActionLot {
-                action: EnemyAction {
-                    name: "尾撃（2連）".to_string(),
-                    commands: vec![EnemyCommandId(3), EnemyCommandId(3)],
-                },
-                weight: 20,
-            },
-            EnemyActionLot {
-                action: EnemyAction {
-                    name: "ファイアブレス".to_string(),
-                    commands: vec![
-                        EnemyCommandId(7),
-                        EnemyCommandId(8),
-                        EnemyCommandId(8),
-                        EnemyCommandId(8),
-                    ],
-                },
-                weight: 20,
-            },
-        ],
+            ],
+        },
         // 敵のアーツ
         enemy_commands: vec![
             EnemyCommand {

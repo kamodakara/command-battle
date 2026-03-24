@@ -4,15 +4,15 @@ use super::EnemyCommandId;
 
 // ─── 行動セット ─────────────────────────────────────────────────────────────
 
-/// 1ターンの3回行動セット
+/// 1ターンの3回行動セット（コマンドは必ず3つ）
 #[derive(Clone, Debug, PartialEq)]
 pub struct ActionSet {
     pub name: String,
-    pub commands: Vec<EnemyCommandId>,
+    pub commands: [EnemyCommandId; 3],
 }
 
 impl ActionSet {
-    pub fn new(name: impl Into<String>, commands: Vec<EnemyCommandId>) -> Self {
+    pub fn new(name: impl Into<String>, commands: [EnemyCommandId; 3]) -> Self {
         Self {
             name: name.into(),
             commands,
@@ -25,6 +25,7 @@ impl ActionSet {
 /// ビヘイビアツリーノード
 ///
 /// 評価結果: `Some(ActionSet)` = 成功, `None` = 失敗
+#[derive(Debug)]
 pub enum BehaviorNode {
     /// 子を左から順に評価し、最初に成功したものを返す
     /// 全て失敗した場合は `None` を返す
@@ -51,6 +52,7 @@ pub enum BehaviorNode {
 }
 
 /// `WeightedRandom` の選択肢
+#[derive(Debug)]
 pub struct WeightedChoice {
     pub weight: u32,
     pub node: BehaviorNode,
@@ -59,6 +61,7 @@ pub struct WeightedChoice {
 // ─── 条件 ────────────────────────────────────────────────────────────────────
 
 /// ノードの評価条件
+#[derive(Debug)]
 pub enum BehaviorCondition {
     /// HP が `threshold_percent` 以下のとき真 (0.0 〜 1.0)
     HpBelow { threshold_percent: f32 },
@@ -69,6 +72,7 @@ pub enum BehaviorCondition {
 }
 
 /// フェーズ移行条件（移行後はHPが回復しても元に戻らない・不可逆）
+#[derive(Debug)]
 pub enum PhaseCondition {
     HpBelow { threshold_percent: f32 },
 }
@@ -76,6 +80,7 @@ pub enum PhaseCondition {
 // ─── フェーズ ────────────────────────────────────────────────────────────────
 
 /// 敵の行動フェーズ
+#[derive(Debug)]
 pub struct EnemyPhase {
     /// 移行条件（`None` = 初期フェーズ）
     pub enter_condition: Option<PhaseCondition>,
@@ -89,6 +94,7 @@ pub struct EnemyPhase {
 }
 
 /// 敵のビヘイビアツリー全体
+#[derive(Debug)]
 pub struct EnemyBehaviorTree {
     /// `phases[0]` = 初期フェーズ
     /// 以降は `enter_condition` の HP 閾値降順（50% → 25% → ...）で並べる
