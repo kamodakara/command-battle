@@ -55,7 +55,11 @@ pub fn render(
     menu_items_q: Query<Entity, With<ActionMenuItem>>,
 ) {
     let visible = *phase == BattlePhase::AwaitCommand && message_queue.pending.is_empty();
+
+    // Hidden→Visible の遷移を検出し、非表示中に変更があった場合も再描画を強制する
+    let mut just_became_visible = false;
     if let Ok(mut vis) = menu_vis_q.single_mut() {
+        just_became_visible = visible && (*vis == Visibility::Hidden);
         *vis = if visible { Visibility::Visible } else { Visibility::Hidden };
     }
 
@@ -64,7 +68,7 @@ pub fn render(
     }
 
     let has_menu_items = menu_items_q.iter().next().is_some();
-    if !action_menu.is_changed() && !consecutive.is_changed() && !phase.is_changed() && has_menu_items {
+    if !just_became_visible && !action_menu.is_changed() && !consecutive.is_changed() && !phase.is_changed() && has_menu_items {
         return;
     }
 
