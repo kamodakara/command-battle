@@ -3,7 +3,7 @@ use super::resources::*;
 use super::handlers::input::BackToPreparationButton;
 use super::renderers::{
     player_status::*,
-    enemy_status::{UiEnemy, UiEnemyHpGaugeFill, UiEnemyBreakGaugeFill, UiEnemyBreakLabel},
+    enemy_status::{UiEnemy, UiEnemyHpGaugeFill, UiEnemyBreakGaugeFill, UiEnemyBreakLabel, UiEnemyHintText},
     action_menu::{UiActionMenu, UiActionMenuContainer},
     combat_log::UiMessage,
     karma_cards::UiKarmaCardsContainer,
@@ -312,6 +312,24 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                                         Visibility::Hidden,
                                     ));
                                 });
+
+                            // ヒントテキスト（ブレイクゲージ下）
+                            col.spawn((
+                                UiEnemyHintText,
+                                Text::new(""),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 14.0,
+                                    ..default()
+                                },
+                                TextColor(Color::from(LinearRgba {
+                                    red: 0.95,
+                                    green: 0.85,
+                                    blue: 0.55,
+                                    alpha: 1.0,
+                                })),
+                                Visibility::Hidden,
+                            ));
 
                         });
                 });

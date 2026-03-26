@@ -36,7 +36,7 @@ pub fn on_enemy_action_planned(
         // 即時リセットせず、メッセージ送り完了後に適用するよう予約する
         if !event.action_names.is_empty() {
             let hint_idx = rand::rng().random_range(0..event.action_names.len());
-            board.schedule_reset(hint_idx, event.action_names[hint_idx].clone());
+            board.schedule_reset(hint_idx, event.action_names[hint_idx].clone(), event.hint.clone());
         }
     }
 }

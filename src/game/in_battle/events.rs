@@ -39,6 +39,8 @@ pub struct BattleConductResolvedEvent {
 #[derive(Message)]
 pub struct EnemyActionPlannedEvent {
     pub action_names: Vec<String>,
+    /// 行動セットに設定されたヒント文字列
+    pub hint: Option<String>,
 }
 
 /// バトル結果

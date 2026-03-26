@@ -1,5 +1,6 @@
-use bevy::prelude::*;
 use super::super::super::logic::resources::BattleResource;
+use super::super::resources::TurnActionBoard;
+use bevy::prelude::*;
 
 // ─── コンポーネント定義 ──────────────────────────────────────────────────────
 
@@ -12,16 +13,20 @@ pub struct UiEnemyHpGaugeFill;
 pub struct UiEnemyBreakGaugeFill;
 #[derive(Component)]
 pub struct UiEnemyBreakLabel;
+#[derive(Component)]
+pub struct UiEnemyHintText;
 
 // ─── 描画システム ────────────────────────────────────────────────────────────
 
 pub fn render(
     battle_resource: Res<BattleResource>,
+    board: Res<TurnActionBoard>,
     mut gauge_params: ParamSet<(
         Query<&mut Node, With<UiEnemyHpGaugeFill>>,
         Query<&mut Node, With<UiEnemyBreakGaugeFill>>,
     )>,
-    mut _br_label_q: Query<&mut Visibility, With<UiEnemyBreakLabel>>,
+    mut _br_label_q: Query<&mut Visibility, (With<UiEnemyBreakLabel>, Without<UiEnemyHintText>)>,
+    mut hint_q: Query<(&mut Text, &mut Visibility), With<UiEnemyHintText>>,
 ) {
     let battle = &battle_resource.0;
     let enemy = battle.enemies.first().unwrap();
@@ -40,5 +45,14 @@ pub fn render(
     if let Ok(mut br_node) = gauge_params.p1().single_mut() {
         let ratio = (e_break as f32 / e_break_max as f32).clamp(0.0, 1.0);
         br_node.width = Val::Percent((ratio * 100.0).round());
+    }
+
+    if let Ok((mut text, mut vis)) = hint_q.single_mut() {
+        if let Some(hint) = &board.enemy_hint {
+            text.0 = hint.clone();
+            *vis = Visibility::Visible;
+        } else {
+            *vis = Visibility::Hidden;
+        }
     }
 }

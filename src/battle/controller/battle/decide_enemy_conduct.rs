@@ -42,6 +42,7 @@ pub fn decide_enemy_conduct(
         enemy_action: EnemyAction {
             name: action_set.name,
             commands: vec![action_set.commands[1], action_set.commands[2]],
+            hint: action_set.hint,
         },
         current_command_index: 0,
     });

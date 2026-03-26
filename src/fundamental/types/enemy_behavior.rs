@@ -9,6 +9,8 @@ use super::EnemyCommandId;
 pub struct ActionSet {
     pub name: String,
     pub commands: [EnemyCommandId; 3],
+    /// プレイヤーへのヒント文字列（設定時はブレイクゲージ下に表示）
+    pub hint: Option<String>,
 }
 
 impl ActionSet {
@@ -16,7 +18,13 @@ impl ActionSet {
         Self {
             name: name.into(),
             commands,
+            hint: None,
         }
+    }
+
+    pub fn with_hint(mut self, hint: impl Into<String>) -> Self {
+        self.hint = Some(hint.into());
+        self
     }
 }
 

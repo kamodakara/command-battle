@@ -87,6 +87,8 @@ pub struct TurnActionBoard {
     slot_conduct_counts: [u32; 3],
     /// メッセージ送り完了後に適用するリセット予約（ヒントスロット, ヒント行動名）
     pending_reset: Option<(usize, String)>,
+    /// 行動セットに設定されたヒント文字列（ブレイクゲージ下に表示）
+    pub enemy_hint: Option<String>,
 }
 
 impl TurnActionBoard {
@@ -95,15 +97,18 @@ impl TurnActionBoard {
     }
 
     /// ターン開始時に呼ぶ。メッセージ送り完了後にリセット＋ヒント表示を予約する。
-    pub fn schedule_reset(&mut self, hint_idx: usize, hint_name: String) {
+    pub fn schedule_reset(&mut self, hint_idx: usize, hint_name: String, enemy_hint: Option<String>) {
         self.pending_reset = Some((hint_idx, hint_name));
+        self.enemy_hint = enemy_hint;
     }
 
     /// メッセージ送りが完了したタイミングで呼ぶ。予約があればリセットを適用する。
     pub fn apply_pending_reset_if_any(&mut self) {
         if let Some((hint_idx, hint_name)) = self.pending_reset.take() {
+            let saved_hint = self.enemy_hint.take();
             self.reset();
             self.enemy_actions[hint_idx] = Some(hint_name);
+            self.enemy_hint = saved_hint;
         }
     }
 

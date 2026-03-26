@@ -1071,80 +1071,101 @@ pub fn create_battle_from_preparation(
                     root: BehaviorNode::WeightedRandom(vec![
                         WeightedChoice {
                             weight: 20,
-                            node: BehaviorNode::Fixed(ActionSet::new(
-                                "ひっかき(単)1",
-                                [
-                                    enemy_command_scratch.id,
-                                    enemy_command_wait.id,
-                                    enemy_command_wait.id,
-                                ],
-                            )),
+                            node: BehaviorNode::Fixed(
+                                ActionSet::new(
+                                    "ひっかき(単)1",
+                                    [
+                                        enemy_command_scratch.id,
+                                        enemy_command_wait.id,
+                                        enemy_command_wait.id,
+                                    ],
+                                )
+                                .with_hint("右前脚を振り上げる"),
+                            ),
                         },
                         WeightedChoice {
                             weight: 20,
-                            node: BehaviorNode::Fixed(ActionSet::new(
-                                "ひっかき(単)2",
-                                [
-                                    enemy_command_wait.id,
-                                    enemy_command_scratch.id,
-                                    enemy_command_wait.id,
-                                ],
-                            )),
+                            node: BehaviorNode::Fixed(
+                                ActionSet::new(
+                                    "ひっかき(単)2",
+                                    [
+                                        enemy_command_wait.id,
+                                        enemy_command_scratch.id,
+                                        enemy_command_wait.id,
+                                    ],
+                                )
+                                .with_hint("右前脚を振り上げる"),
+                            ),
                         },
                         WeightedChoice {
                             weight: 5,
-                            node: BehaviorNode::Fixed(ActionSet::new(
-                                "ひっかき（2連）",
-                                [
-                                    enemy_command_scratch2.id,
-                                    enemy_command_scratch.id,
-                                    enemy_command_wait.id,
-                                ],
-                            )),
+                            node: BehaviorNode::Fixed(
+                                ActionSet::new(
+                                    "ひっかき（2連）",
+                                    [
+                                        enemy_command_scratch2.id,
+                                        enemy_command_scratch.id,
+                                        enemy_command_wait.id,
+                                    ],
+                                )
+                                .with_hint("左前脚を振り上げる"),
+                            ),
                         },
                         WeightedChoice {
                             weight: 15,
-                            node: BehaviorNode::Fixed(ActionSet::new(
-                                "噛みつき1",
-                                [
-                                    enemy_command_bite.id,
-                                    enemy_command_wait.id,
-                                    enemy_command_wait.id,
-                                ],
-                            )),
+                            node: BehaviorNode::Fixed(
+                                ActionSet::new(
+                                    "噛みつき1",
+                                    [
+                                        enemy_command_bite.id,
+                                        enemy_command_wait.id,
+                                        enemy_command_wait.id,
+                                    ],
+                                )
+                                .with_hint("こちらを見ながら近づいてくる"),
+                            ),
                         },
                         WeightedChoice {
                             weight: 15,
-                            node: BehaviorNode::Fixed(ActionSet::new(
-                                "噛みつき2",
-                                [
-                                    enemy_command_wait.id,
-                                    enemy_command_bite.id,
-                                    enemy_command_wait.id,
-                                ],
-                            )),
+                            node: BehaviorNode::Fixed(
+                                ActionSet::new(
+                                    "噛みつき2",
+                                    [
+                                        enemy_command_wait.id,
+                                        enemy_command_bite.id,
+                                        enemy_command_wait.id,
+                                    ],
+                                )
+                                .with_hint("こちらを見ながら近づいてくる"),
+                            ),
                         },
                         WeightedChoice {
                             weight: 10,
-                            node: BehaviorNode::Fixed(ActionSet::new(
-                                "尾撃（単）",
-                                [
-                                    enemy_command_tail.id,
-                                    enemy_command_wait.id,
-                                    enemy_command_wait.id,
-                                ],
-                            )),
+                            node: BehaviorNode::Fixed(
+                                ActionSet::new(
+                                    "尾撃（単）",
+                                    [
+                                        enemy_command_tail.id,
+                                        enemy_command_wait.id,
+                                        enemy_command_wait.id,
+                                    ],
+                                )
+                                .with_hint("体をねじっている"),
+                            ),
                         },
                         WeightedChoice {
                             weight: 5,
-                            node: BehaviorNode::Fixed(ActionSet::new(
-                                "尾撃（2連）",
-                                [
-                                    enemy_command_tail.id,
-                                    enemy_command_tail.id,
-                                    enemy_command_wait.id,
-                                ],
-                            )),
+                            node: BehaviorNode::Fixed(
+                                ActionSet::new(
+                                    "尾撃（2連）",
+                                    [
+                                        enemy_command_tail.id,
+                                        enemy_command_tail.id,
+                                        enemy_command_wait.id,
+                                    ],
+                                )
+                                .with_hint("体をねじっている"),
+                            ),
                         },
                     ]),
                 },
@@ -1190,58 +1211,73 @@ pub fn create_battle_from_preparation(
                         },
                         WeightedChoice {
                             weight: 20,
-                            node: BehaviorNode::Fixed(ActionSet::new(
-                                "連続噛みつき",
-                                [
-                                    enemy_command_bite.id,
-                                    enemy_command_bite.id,
-                                    enemy_command_wait.id,
-                                ],
-                            )),
+                            node: BehaviorNode::Fixed(
+                                ActionSet::new(
+                                    "連続噛みつき",
+                                    [
+                                        enemy_command_bite.id,
+                                        enemy_command_bite.id,
+                                        enemy_command_wait.id,
+                                    ],
+                                )
+                                .with_hint("こちらを見ながら近づいてくる"),
+                            ),
                         },
                         WeightedChoice {
                             weight: 10,
-                            node: BehaviorNode::Fixed(ActionSet::new(
-                                "尾撃（単）1",
-                                [
-                                    enemy_command_tail.id,
-                                    enemy_command_wait.id,
-                                    enemy_command_wait.id,
-                                ],
-                            )),
+                            node: BehaviorNode::Fixed(
+                                ActionSet::new(
+                                    "尾撃（単）1",
+                                    [
+                                        enemy_command_tail.id,
+                                        enemy_command_wait.id,
+                                        enemy_command_wait.id,
+                                    ],
+                                )
+                                .with_hint("体をねじっている"),
+                            ),
                         },
                         WeightedChoice {
                             weight: 10,
-                            node: BehaviorNode::Fixed(ActionSet::new(
-                                "尾撃（単）2",
-                                [
-                                    enemy_command_wait.id,
-                                    enemy_command_tail.id,
-                                    enemy_command_wait.id,
-                                ],
-                            )),
+                            node: BehaviorNode::Fixed(
+                                ActionSet::new(
+                                    "尾撃（単）2",
+                                    [
+                                        enemy_command_wait.id,
+                                        enemy_command_tail.id,
+                                        enemy_command_wait.id,
+                                    ],
+                                )
+                                .with_hint("体をねじっている"),
+                            ),
                         },
                         WeightedChoice {
                             weight: 10,
-                            node: BehaviorNode::Fixed(ActionSet::new(
-                                "尾撃（2連）",
-                                [
-                                    enemy_command_tail.id,
-                                    enemy_command_tail.id,
-                                    enemy_command_wait.id,
-                                ],
-                            )),
+                            node: BehaviorNode::Fixed(
+                                ActionSet::new(
+                                    "尾撃（2連）",
+                                    [
+                                        enemy_command_tail.id,
+                                        enemy_command_tail.id,
+                                        enemy_command_wait.id,
+                                    ],
+                                )
+                                .with_hint("体をひねってる"),
+                            ),
                         },
                         WeightedChoice {
                             weight: 20,
-                            node: BehaviorNode::Fixed(ActionSet::new(
-                                "ファイアブレス",
-                                [
-                                    enemy_command_breath.id,
-                                    enemy_command_fire_breath.id,
-                                    enemy_command_fire_breath.id,
-                                ],
-                            )),
+                            node: BehaviorNode::Fixed(
+                                ActionSet::new(
+                                    "ファイアブレス",
+                                    [
+                                        enemy_command_fire_breath.id,
+                                        enemy_command_fire_breath.id,
+                                        enemy_command_fire_breath.id,
+                                    ],
+                                )
+                                .with_hint("大きく息を吸い込んでいる"),
+                            ),
                         },
                     ]),
                 },

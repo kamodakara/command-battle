@@ -124,6 +124,7 @@ pub struct EnemyCommandId(pub u32);
 pub struct EnemyAction {
     pub name: String,                  // 行動名
     pub commands: Vec<EnemyCommandId>, // 実行コマンドID
+    pub hint: Option<String>,          // ヒント文字列
 }
 #[derive(Debug)]
 pub struct EnemyActionProgress {
