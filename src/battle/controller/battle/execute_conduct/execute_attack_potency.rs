@@ -164,11 +164,14 @@ pub fn execute_attack_potency(
     }
 
     // ブレイクダメージ処理
-    incidents.extend(accumulate_status_ailment(
-        target,
-        &StatusAilment::Breaking,
-        break_power,
-    ));
+    if target.character_type == BattleCharacterType::Enemy {
+        // 敵の場合のみブレイクダメージを与える
+        incidents.extend(accumulate_status_ailment(
+            target,
+            &StatusAilment::Breaking,
+            break_power,
+        ));
+    }
 
     incidents
 }
