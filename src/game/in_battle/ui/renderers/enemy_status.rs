@@ -23,9 +23,9 @@ pub fn render(
     board: Res<TurnActionBoard>,
     mut gauge_params: ParamSet<(
         Query<&mut Node, With<UiEnemyHpGaugeFill>>,
-        Query<&mut Node, With<UiEnemyBreakGaugeFill>>,
+        Query<(&mut Node, &mut BackgroundColor), With<UiEnemyBreakGaugeFill>>,
     )>,
-    mut _br_label_q: Query<&mut Visibility, (With<UiEnemyBreakLabel>, Without<UiEnemyHintText>)>,
+    mut br_label_q: Query<&mut Visibility, (With<UiEnemyBreakLabel>, Without<UiEnemyHintText>)>,
     mut hint_q: Query<(&mut Text, &mut Visibility), With<UiEnemyHintText>>,
 ) {
     let battle = &battle_resource.0;
@@ -33,6 +33,7 @@ pub fn render(
     let e_hp = enemy.hp.current_hp;
     let e_break = enemy.status_ailment.breaking.accumulation;
     let e_break_max = enemy.status_ailment.breaking.max_accumulation;
+    let is_breaking = enemy.status_ailment.breaking.is_ailment;
 
     if let Ok(mut hp_node) = gauge_params.p0().single_mut() {
         let ratio = if enemy.hp.max_hp > 0 {
@@ -42,9 +43,18 @@ pub fn render(
         };
         hp_node.width = Val::Percent((ratio * 100.0).round());
     }
-    if let Ok(mut br_node) = gauge_params.p1().single_mut() {
+    if let Ok((mut br_node, mut br_color)) = gauge_params.p1().single_mut() {
         let ratio = (e_break as f32 / e_break_max as f32).clamp(0.0, 1.0);
         br_node.width = Val::Percent((ratio * 100.0).round());
+        *br_color = if is_breaking {
+            BackgroundColor(Color::from(LinearRgba { red: 1.00, green: 0.55, blue: 0.10, alpha: 1.0 }))
+        } else {
+            BackgroundColor(Color::from(LinearRgba { red: 0.25, green: 0.55, blue: 0.95, alpha: 1.0 }))
+        };
+    }
+
+    if let Ok(mut vis) = br_label_q.single_mut() {
+        *vis = if is_breaking { Visibility::Visible } else { Visibility::Hidden };
     }
 
     if let Ok((mut text, mut vis)) = hint_q.single_mut() {
