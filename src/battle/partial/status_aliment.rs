@@ -188,29 +188,29 @@ impl BattleStatusAilmentStatus {
         Self::new(10, 1.0 / 5.0) // 状態異常中は1/5回復
     }
     pub fn new_sleep() -> Self {
-        Self::new(10, 1.0 / 3.0) // 状態異常中は1/3回復
-    }
-    pub fn new_chill() -> Self {
-        Self::new(10, 1.0 / 4.0) // 状態異常中は1/4回復
-    }
-    pub fn new_bleed() -> Self {
         Self::new(10, 1.0 / 2.0) // 状態異常中は1/2回復
     }
+    pub fn new_chill() -> Self {
+        Self::new(10, 1.0 / 3.0) // 状態異常中は1/3回復
+    }
+    pub fn new_bleed() -> Self {
+        Self::new(10, 1.0) // 状態異常中は1/1回復
+    }
     pub fn new_burn() -> Self {
-        Self::new(10, 1.0 / 4.0) // 状態異常中は1/4回復
+        Self::new(10, 1.0 / 3.0) // 状態異常中は1/3回復
     }
     pub fn new_paralysis() -> Self {
-        Self::new(10, 1.0 / 4.0) // 状態異常中は1/4回復
+        Self::new(10, 1.0 / 3.0) // 状態異常中は1/3回復
     }
     pub fn new_fear() -> Self {
-        Self::new(10, 1.0 / 5.0) // 状態異常中は1/5回復
+        Self::new(10, 1.0 / 4.0) // 状態異常中は1/4回復
     }
     pub fn new_rage() -> Self {
-        Self::new(10, 1.0 / 4.0) // 状態異常中は1/4回復
+        Self::new(10, 1.0 / 3.0) // 状態異常中は1/3回復
     }
     pub fn new_breaking(recovery_amount: u32) -> Self {
         // TODO: ブレイクの回復ターンは敵によって変わるようにする
-        Self::new(recovery_amount, 1.0 / 4.0) // ブレイクは自然回復しない
+        Self::new(recovery_amount, 1.0 / 2.0) // ブレイクは自然回復しない
     }
 
     // 蓄積付与
