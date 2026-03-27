@@ -30,13 +30,6 @@ pub fn handle_execute_commands(
         let player_id = battle.player.character_id;
         let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
 
-        log_ev.write(BattleLogEvent(format!(
-            "ターン {} 行動{} プレイヤーは{}を選択",
-            turn.0,
-            executed.0 + 1,
-            cmd.art.name
-        )));
-
         // コンビネーション処理（1回目のみ）
         battle.player.initialize_current_conduct_log();
         if executed.0 == 0 {

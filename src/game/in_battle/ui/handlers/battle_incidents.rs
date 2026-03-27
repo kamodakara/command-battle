@@ -3,6 +3,15 @@ use super::super::resources::*;
 use crate::fundamental::*;
 use bevy::prelude::*;
 
+fn format_art_cost(sp_cost: u32, stamina_cost: u32) -> String {
+    match (sp_cost, stamina_cost) {
+        (0, 0) => String::new(),
+        (0, st) => format!(" (消費: ST{})", st),
+        (sp, 0) => format!(" (消費: SP{})", sp),
+        (sp, st) => format!(" (消費: SP{} ST{})", sp, st),
+    }
+}
+
 pub fn handle_combination_resolved(
     mut events: MessageReader<BattleCombinationEvent>,
     mut log_ev: MessageWriter<BattleLogEvent>,
@@ -50,7 +59,7 @@ pub fn handle_conduct_resolved(
         } else {
             "敵"
         };
-        log_ev.write(BattleLogEvent(format!("{}の{}", actor, incident.conduct.art.name)));
+        let art = &incident.conduct.art;
 
         match &incident.outcome {
             BattleIncidentConductOutcome::Failure(f) => {
@@ -63,11 +72,13 @@ pub fn handle_conduct_resolved(
                     BattleIncidentConductOutcomeFailureReason::IsBreak => "ブレイク状態",
                 };
                 log_ev.write(BattleLogEvent(format!(
-                    "{}は不発（{}）",
-                    incident.conduct.art.name, reason
+                    "{}の{}は不発（{}）",
+                    actor, incident.conduct.art.name, reason
                 )));
             }
             BattleIncidentConductOutcome::Success(s) => {
+                let mut sp_cost = 0;
+                let mut stamina_cost = 0;
                 for character_incident in s.attacker.incidents.iter() {
                     for concrete in character_incident.concretes.iter() {
                         match concrete {
@@ -79,24 +90,24 @@ pub fn handle_conduct_resolved(
                             }
                             BattleCharacterIncidentConcrete::DamageSp(d) => {
                                 if d.damage > 0 {
-                                    log_ev.write(BattleLogEvent(format!(
-                                        "SP -{} ({} → {})",
-                                        d.damage, d.before, d.after
-                                    )));
+                                    sp_cost = d.damage;
                                 }
                             }
                             BattleCharacterIncidentConcrete::DamageStamina(d) => {
                                 if d.damage > 0 {
-                                    log_ev.write(BattleLogEvent(format!(
-                                        "Stamina -{} ({} → {})",
-                                        d.damage, d.before, d.after
-                                    )));
+                                    stamina_cost = d.damage;
                                 }
                             }
                             _ => {}
                         }
                     }
                 }
+
+                let cost_str = format_art_cost(sp_cost, stamina_cost);
+                log_ev.write(BattleLogEvent(format!(
+                    "{}の{}{}",
+                    actor, art.name, cost_str
+                )));
 
                 for def in s.defenders.iter() {
                     if def.is_evaded {
