@@ -173,7 +173,7 @@ pub fn render(
                     spawn_button(
                         parent,
                         &font,
-                        &format!("{} (ST{})", art.name, art.stamina_cost),
+                        &format!("{} {}", art.name, format_cost(art.sp_cost, art.stamina_cost)),
                         ActionMenuItemType::Art(Arc::clone(art)),
                     );
                 }
@@ -205,7 +205,7 @@ pub fn render(
                             spawn_button(
                                 parent,
                                 &font,
-                                &format!("{} (ST{})", art.name, art.stamina_cost),
+                                &format!("{} {}", art.name, format_cost(art.sp_cost, art.stamina_cost)),
                                 ActionMenuItemType::Art(Arc::clone(art)),
                             );
                         }
@@ -216,7 +216,7 @@ pub fn render(
                             spawn_button(
                                 parent,
                                 &font,
-                                &format!("{} (SP{}/ST{})", art.name, art.sp_cost, art.stamina_cost),
+                                &format!("{} {}", art.name, format_cost(art.sp_cost, art.stamina_cost)),
                                 ActionMenuItemType::Art(Arc::clone(art)),
                             );
                         }
@@ -270,6 +270,11 @@ fn spawn_button<'a>(
                 TextColor(Color::WHITE),
             ));
         });
+}
+
+/// SP・スタミナコストを "(SP{} ST{})" 形式にフォーマットする。
+fn format_cost(sp_cost: u32, stamina_cost: u32) -> String {
+    format!("(SP{} ST{})", sp_cost, stamina_cost)
 }
 
 fn spawn_label<'a>(parent: &mut ChildSpawnerCommands<'a>, font: &Handle<Font>, label: &str) {
