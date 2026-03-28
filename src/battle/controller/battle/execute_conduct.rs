@@ -333,13 +333,15 @@ fn apply_effect_to_target(
     let mut target_character_incident =
         BattleCharacterIncident::new(BattleCharacterIncidentReason::ConductEffect);
 
+    // ターゲットのステータスや状態変化を取得
+    let target_effects = target.current_effects();
+    let target_data = TargetData {
+        target,
+        effects: target_effects,
+    };
+
     match &attacker_data.art_rank.potency {
         ArtPotency::Attack(art_attack) => {
-            let target_effects = target.current_effects();
-            let target_data = TargetData {
-                target,
-                effects: target_effects,
-            };
             let attack_incidents = execute_attack_potency(art_attack, attacker_data, target_data);
             // Death インシデントの有無で戦闘不能を判定する
             let is_dead = attack_incidents
@@ -355,8 +357,8 @@ fn apply_effect_to_target(
                 is_dead,
             }
         }
-        ArtPotency::Support(support) => {
-            for incident in execute_support_potency(support, target) {
+        ArtPotency::Support(art_support) => {
+            for incident in execute_support_potency(art_support, attacker_data, target_data) {
                 target_character_incident.add_concrete(incident);
             }
             target_incident_character.add_incident(target_character_incident);

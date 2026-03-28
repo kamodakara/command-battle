@@ -97,7 +97,7 @@ pub fn player_standard_arts() -> Vec<Arc<Art>> {
                         status_conditions: vec![StatusCondition {
                             potency: StatusConditionPotency::Resistance(
                                 StatusConditionResistance {
-                                    battle_weapon_id: BattleWeaponId(0),
+                                    battle_weapon_id: BattleWeaponId(0), // TODO: ここどうするか、とりあえずあとから選択した武器のIDで上書きしている
                                 },
                             ),
                             duration: StatusConditionDuration::Turn(StatusConditionDurationTurn {

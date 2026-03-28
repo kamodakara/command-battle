@@ -2,29 +2,41 @@ use super::*;
 
 pub fn execute_support_potency(
     support: &ArtPotencySupport,
-    target: &mut BattleCharacter,
+    attacker_data: &AttackerData,
+    target_data: TargetData,
 ) -> Vec<BattleCharacterIncidentConcrete> {
     // 支援処理
     match support {
         ArtPotencySupport::None => vec![], // 行動しない
         // 支援状態変化
-        ArtPotencySupport::StatusCondition(status_condition) => {
-            support_status_effect(&status_condition.status_conditions, target)
-        }
+        ArtPotencySupport::StatusCondition(status_condition) => support_status_effect(
+            &status_condition.status_conditions,
+            attacker_data,
+            target_data.target,
+        ),
         // 支援回復
-        ArtPotencySupport::Recover(recover) => support_recover(recover, target),
+        ArtPotencySupport::Recover(recover) => support_recover(recover, target_data.target),
     }
 }
 
 fn support_status_effect(
     status_conditions: &Vec<StatusCondition>,
+    attacker_data: &AttackerData,
     target: &mut BattleCharacter,
 ) -> Vec<BattleCharacterIncidentConcrete> {
     let mut incidents = vec![];
     // 支援行動処理
     for status_condition in status_conditions {
         // 状態変化付与処理
-        let battle_status_condition = create_battle_status_condition(status_condition);
+        let mut battle_status_condition = create_battle_status_condition(status_condition);
+        // 防御状態の場合、使用する武器IDをコマンドの武器IDで上書きする
+        if let StatusConditionPotency::Resistance(ref mut resistance) =
+            battle_status_condition.potency
+        {
+            if let Some(weapon_id) = &attacker_data.conduct.battle_weapon_id {
+                resistance.battle_weapon_id = weapon_id.clone();
+            }
+        }
         // 状態変化付与
         // TODO: 状態変化の重複処理
         target
