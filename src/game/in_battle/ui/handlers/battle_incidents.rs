@@ -113,9 +113,28 @@ pub fn handle_conduct_resolved(
                     if def.is_evaded {
                         log_ev.write(BattleLogEvent("回避した".to_string()));
                     }
-                    if def.is_defended {
-                        log_ev.write(BattleLogEvent("防御した".to_string()));
-                    }
+                    // GuardSuccess インシデントから武器名と消費スタミナを取得
+                    let guard_info = def
+                        .character
+                        .incidents
+                        .iter()
+                        .flat_map(|i| i.concretes.iter())
+                        .find_map(|c| {
+                            if let BattleCharacterIncidentConcrete::GuardSuccess(g) = c {
+                                Some(g)
+                            } else {
+                                None
+                            }
+                        });
+                    if let Some(g) = guard_info {
+                        let cost_str = if g.stamina_consumed > 0 {
+                            format!(" (消費: ST{})", g.stamina_consumed)
+                        } else {
+                            String::new()
+                        };
+                        let msg = format!("{}で攻撃を防いだ {}", g.weapon_name, cost_str);
+                        log_ev.write(BattleLogEvent(msg));
+                    };
 
                     for character_incident in def.character.incidents.iter() {
                         for concrete in character_incident.concretes.iter() {

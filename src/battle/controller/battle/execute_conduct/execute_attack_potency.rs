@@ -43,6 +43,10 @@ pub fn execute_attack_potency(
                     // 防御時のスタミナダメージ
                     // ガードで使用する武器の現状の武器性能でガード強度を取得する
                     let sta_damage = 5 + (break_power / performance.guard_strength.max(1));
+                    // 武器名を借用解放前にクローン
+                    let guard_weapon_name = weapon.weapon.name.clone();
+                    // weapon の借用ここで終了
+
                     let (before_sta, after_sta) = target.stamina.damage(sta_damage);
 
                     // ガード成功時のコンビネーションログ
@@ -50,6 +54,14 @@ pub fn execute_attack_potency(
                         combination_skill
                             .add_current_conduct_result(CombinationConductResult::GuardSuccess);
                     }
+
+                    // ガード成功インシデント（武器名・消費スタミナを保持）
+                    incidents.push(BattleCharacterIncidentConcrete::GuardSuccess(
+                        BattleIncidentGuardSuccess {
+                            weapon_name: guard_weapon_name,
+                            stamina_consumed: sta_damage,
+                        },
+                    ));
 
                     // スタミナダメージのインシデント
                     incidents.push(BattleCharacterIncidentConcrete::DamageStamina(

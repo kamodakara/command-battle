@@ -326,7 +326,6 @@ fn apply_effect_to_target(
         return BattleIncidentConductOutcomeSuccessDefender {
             character: target_incident_character,
             is_evaded: true,
-            is_defended: false,
             is_dead: false,
         };
     }
@@ -353,7 +352,6 @@ fn apply_effect_to_target(
             BattleIncidentConductOutcomeSuccessDefender {
                 character: target_incident_character,
                 is_evaded: false,
-                is_defended: false,
                 is_dead,
             }
         }
@@ -365,7 +363,6 @@ fn apply_effect_to_target(
             BattleIncidentConductOutcomeSuccessDefender {
                 character: target_incident_character,
                 is_evaded: false,
-                is_defended: false,
                 is_dead: false,
             }
         }

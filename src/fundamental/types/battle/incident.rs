@@ -32,9 +32,8 @@ pub struct BattleIncidentConductOutcomeSuccessAttacker {
 }
 pub struct BattleIncidentConductOutcomeSuccessDefender {
     pub character: BattleIncidentCharacter,
-    pub is_evaded: bool,   // 回避したか TODO: 回避した理由
-    pub is_defended: bool, // 防御したか
-    pub is_dead: bool,     // 戦闘不能になったか
+    pub is_evaded: bool, // 回避したか TODO: 回避した理由
+    pub is_dead: bool,   // 戦闘不能になったか
 }
 
 // 戦闘者
@@ -65,6 +64,7 @@ pub enum BattleCharacterIncidentConcrete {
     RecoverSp(BattleIncidentRecoverSp),           // SP回復
     RecoverStamina(BattleIncidentRecoverStamina), // スタミナ回復
     RecoverBreak(BattleIncidentRecoverBreak),     // ブレイク回復
+    GuardSuccess(BattleIncidentGuardSuccess),     // ガード成功
     StatusConditionApplied(BattleIncidentStatusConditionApplied), // 状態変化付与
     StatusConditionRemoved(BattleIncidentStatusConditionRemoved), // 状態変化解除
     StatusAilmentAccumulation(BattleIncidentStatusAilmentAccumulation), // 状態異常値蓄積
@@ -75,6 +75,7 @@ pub enum BattleCharacterIncidentConcrete {
     TranceIncrease(BattleIncidentTranceIncrease), // トランス値上昇
     TranceDecrease(BattleIncidentTranceDecrease), // トランス値減少
     CombinationSkillActivated(BattleIncidentCombinationSkillActivated), // コンビネーション技発動
+                                                  //
 }
 
 // HPダメージ
@@ -125,6 +126,11 @@ pub struct BattleIncidentRecoverBreak {
     pub recover: u32,
     pub before: u32, // 回復前ブレイク
     pub after: u32,  // 回復後ブレイク
+}
+// ガード成功
+pub struct BattleIncidentGuardSuccess {
+    pub weapon_name: String, // ガードに使用した武器名
+    pub stamina_consumed: u32, // 消費スタミナ
 }
 // 状態異常値蓄積
 pub struct BattleIncidentStatusAilmentAccumulation {
