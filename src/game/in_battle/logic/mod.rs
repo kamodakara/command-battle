@@ -15,6 +15,7 @@ impl Plugin for BattleLogicPlugin {
             .add_message::<BattleLogEvent>()
             .add_message::<BattleCombinationEvent>()
             .add_message::<BattleConductResolvedEvent>()
+            .add_message::<BattleTurnEndEvent>()
             .add_message::<EnemyActionPlannedEvent>()
             .add_message::<BattleResultEvent>()
             // イベント登録（UI → Logic）

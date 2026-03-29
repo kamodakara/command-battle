@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use crate::fundamental::{Art, BattleWeaponId, BattleIncidentConduct, BattleIncidentCharacter};
 use std::sync::Arc;
 
+
 // ─── 共有データ型 ─────────────────────────────────────────────────────────────
 
 /// コマンドキューの1エントリ（UIが管理し、Logicに渡す）
@@ -41,6 +42,13 @@ pub struct EnemyActionPlannedEvent {
     pub action_names: Vec<String>,
     /// 行動セットに設定されたヒント文字列
     pub hint: Option<String>,
+}
+
+/// ターン終了処理の結果
+#[derive(Message)]
+pub struct BattleTurnEndEvent {
+    pub incidents: Vec<BattleIncidentCharacter>,
+    pub player_character_id: u32,
 }
 
 /// バトル結果

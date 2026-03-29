@@ -8,6 +8,7 @@ pub fn phase_transition_system(
     mut battle_resource: ResMut<BattleResource>,
     mut planned: ResMut<EnemyPlannedActions>,
     mut enemy_planned_ev: MessageWriter<EnemyActionPlannedEvent>,
+    mut turn_end_ev: MessageWriter<BattleTurnEndEvent>,
 ) {
     match *phase {
         BattlePhase::DecideEnemyConduct => {
@@ -42,7 +43,12 @@ pub fn phase_transition_system(
             *phase = BattlePhase::AwaitCommand;
         }
         BattlePhase::TurnEnd => {
-            battle_resource.0.turn_end();
+            let player_id = battle_resource.0.player.character_id;
+            let incidents = battle_resource.0.turn_end();
+            turn_end_ev.write(BattleTurnEndEvent {
+                incidents,
+                player_character_id: player_id,
+            });
             *phase = BattlePhase::DecideEnemyConduct;
         }
         _ => {}

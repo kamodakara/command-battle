@@ -185,3 +185,69 @@ pub fn handle_conduct_resolved(
         }
     }
 }
+
+pub fn handle_turn_end_incidents(
+    mut events: MessageReader<BattleTurnEndEvent>,
+    mut log_ev: MessageWriter<BattleLogEvent>,
+) {
+    for event in events.read() {
+        let player_id = event.player_character_id;
+        for character_incident in &event.incidents {
+            let who = if character_incident.character_id == player_id {
+                "プレイヤー"
+            } else {
+                "敵"
+            };
+            for incident in &character_incident.incidents {
+                for concrete in &incident.concretes {
+                    match concrete {
+                        BattleCharacterIncidentConcrete::RecoverStamina(r) => {
+                            if r.recover > 0 {
+                                log_ev.write(BattleLogEvent(format!(
+                                    "{}のスタミナが{}回復 ({} → {})",
+                                    who, r.recover, r.before, r.after
+                                )));
+                            }
+                        }
+                        BattleCharacterIncidentConcrete::StatusConditionRemoved(s) => {
+                            let condition_name = match &s.status_condition.potency {
+                                StatusConditionPotency::Resistance(_) => "防御",
+                                StatusConditionPotency::Evasion => "回避",
+                                StatusConditionPotency::Airborne => "空中",
+                                StatusConditionPotency::Floating => "浮遊",
+                                StatusConditionPotency::Melee => "近距離",
+                                StatusConditionPotency::Ranged => "遠距離",
+                            };
+                            log_ev.write(BattleLogEvent(format!(
+                                "{}の{}状態が解除された",
+                                who, condition_name
+                            )));
+                        }
+                        BattleCharacterIncidentConcrete::StatusAilmentRemoved(s) => {
+                            let ailment_name = status_ailment_name(&s.status_ailment);
+                            log_ev.write(BattleLogEvent(format!(
+                                "{}の{}が回復した",
+                                who, ailment_name
+                            )));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn status_ailment_name(ailment: &StatusAilment) -> &'static str {
+    match ailment {
+        StatusAilment::Poison => "毒",
+        StatusAilment::Sleep => "眠気",
+        StatusAilment::Chill => "寒気",
+        StatusAilment::Bleed => "出血",
+        StatusAilment::Burn => "火傷",
+        StatusAilment::Paralysis => "麻痺",
+        StatusAilment::Fear => "恐怖",
+        StatusAilment::Rage => "激昂",
+        StatusAilment::Breaking => "ブレイク",
+    }
+}

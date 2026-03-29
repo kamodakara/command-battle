@@ -18,6 +18,7 @@ impl Plugin for BattleUiPlugin {
                 (
                     handlers::battle_incidents::handle_combination_resolved,
                     handlers::battle_incidents::handle_conduct_resolved,
+                    handlers::battle_incidents::handle_turn_end_incidents,
                 )
                     .run_if(battle_state.clone()),
             )
