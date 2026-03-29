@@ -266,8 +266,9 @@ fn recover_ailment_status(
             ));
         }
     } else {
+
         // 2ターン状態異常値の蓄積がない場合に回復
-        if status.no_accumulation_turns >= 2 {
+        if status.no_accumulation_turns >= 1 {
             let recover_amount = status.recovery_amount;
             let (before_accumulation, after_accumulation) =
                 status.recover_accumulation(recover_amount);
