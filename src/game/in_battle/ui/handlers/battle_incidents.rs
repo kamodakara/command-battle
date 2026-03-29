@@ -223,6 +223,13 @@ pub fn handle_turn_end_incidents(
                                 who, condition_name
                             )));
                         }
+                        BattleCharacterIncidentConcrete::StatusAilmentRecovery(s) => {
+                            let ailment_name = status_ailment_name(&s.status_ailment);
+                            log_ev.write(BattleLogEvent(format!(
+                                "{}の{}蓄積値が回復 ({} → {})",
+                                who, ailment_name, s.before_accumulation, s.after_accumulation
+                            )));
+                        }
                         BattleCharacterIncidentConcrete::StatusAilmentRemoved(s) => {
                             let ailment_name = status_ailment_name(&s.status_ailment);
                             log_ev.write(BattleLogEvent(format!(
