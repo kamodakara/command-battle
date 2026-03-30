@@ -75,7 +75,7 @@ pub fn player_standard_arts() -> Vec<Arc<Art>> {
         Arc::new(Art {
             name: "防御".to_string(),
             sp_cost: 0,
-            stamina_cost: 5,
+            stamina_cost: 0,
             perks: vec![ArtPerk::Guard],
             requirement: ArtRequirement {
                 strength: 0,
@@ -143,17 +143,66 @@ pub fn player_standard_arts() -> Vec<Arc<Art>> {
                         chaos: 0,
                     },
                     weapon_attack_power_scaling: AttackPowerScaling {
-                        slash: 1.0,
-                        strike: 1.0,
-                        thrust: 1.0,
-                        impact: 1.0,
-                        magic: 1.0,
-                        fire: 1.0,
-                        lightning: 1.0,
-                        chaos: 1.0,
+                        slash: 0.7,
+                        strike: 0.7,
+                        thrust: 0.7,
+                        impact: 0.7,
+                        magic: 0.7,
+                        fire: 0.7,
+                        lightning: 0.7,
+                        chaos: 0.7,
                     },
                     break_power: 10,
-                    weapon_break_power_scaling: 0.0,
+                    weapon_break_power_scaling: 0.5,
+                }),
+            },
+            rank2: None,
+            rank3: None,
+        }),
+        // 強攻撃
+        Arc::new(Art {
+            name: "強攻撃".to_string(),
+            sp_cost: 0,
+            stamina_cost: 20,
+            perks: vec![ArtPerk::Melee],
+            requirement: ArtRequirement {
+                strength: 0,
+                dexterity: 0,
+                intelligence: 0,
+                faith: 0,
+                arcane: 0,
+                agility: 0,
+            },
+            art_type: ArtType::Skill,
+            usable_weapon: ArtUsableWeapon::All,
+            always_hits: false,
+            priority: 0,
+            rank1: ArtRank {
+                threshold: 0,
+                target: ArtTarget::Single,
+                potency: ArtPotency::Attack(ArtPotencyAttack {
+                    attack_power: AttackPower {
+                        slash: 0,
+                        strike: 0,
+                        thrust: 0,
+                        impact: 0,
+                        magic: 0,
+                        fire: 0,
+                        lightning: 0,
+                        chaos: 0,
+                    },
+                    weapon_attack_power_scaling: AttackPowerScaling {
+                        slash: 1.3,
+                        strike: 1.3,
+                        thrust: 1.3,
+                        impact: 1.3,
+                        magic: 1.3,
+                        fire: 1.3,
+                        lightning: 1.3,
+                        chaos: 1.3,
+                    },
+                    break_power: 50,
+                    weapon_break_power_scaling: 1.5,
                 }),
             },
             rank2: None,
@@ -413,7 +462,7 @@ pub fn create_battle_from_preparation(
             faith: 15,
             arcane: 15,
         },
-        stats: EnemyStats { hp: 1000, sp: 30 },
+        stats: EnemyStats { hp: 1700, sp: 30 },
         equipment: Equipment {
             weapon1: None,
             weapon2: None,
@@ -504,8 +553,8 @@ pub fn create_battle_from_preparation(
                     lightning: 0.0,
                     chaos: 0.0,
                 },
-                break_power: 30,
-                weapon_break_power_scaling: 1.0,
+                break_power: 20,
+                weapon_break_power_scaling: 0.5,
             }),
         },
         Some(BattleWeaponId(0)),
@@ -572,7 +621,7 @@ pub fn create_battle_from_preparation(
                     lightning: 0.0,
                     chaos: 0.0,
                 },
-                break_power: 50,
+                break_power: 150,
                 weapon_break_power_scaling: 3.0,
             }),
         },
@@ -606,7 +655,7 @@ pub fn create_battle_from_preparation(
                     lightning: 0.0,
                     chaos: 0.0,
                 },
-                break_power: 50,
+                break_power: 150,
                 weapon_break_power_scaling: 3.0,
             }),
         },
@@ -926,7 +975,7 @@ pub fn create_battle_from_preparation(
                         },
                         attack_power: WeaponAttackPower {
                             base: AttackPower {
-                                slash: 500,
+                                slash: 700,
                                 strike: 0,
                                 thrust: 0,
                                 impact: 0,
@@ -993,7 +1042,7 @@ pub fn create_battle_from_preparation(
                         attack_power: WeaponAttackPower {
                             base: AttackPower {
                                 slash: 0,
-                                strike: 400,
+                                strike: 800,
                                 thrust: 0,
                                 impact: 0,
                                 magic: 0,
@@ -1019,7 +1068,7 @@ pub fn create_battle_from_preparation(
                         break_power: WeaponBreakPower {
                             base_power: 30,
                             scaling: AbilityScaling {
-                                strength: 3.0,
+                                strength: 5.0,
                                 dexterity: 0.0,
                                 intelligence: 0.0,
                                 faith: 0.0,
@@ -1178,36 +1227,45 @@ pub fn create_battle_from_preparation(
                     root: BehaviorNode::WeightedRandom(vec![
                         WeightedChoice {
                             weight: 10,
-                            node: BehaviorNode::Fixed(ActionSet::new(
-                                "ひっかき（2連）",
-                                [
-                                    enemy_command_wait.id,
-                                    enemy_command_scratch2.id,
-                                    enemy_command_scratch.id,
-                                ],
-                            )),
+                            node: BehaviorNode::Fixed(
+                                ActionSet::new(
+                                    "ひっかき（2連）",
+                                    [
+                                        enemy_command_wait.id,
+                                        enemy_command_scratch2.id,
+                                        enemy_command_scratch.id,
+                                    ],
+                                )
+                                .with_hint("左前脚を振り上げる"),
+                            ),
                         },
                         WeightedChoice {
                             weight: 10,
-                            node: BehaviorNode::Fixed(ActionSet::new(
-                                "ひっかき（2連）",
-                                [
-                                    enemy_command_scratch2.id,
-                                    enemy_command_scratch.id,
-                                    enemy_command_wait.id,
-                                ],
-                            )),
+                            node: BehaviorNode::Fixed(
+                                ActionSet::new(
+                                    "ひっかき（2連）",
+                                    [
+                                        enemy_command_scratch2.id,
+                                        enemy_command_scratch.id,
+                                        enemy_command_wait.id,
+                                    ],
+                                )
+                                .with_hint("左前脚を振り上げる"),
+                            ),
                         },
                         WeightedChoice {
                             weight: 10,
-                            node: BehaviorNode::Fixed(ActionSet::new(
-                                "ひっかきコンボ",
-                                [
-                                    enemy_command_scratch2.id,
-                                    enemy_command_scratch.id,
-                                    enemy_command_crush.id,
-                                ],
-                            )),
+                            node: BehaviorNode::Fixed(
+                                ActionSet::new(
+                                    "ひっかきコンボ",
+                                    [
+                                        enemy_command_scratch2.id,
+                                        enemy_command_scratch.id,
+                                        enemy_command_crush.id,
+                                    ],
+                                )
+                                .with_hint("左前脚を振り上げる"),
+                            ),
                         },
                         WeightedChoice {
                             weight: 20,
@@ -1224,7 +1282,7 @@ pub fn create_battle_from_preparation(
                             ),
                         },
                         WeightedChoice {
-                            weight: 10,
+                            weight: 5,
                             node: BehaviorNode::Fixed(
                                 ActionSet::new(
                                     "尾撃（単）1",
@@ -1238,7 +1296,7 @@ pub fn create_battle_from_preparation(
                             ),
                         },
                         WeightedChoice {
-                            weight: 10,
+                            weight: 5,
                             node: BehaviorNode::Fixed(
                                 ActionSet::new(
                                     "尾撃（単）2",
@@ -1252,7 +1310,7 @@ pub fn create_battle_from_preparation(
                             ),
                         },
                         WeightedChoice {
-                            weight: 10,
+                            weight: 20,
                             node: BehaviorNode::Fixed(
                                 ActionSet::new(
                                     "尾撃（2連）",

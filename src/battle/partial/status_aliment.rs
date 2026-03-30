@@ -128,9 +128,9 @@ impl StatusAilment {
             StatusAilment::Breaking => vec![
                 // 行動不能
                 BattleStatusAilmentOngoingEffect::UnableToAct,
-                // 被ダメージ3倍
+                // 被ダメージ2倍
                 BattleStatusAilmentOngoingEffect::ReceiveDamageModifier(
-                    EffectReceiveDamageModifier { modifier: 3.0 },
+                    EffectReceiveDamageModifier { modifier: 2.0 },
                 ),
             ],
         }

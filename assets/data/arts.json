@@ -6,7 +6,14 @@
       "sp_cost": 8,
       "stamina_cost": 40,
       "perks": ["Melee"],
-      "requirement": { "strength": 15, "dexterity": 10, "intelligence": 0, "faith": 0, "arcane": 0, "agility": 0 },
+      "requirement": {
+        "strength": 15,
+        "dexterity": 10,
+        "intelligence": 0,
+        "faith": 0,
+        "arcane": 0,
+        "agility": 0
+      },
       "art_type": "Skill",
       "usable_weapon": { "Specific": ["StraightSword", "Greatsword", "Staff"] },
       "always_hits": false,
@@ -16,8 +23,26 @@
         "target": "Single",
         "potency": {
           "Attack": {
-            "attack_power": { "slash": 50, "strike": 50, "thrust": 0, "impact": 0, "magic": 0, "fire": 0, "lightning": 0, "chaos": 0 },
-            "weapon_attack_power_scaling": { "slash": 1.5, "strike": 1.5, "thrust": 0.0, "impact": 0.0, "magic": 1.0, "fire": 1.0, "lightning": 1.0, "chaos": 1.0 },
+            "attack_power": {
+              "slash": 70,
+              "strike": 70,
+              "thrust": 0,
+              "impact": 0,
+              "magic": 0,
+              "fire": 0,
+              "lightning": 0,
+              "chaos": 0
+            },
+            "weapon_attack_power_scaling": {
+              "slash": 2.5,
+              "strike": 2.5,
+              "thrust": 0.0,
+              "impact": 0.0,
+              "magic": 1.0,
+              "fire": 1.0,
+              "lightning": 1.0,
+              "chaos": 1.0
+            },
             "break_power": 80,
             "weapon_break_power_scaling": 2.0
           }
@@ -34,7 +59,14 @@
       "sp_cost": 40,
       "stamina_cost": 30,
       "perks": [],
-      "requirement": { "strength": 15, "dexterity": 15, "intelligence": 0, "faith": 20, "arcane": 0, "agility": 0 },
+      "requirement": {
+        "strength": 15,
+        "dexterity": 15,
+        "intelligence": 0,
+        "faith": 20,
+        "arcane": 0,
+        "agility": 0
+      },
       "art_type": "Skill",
       "usable_weapon": { "Specific": ["StraightSword", "Greatsword"] },
       "always_hits": false,
@@ -44,8 +76,26 @@
         "target": "Single",
         "potency": {
           "Attack": {
-            "attack_power": { "slash": 100, "strike": 50, "thrust": 0, "impact": 0, "magic": 0, "fire": 0, "lightning": 150, "chaos": 0 },
-            "weapon_attack_power_scaling": { "slash": 2.0, "strike": 1.0, "thrust": 1.0, "impact": 1.0, "magic": 1.0, "fire": 0.0, "lightning": 2.0, "chaos": 0.0 },
+            "attack_power": {
+              "slash": 100,
+              "strike": 50,
+              "thrust": 0,
+              "impact": 0,
+              "magic": 0,
+              "fire": 0,
+              "lightning": 150,
+              "chaos": 0
+            },
+            "weapon_attack_power_scaling": {
+              "slash": 2.0,
+              "strike": 1.0,
+              "thrust": 1.0,
+              "impact": 1.0,
+              "magic": 1.0,
+              "fire": 0.0,
+              "lightning": 2.0,
+              "chaos": 0.0
+            },
             "break_power": 100,
             "weapon_break_power_scaling": 3.0
           }
@@ -62,7 +112,14 @@
       "sp_cost": 25,
       "stamina_cost": 10,
       "perks": ["Ranged"],
-      "requirement": { "strength": 0, "dexterity": 0, "intelligence": 15, "faith": 0, "arcane": 0, "agility": 0 },
+      "requirement": {
+        "strength": 0,
+        "dexterity": 0,
+        "intelligence": 15,
+        "faith": 0,
+        "arcane": 0,
+        "agility": 0
+      },
       "art_type": "Sorcery",
       "usable_weapon": "All",
       "always_hits": false,
@@ -72,8 +129,26 @@
         "target": "Single",
         "potency": {
           "Attack": {
-            "attack_power": { "slash": 0, "strike": 0, "thrust": 100, "impact": 0, "magic": 150, "fire": 0, "lightning": 0, "chaos": 0 },
-            "weapon_attack_power_scaling": { "slash": 0.0, "strike": 0.0, "thrust": 0.0, "impact": 0.0, "magic": 0.0, "fire": 0.0, "lightning": 0.0, "chaos": 0.0 },
+            "attack_power": {
+              "slash": 0,
+              "strike": 0,
+              "thrust": 100,
+              "impact": 0,
+              "magic": 150,
+              "fire": 0,
+              "lightning": 0,
+              "chaos": 0
+            },
+            "weapon_attack_power_scaling": {
+              "slash": 0.0,
+              "strike": 0.0,
+              "thrust": 0.0,
+              "impact": 0.0,
+              "magic": 0.0,
+              "fire": 0.0,
+              "lightning": 0.0,
+              "chaos": 0.0
+            },
             "break_power": 50,
             "weapon_break_power_scaling": 0.0
           }
@@ -84,8 +159,26 @@
         "target": "Single",
         "potency": {
           "Attack": {
-            "attack_power": { "slash": 0, "strike": 0, "thrust": 150, "impact": 0, "magic": 350, "fire": 0, "lightning": 0, "chaos": 0 },
-            "weapon_attack_power_scaling": { "slash": 0.0, "strike": 0.0, "thrust": 0.0, "impact": 0.0, "magic": 0.0, "fire": 0.0, "lightning": 0.0, "chaos": 0.0 },
+            "attack_power": {
+              "slash": 0,
+              "strike": 0,
+              "thrust": 150,
+              "impact": 0,
+              "magic": 350,
+              "fire": 0,
+              "lightning": 0,
+              "chaos": 0
+            },
+            "weapon_attack_power_scaling": {
+              "slash": 0.0,
+              "strike": 0.0,
+              "thrust": 0.0,
+              "impact": 0.0,
+              "magic": 0.0,
+              "fire": 0.0,
+              "lightning": 0.0,
+              "chaos": 0.0
+            },
             "break_power": 100,
             "weapon_break_power_scaling": 0.0
           }
@@ -96,8 +189,26 @@
         "target": "Single",
         "potency": {
           "Attack": {
-            "attack_power": { "slash": 0, "strike": 0, "thrust": 400, "impact": 0, "magic": 500, "fire": 0, "lightning": 0, "chaos": 0 },
-            "weapon_attack_power_scaling": { "slash": 0.0, "strike": 0.0, "thrust": 0.0, "impact": 0.0, "magic": 0.0, "fire": 0.0, "lightning": 0.0, "chaos": 0.0 },
+            "attack_power": {
+              "slash": 0,
+              "strike": 0,
+              "thrust": 400,
+              "impact": 0,
+              "magic": 500,
+              "fire": 0,
+              "lightning": 0,
+              "chaos": 0
+            },
+            "weapon_attack_power_scaling": {
+              "slash": 0.0,
+              "strike": 0.0,
+              "thrust": 0.0,
+              "impact": 0.0,
+              "magic": 0.0,
+              "fire": 0.0,
+              "lightning": 0.0,
+              "chaos": 0.0
+            },
             "break_power": 200,
             "weapon_break_power_scaling": 0.0
           }
@@ -112,7 +223,14 @@
       "sp_cost": 55,
       "stamina_cost": 30,
       "perks": ["Ranged"],
-      "requirement": { "strength": 0, "dexterity": 0, "intelligence": 15, "faith": 18, "arcane": 0, "agility": 0 },
+      "requirement": {
+        "strength": 0,
+        "dexterity": 0,
+        "intelligence": 15,
+        "faith": 18,
+        "arcane": 0,
+        "agility": 0
+      },
       "art_type": "Sorcery",
       "usable_weapon": "All",
       "always_hits": false,
@@ -122,8 +240,26 @@
         "target": "Single",
         "potency": {
           "Attack": {
-            "attack_power": { "slash": 0, "strike": 0, "thrust": 0, "impact": 0, "magic": 0, "fire": 0, "lightning": 300, "chaos": 0 },
-            "weapon_attack_power_scaling": { "slash": 0.0, "strike": 0.0, "thrust": 0.0, "impact": 0.0, "magic": 0.0, "fire": 0.0, "lightning": 0.0, "chaos": 0.0 },
+            "attack_power": {
+              "slash": 0,
+              "strike": 0,
+              "thrust": 0,
+              "impact": 0,
+              "magic": 0,
+              "fire": 0,
+              "lightning": 300,
+              "chaos": 0
+            },
+            "weapon_attack_power_scaling": {
+              "slash": 0.0,
+              "strike": 0.0,
+              "thrust": 0.0,
+              "impact": 0.0,
+              "magic": 0.0,
+              "fire": 0.0,
+              "lightning": 0.0,
+              "chaos": 0.0
+            },
             "break_power": 100,
             "weapon_break_power_scaling": 0.0
           }
@@ -134,8 +270,26 @@
         "target": "Single",
         "potency": {
           "Attack": {
-            "attack_power": { "slash": 0, "strike": 0, "thrust": 0, "impact": 0, "magic": 0, "fire": 0, "lightning": 500, "chaos": 0 },
-            "weapon_attack_power_scaling": { "slash": 0.0, "strike": 0.0, "thrust": 0.0, "impact": 0.0, "magic": 0.0, "fire": 0.0, "lightning": 0.0, "chaos": 0.0 },
+            "attack_power": {
+              "slash": 0,
+              "strike": 0,
+              "thrust": 0,
+              "impact": 0,
+              "magic": 0,
+              "fire": 0,
+              "lightning": 500,
+              "chaos": 0
+            },
+            "weapon_attack_power_scaling": {
+              "slash": 0.0,
+              "strike": 0.0,
+              "thrust": 0.0,
+              "impact": 0.0,
+              "magic": 0.0,
+              "fire": 0.0,
+              "lightning": 0.0,
+              "chaos": 0.0
+            },
             "break_power": 150,
             "weapon_break_power_scaling": 0.0
           }
@@ -146,8 +300,26 @@
         "target": "Single",
         "potency": {
           "Attack": {
-            "attack_power": { "slash": 0, "strike": 0, "thrust": 0, "impact": 0, "magic": 0, "fire": 0, "lightning": 700, "chaos": 0 },
-            "weapon_attack_power_scaling": { "slash": 0.0, "strike": 0.0, "thrust": 0.0, "impact": 0.0, "magic": 0.0, "fire": 0.0, "lightning": 0.0, "chaos": 0.0 },
+            "attack_power": {
+              "slash": 0,
+              "strike": 0,
+              "thrust": 0,
+              "impact": 0,
+              "magic": 0,
+              "fire": 0,
+              "lightning": 700,
+              "chaos": 0
+            },
+            "weapon_attack_power_scaling": {
+              "slash": 0.0,
+              "strike": 0.0,
+              "thrust": 0.0,
+              "impact": 0.0,
+              "magic": 0.0,
+              "fire": 0.0,
+              "lightning": 0.0,
+              "chaos": 0.0
+            },
             "break_power": 300,
             "weapon_break_power_scaling": 0.0
           }
@@ -162,7 +334,14 @@
       "sp_cost": 30,
       "stamina_cost": 40,
       "perks": ["Melee"],
-      "requirement": { "strength": 20, "dexterity": 8, "intelligence": 0, "faith": 0, "arcane": 0, "agility": 0 },
+      "requirement": {
+        "strength": 20,
+        "dexterity": 8,
+        "intelligence": 0,
+        "faith": 0,
+        "arcane": 0,
+        "agility": 0
+      },
       "art_type": "Skill",
       "usable_weapon": { "Specific": ["Greatsword", "Axe"] },
       "always_hits": true,
@@ -172,8 +351,26 @@
         "target": "Single",
         "potency": {
           "Attack": {
-            "attack_power": { "slash": 250, "strike": 100, "thrust": 0, "impact": 50, "magic": 0, "fire": 0, "lightning": 0, "chaos": 0 },
-            "weapon_attack_power_scaling": { "slash": 2.0, "strike": 1.5, "thrust": 0.0, "impact": 1.0, "magic": 0.0, "fire": 0.0, "lightning": 0.0, "chaos": 0.0 },
+            "attack_power": {
+              "slash": 250,
+              "strike": 100,
+              "thrust": 0,
+              "impact": 50,
+              "magic": 0,
+              "fire": 0,
+              "lightning": 0,
+              "chaos": 0
+            },
+            "weapon_attack_power_scaling": {
+              "slash": 2.0,
+              "strike": 1.5,
+              "thrust": 0.0,
+              "impact": 1.0,
+              "magic": 0.0,
+              "fire": 0.0,
+              "lightning": 0.0,
+              "chaos": 0.0
+            },
             "break_power": 50,
             "weapon_break_power_scaling": 1.5
           }
@@ -190,7 +387,14 @@
       "sp_cost": 25,
       "stamina_cost": 10,
       "perks": ["Ranged", "AtFeet"],
-      "requirement": { "strength": 0, "dexterity": 0, "intelligence": 12, "faith": 0, "arcane": 0, "agility": 0 },
+      "requirement": {
+        "strength": 0,
+        "dexterity": 0,
+        "intelligence": 12,
+        "faith": 0,
+        "arcane": 0,
+        "agility": 0
+      },
       "art_type": "Sorcery",
       "usable_weapon": "All",
       "always_hits": false,
@@ -227,7 +431,14 @@
       "sp_cost": 0,
       "stamina_cost": 15,
       "perks": [],
-      "requirement": { "strength": 0, "dexterity": 0, "intelligence": 0, "faith": 0, "arcane": 0, "agility": 10 },
+      "requirement": {
+        "strength": 0,
+        "dexterity": 0,
+        "intelligence": 0,
+        "faith": 0,
+        "arcane": 0,
+        "agility": 10
+      },
       "art_type": "Basic",
       "usable_weapon": "All",
       "always_hits": true,
@@ -259,7 +470,14 @@
       "sp_cost": 0,
       "stamina_cost": 25,
       "perks": [],
-      "requirement": { "strength": 0, "dexterity": 0, "intelligence": 0, "faith": 0, "arcane": 0, "agility": 0 },
+      "requirement": {
+        "strength": 0,
+        "dexterity": 0,
+        "intelligence": 0,
+        "faith": 0,
+        "arcane": 0,
+        "agility": 0
+      },
       "art_type": "Basic",
       "usable_weapon": "All",
       "always_hits": true,
@@ -286,7 +504,14 @@
       "sp_cost": 0,
       "stamina_cost": 5,
       "perks": [],
-      "requirement": { "strength": 0, "dexterity": 0, "intelligence": 0, "faith": 0, "arcane": 0, "agility": 10 },
+      "requirement": {
+        "strength": 0,
+        "dexterity": 0,
+        "intelligence": 0,
+        "faith": 0,
+        "arcane": 0,
+        "agility": 10
+      },
       "art_type": "Basic",
       "usable_weapon": "All",
       "always_hits": true,
@@ -318,7 +543,14 @@
       "sp_cost": 0,
       "stamina_cost": 5,
       "perks": [],
-      "requirement": { "strength": 0, "dexterity": 0, "intelligence": 0, "faith": 0, "arcane": 0, "agility": 10 },
+      "requirement": {
+        "strength": 0,
+        "dexterity": 0,
+        "intelligence": 0,
+        "faith": 0,
+        "arcane": 0,
+        "agility": 10
+      },
       "art_type": "Basic",
       "usable_weapon": "All",
       "always_hits": true,

@@ -16,8 +16,8 @@
       "attack_power": {
         "base": {
           "slash": 100,
-          "strike": 50,
-          "thrust": 100,
+          "strike": 70,
+          "thrust": 80,
           "impact": 0,
           "magic": 0,
           "fire": 0,
@@ -25,28 +25,104 @@
           "chaos": 0
         },
         "ability_scaling": {
-          "slash":     { "strength": 3.0, "dexterity": 3.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "strike":    { "strength": 3.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "thrust":    { "strength": 3.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "impact":    { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "magic":     { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "fire":      { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "lightning": { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "chaos":     { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 }
+          "slash": {
+            "strength": 3.0,
+            "dexterity": 3.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "strike": {
+            "strength": 3.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "thrust": {
+            "strength": 3.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "impact": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "magic": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "fire": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "lightning": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "chaos": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          }
         }
       },
       "sorcery_power": {
         "base": 0,
-        "scaling": { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 }
+        "scaling": {
+          "strength": 0.0,
+          "dexterity": 0.0,
+          "intelligence": 0.0,
+          "faith": 0.0,
+          "arcane": 0.0,
+          "agility": 0.0
+        }
       },
       "break_power": {
         "base_power": 20,
-        "scaling": { "strength": 2.0, "dexterity": 2.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 }
+        "scaling": {
+          "strength": 2.0,
+          "dexterity": 2.0,
+          "intelligence": 0.0,
+          "faith": 0.0,
+          "arcane": 0.0,
+          "agility": 0.0
+        }
       },
       "guard": {
         "cut_rate": {
-          "slash": 0.4, "strike": 0.6, "thrust": 0.7, "impact": 0.7,
-          "magic": 0.9, "fire": 0.9, "lightning": 0.8, "chaos": 0.9
+          "slash": 0.6,
+          "strike": 0.4,
+          "thrust": 0.3,
+          "impact": 0.3,
+          "magic": 0.1,
+          "fire": 0.1,
+          "lightning": 0.2,
+          "chaos": 0.1
         },
         "guard_strength": 30
       }
@@ -78,28 +154,104 @@
           "chaos": 0
         },
         "ability_scaling": {
-          "slash":     { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "strike":    { "strength": 3.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "thrust":    { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "impact":    { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "magic":     { "strength": 0.0, "dexterity": 0.0, "intelligence": 5.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "fire":      { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "lightning": { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "chaos":     { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 }
+          "slash": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "strike": {
+            "strength": 3.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "thrust": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "impact": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "magic": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 5.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "fire": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "lightning": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "chaos": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          }
         }
       },
       "sorcery_power": {
         "base": 30,
-        "scaling": { "strength": 0.0, "dexterity": 0.0, "intelligence": 1.0, "faith": 0.5, "arcane": 0.0, "agility": 0.0 }
+        "scaling": {
+          "strength": 0.0,
+          "dexterity": 0.0,
+          "intelligence": 1.0,
+          "faith": 0.5,
+          "arcane": 0.0,
+          "agility": 0.0
+        }
       },
       "break_power": {
         "base_power": 10,
-        "scaling": { "strength": 2.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 }
+        "scaling": {
+          "strength": 2.0,
+          "dexterity": 0.0,
+          "intelligence": 0.0,
+          "faith": 0.0,
+          "arcane": 0.0,
+          "agility": 0.0
+        }
       },
       "guard": {
         "cut_rate": {
-          "slash": 0.8, "strike": 0.8, "thrust": 0.9, "impact": 0.9,
-          "magic": 0.5, "fire": 0.7, "lightning": 0.6, "chaos": 0.5
+          "slash": 0.2,
+          "strike": 0.2,
+          "thrust": 0.1,
+          "impact": 0.1,
+          "magic": 0.5,
+          "fire": 0.3,
+          "lightning": 0.4,
+          "chaos": 0.5
         },
         "guard_strength": 30
       }
@@ -131,28 +283,104 @@
           "chaos": 0
         },
         "ability_scaling": {
-          "slash":     { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "strike":    { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "thrust":    { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "impact":    { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "magic":     { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "fire":      { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "lightning": { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 },
-          "chaos":     { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 }
+          "slash": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "strike": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "thrust": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "impact": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "magic": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "fire": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "lightning": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          },
+          "chaos": {
+            "strength": 0.0,
+            "dexterity": 0.0,
+            "intelligence": 0.0,
+            "faith": 0.0,
+            "arcane": 0.0,
+            "agility": 0.0
+          }
         }
       },
       "sorcery_power": {
         "base": 0,
-        "scaling": { "strength": 0.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 }
+        "scaling": {
+          "strength": 0.0,
+          "dexterity": 0.0,
+          "intelligence": 0.0,
+          "faith": 0.0,
+          "arcane": 0.0,
+          "agility": 0.0
+        }
       },
       "break_power": {
         "base_power": 10,
-        "scaling": { "strength": 1.0, "dexterity": 0.0, "intelligence": 0.0, "faith": 0.0, "arcane": 0.0, "agility": 0.0 }
+        "scaling": {
+          "strength": 1.0,
+          "dexterity": 0.0,
+          "intelligence": 0.0,
+          "faith": 0.0,
+          "arcane": 0.0,
+          "agility": 0.0
+        }
       },
       "guard": {
         "cut_rate": {
-          "slash": 0.2, "strike": 0.2, "thrust": 0.2, "impact": 0.2,
-          "magic": 0.6, "fire": 0.6, "lightning": 0.5, "chaos": 0.5
+          "slash": 0.8,
+          "strike": 0.8,
+          "thrust": 0.8,
+          "impact": 0.8,
+          "magic": 0.4,
+          "fire": 0.4,
+          "lightning": 0.5,
+          "chaos": 0.5
         },
         "guard_strength": 30
       }
