@@ -38,6 +38,8 @@ impl Plugin for BattleUiPlugin {
                 (
                     handlers::action_menu::action_menu_click_system,
                     handlers::input::back_button_system,
+                    renderers::karma_cards::handle_karma_pile_buttons,
+                    renderers::karma_cards::handle_karma_dialog_close,
                 )
                     .run_if(battle_state.clone()),
             )
@@ -51,6 +53,8 @@ impl Plugin for BattleUiPlugin {
                     renderers::combat_log::render_message,
                     renderers::combat_log::render_phase,
                     renderers::karma_cards::render,
+                    renderers::karma_cards::render_karma_pile_counts,
+                    renderers::karma_cards::render_karma_dialog,
                     renderers::damage_popup::render,
                     renderers::skill_effect::render,
                     renderers::turn_action_board::render,

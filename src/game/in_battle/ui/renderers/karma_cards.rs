@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use crate::fundamental::*;
-use super::super::resources::KarmaCardsNeedsRedraw;
+use super::super::resources::{KarmaCardsNeedsRedraw, KarmaDialogState};
 use super::super::super::logic::resources::BattleResource;
 
 // ─── コンポーネント定義 ──────────────────────────────────────────────────────
@@ -8,7 +8,31 @@ use super::super::super::logic::resources::BattleResource;
 #[derive(Component)]
 pub struct UiKarmaCardsContainer;
 
-// ─── 描画システム ────────────────────────────────────────────────────────────
+#[derive(Component)]
+pub struct UiKarmaDeckButton;
+
+#[derive(Component)]
+pub struct UiKarmaDeckCount;
+
+#[derive(Component)]
+pub struct UiKarmaDiscardButton;
+
+#[derive(Component)]
+pub struct UiKarmaDiscardCount;
+
+#[derive(Component)]
+pub struct UiKarmaDialog;
+
+#[derive(Component)]
+pub struct UiKarmaDialogTitle;
+
+#[derive(Component)]
+pub struct UiKarmaDialogContent;
+
+#[derive(Component)]
+pub struct UiKarmaDialogCloseButton;
+
+// ─── フィールドカルマ描画 ─────────────────────────────────────────────────────
 
 pub fn render(
     mut commands: Commands,
@@ -118,7 +142,181 @@ pub fn render(
     }
 }
 
-fn format_karma_effect(effect: &KarmaEffect) -> String {
+// ─── 山札・捨て札 枚数更新 ────────────────────────────────────────────────────
+
+pub fn render_karma_pile_counts(
+    battle_resource: Res<BattleResource>,
+    mut deck_q: Query<
+        &mut Text,
+        (With<UiKarmaDeckCount>, Without<UiKarmaDiscardCount>),
+    >,
+    mut discard_q: Query<
+        &mut Text,
+        (With<UiKarmaDiscardCount>, Without<UiKarmaDeckCount>),
+    >,
+) {
+    let Some(karma) = &battle_resource.0.player.karma else {
+        return;
+    };
+
+    if let Ok(mut text) = deck_q.single_mut() {
+        text.0 = format!("山札: {}枚", karma.draw_pile.len());
+    }
+    if let Ok(mut text) = discard_q.single_mut() {
+        text.0 = format!("捨て札: {}枚", karma.discard_pile.len());
+    }
+}
+
+// ─── ボタン入力処理 ───────────────────────────────────────────────────────────
+
+pub fn handle_karma_pile_buttons(
+    mut dialog_state: ResMut<KarmaDialogState>,
+    deck_q: Query<&Interaction, (Changed<Interaction>, With<UiKarmaDeckButton>)>,
+    discard_q: Query<&Interaction, (Changed<Interaction>, With<UiKarmaDiscardButton>)>,
+) {
+    for interaction in deck_q.iter() {
+        if *interaction == Interaction::Pressed {
+            *dialog_state = KarmaDialogState::DrawPile;
+        }
+    }
+    for interaction in discard_q.iter() {
+        if *interaction == Interaction::Pressed {
+            *dialog_state = KarmaDialogState::DiscardPile;
+        }
+    }
+}
+
+pub fn handle_karma_dialog_close(
+    mut dialog_state: ResMut<KarmaDialogState>,
+    close_q: Query<&Interaction, (Changed<Interaction>, With<UiKarmaDialogCloseButton>)>,
+) {
+    for interaction in close_q.iter() {
+        if *interaction == Interaction::Pressed {
+            *dialog_state = KarmaDialogState::Closed;
+        }
+    }
+}
+
+// ─── ダイアログ描画 ───────────────────────────────────────────────────────────
+
+pub fn render_karma_dialog(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    battle_resource: Res<BattleResource>,
+    dialog_state: Res<KarmaDialogState>,
+    mut dialog_q: Query<&mut Visibility, With<UiKarmaDialog>>,
+    mut title_q: Query<&mut Text, With<UiKarmaDialogTitle>>,
+    content_q: Query<Entity, With<UiKarmaDialogContent>>,
+    children_q: Query<&Children>,
+) {
+    if !dialog_state.is_changed() {
+        return;
+    }
+
+    let Ok(mut dialog_visibility) = dialog_q.single_mut() else {
+        return;
+    };
+
+    if *dialog_state == KarmaDialogState::Closed {
+        *dialog_visibility = Visibility::Hidden;
+        return;
+    }
+
+    *dialog_visibility = Visibility::Visible;
+
+    // タイトル更新
+    if let Ok(mut title) = title_q.single_mut() {
+        title.0 = match *dialog_state {
+            KarmaDialogState::DrawPile => "山札".to_string(),
+            KarmaDialogState::DiscardPile => "捨て札".to_string(),
+            KarmaDialogState::Closed => unreachable!(),
+        };
+    }
+
+    // コンテンツ再構築
+    let Ok(content_entity) = content_q.single() else {
+        return;
+    };
+    if let Ok(children) = children_q.get(content_entity) {
+        for child in children.iter() {
+            commands.entity(child).despawn();
+        }
+    }
+
+    let font: Handle<Font> = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
+    let Some(karma) = &battle_resource.0.player.karma else {
+        return;
+    };
+
+    let cards: &Vec<_> = match *dialog_state {
+        KarmaDialogState::DrawPile => &karma.draw_pile,
+        KarmaDialogState::DiscardPile => &karma.discard_pile,
+        KarmaDialogState::Closed => unreachable!(),
+    };
+
+    if cards.is_empty() {
+        commands.entity(content_entity).with_children(|p| {
+            p.spawn((
+                Text::new("カードなし"),
+                TextFont { font: font.clone(), font_size: 13.0, ..default() },
+                TextColor(Color::from(LinearRgba {
+                    red: 0.6, green: 0.6, blue: 0.6, alpha: 1.0,
+                })),
+            ));
+        });
+        return;
+    }
+
+    for card in cards {
+        let effect_strs: Vec<String> =
+            card.effects.iter().map(|e| format_karma_effect(e)).collect();
+        let effect_text = if effect_strs.is_empty() {
+            "効果なし".to_string()
+        } else {
+            effect_strs.join(", ")
+        };
+        let card_name = card.name.clone();
+
+        commands.entity(content_entity).with_children(|p| {
+            p.spawn((
+                Node {
+                    width: Val::Percent(100.0),
+                    padding: UiRect::axes(Val::Px(8.0), Val::Px(5.0)),
+                    border: UiRect::all(Val::Px(1.0)),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(2.0),
+                    ..default()
+                },
+                BackgroundColor(Color::from(LinearRgba {
+                    red: 0.12, green: 0.10, blue: 0.18, alpha: 1.0,
+                })),
+                BorderColor::all(Color::from(LinearRgba {
+                    red: 0.50, green: 0.40, blue: 0.20, alpha: 1.0,
+                })),
+            ))
+            .with_children(|card_box| {
+                card_box.spawn((
+                    Text::new(card_name),
+                    TextFont { font: font.clone(), font_size: 13.0, ..default() },
+                    TextColor(Color::from(LinearRgba {
+                        red: 1.0, green: 0.90, blue: 0.60, alpha: 1.0,
+                    })),
+                ));
+                card_box.spawn((
+                    Text::new(effect_text),
+                    TextFont { font: font.clone(), font_size: 11.0, ..default() },
+                    TextColor(Color::from(LinearRgba {
+                        red: 0.80, green: 0.80, blue: 0.95, alpha: 1.0,
+                    })),
+                ));
+            });
+        });
+    }
+}
+
+// ─── ヘルパー ─────────────────────────────────────────────────────────────────
+
+pub fn format_karma_effect(effect: &KarmaEffect) -> String {
     match effect {
         KarmaEffect::AttackDamageModifier(m) => {
             format!("与ダメ+{:.0}%", (m.modifier - 1.0) * 100.0)

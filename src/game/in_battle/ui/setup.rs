@@ -6,7 +6,11 @@ use super::renderers::{
     enemy_status::{UiEnemy, UiEnemyHpGaugeFill, UiEnemyBreakGaugeFill, UiEnemyBreakLabel, UiEnemyHintText},
     action_menu::{UiActionMenu, UiActionMenuContainer},
     combat_log::UiMessage,
-    karma_cards::UiKarmaCardsContainer,
+    karma_cards::{
+        UiKarmaCardsContainer, UiKarmaDeckButton, UiKarmaDeckCount,
+        UiKarmaDiscardButton, UiKarmaDiscardCount,
+        UiKarmaDialog, UiKarmaDialogTitle, UiKarmaDialogContent, UiKarmaDialogCloseButton,
+    },
     damage_popup::UiEnemyDamageText,
     turn_action_board::{UiTurnActionBoard, UiActionBoardPlayerText, UiActionBoardEnemyText},
 };
@@ -20,6 +24,7 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(MessageQueue::default());
     commands.insert_resource(EnemyDamagePopup::default());
     commands.insert_resource(KarmaCardsNeedsRedraw(true));
+    commands.insert_resource(KarmaDialogState::default());
     commands.insert_resource(ActionMenuSelection::default());
     commands.insert_resource(ConsecutiveCommands::default());
     commands.insert_resource(TurnActionBoard::default());
@@ -335,10 +340,26 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 });
         });
 
-    // 右上プレイヤーステータス枠
+    // 左上：ステータス＋カルマ（縦積みラッパー）
     commands
         .spawn((
             BattleScreen,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(16.0),
+                top: Val::Px(16.0),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(8.0),
+                align_items: AlignItems::FlexStart,
+                ..default()
+            },
+            ZIndex(10),
+        ))
+        .with_children(|left_col| {
+
+    // ── ステータスパネル
+    left_col
+        .spawn((
             UiPlayerStatus,
             Node {
                 width: Val::Px(280.0),
@@ -347,9 +368,6 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 row_gap: Val::Px(6.0),
                 border: UiRect::all(Val::Px(1.0)),
                 padding: UiRect::all(Val::Px(8.0)),
-                position_type: PositionType::Absolute,
-                left: Val::Px(16.0),
-                top: Val::Px(16.0),
                 ..default()
             },
             BackgroundColor(Color::BLACK),
@@ -472,11 +490,92 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 TextColor(Color::from(LinearRgba { red: 0.70, green: 0.70, blue: 0.90, alpha: 1.0 })),
             ));
 
-            // カルマカード
+        }); // ステータスパネル end
+
+    // ── カルマエリアパネル
+    left_col
+        .spawn((
+            Node {
+                width: Val::Px(280.0),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(4.0),
+                border: UiRect::all(Val::Px(1.0)),
+                padding: UiRect::all(Val::Px(8.0)),
+                ..default()
+            },
+            BackgroundColor(Color::from(LinearRgba { red: 0.05, green: 0.04, blue: 0.08, alpha: 1.0 })),
+            BorderColor::all(Color::from(LinearRgba { red: 0.65, green: 0.50, blue: 0.25, alpha: 1.0 })),
+        ))
+        .with_children(|col| {
+            // ヘッダー行（[カルマ] + 山札/捨て札ボタン）
+            col.spawn((Node {
+                flex_direction: FlexDirection::Row,
+                justify_content: JustifyContent::SpaceBetween,
+                align_items: AlignItems::Center,
+                width: Val::Percent(100.0),
+                ..default()
+            },))
+            .with_children(|row| {
+                row.spawn((
+                    Text::new("[カルマ]"),
+                    TextFont { font: font.clone(), font_size: 14.0, ..default() },
+                    TextColor(Color::from(LinearRgba { red: 0.95, green: 0.80, blue: 0.40, alpha: 1.0 })),
+                ));
+                row.spawn((Node {
+                    flex_direction: FlexDirection::Row,
+                    column_gap: Val::Px(6.0),
+                    align_items: AlignItems::Center,
+                    ..default()
+                },))
+                .with_children(|btns| {
+                    // 山札ボタン
+                    btns.spawn((
+                        UiKarmaDeckButton,
+                        Button,
+                        Node {
+                            padding: UiRect::axes(Val::Px(6.0), Val::Px(2.0)),
+                            border: UiRect::all(Val::Px(1.0)),
+                            ..default()
+                        },
+                        BackgroundColor(Color::from(LinearRgba { red: 0.15, green: 0.12, blue: 0.20, alpha: 1.0 })),
+                        BorderColor::all(Color::from(LinearRgba { red: 0.55, green: 0.45, blue: 0.25, alpha: 1.0 })),
+                    ))
+                    .with_children(|b| {
+                        b.spawn((
+                            UiKarmaDeckCount,
+                            Text::new("山札: 0"),
+                            TextFont { font: font.clone(), font_size: 12.0, ..default() },
+                            TextColor(Color::from(LinearRgba { red: 0.90, green: 0.80, blue: 0.60, alpha: 1.0 })),
+                        ));
+                    });
+                    // 捨て札ボタン
+                    btns.spawn((
+                        UiKarmaDiscardButton,
+                        Button,
+                        Node {
+                            padding: UiRect::axes(Val::Px(6.0), Val::Px(2.0)),
+                            border: UiRect::all(Val::Px(1.0)),
+                            ..default()
+                        },
+                        BackgroundColor(Color::from(LinearRgba { red: 0.15, green: 0.12, blue: 0.20, alpha: 1.0 })),
+                        BorderColor::all(Color::from(LinearRgba { red: 0.55, green: 0.45, blue: 0.25, alpha: 1.0 })),
+                    ))
+                    .with_children(|b| {
+                        b.spawn((
+                            UiKarmaDiscardCount,
+                            Text::new("捨て札: 0"),
+                            TextFont { font: font.clone(), font_size: 12.0, ..default() },
+                            TextColor(Color::from(LinearRgba { red: 0.90, green: 0.80, blue: 0.60, alpha: 1.0 })),
+                        ));
+                    });
+                });
+            });
+
+            // フィールドカルマ
             col.spawn((
-                Node { margin: UiRect::top(Val::Px(8.0)), ..default() },
+                Node { margin: UiRect::top(Val::Px(4.0)), ..default() },
                 Text::new("[フィールドカルマ]"),
-                TextFont { font: font.clone(), font_size: 14.0, ..default() },
+                TextFont { font: font.clone(), font_size: 13.0, ..default() },
                 TextColor(Color::from(LinearRgba { red: 0.95, green: 0.80, blue: 0.40, alpha: 1.0 })),
             ));
             col.spawn((
@@ -485,10 +584,92 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     width: Val::Percent(100.0),
                     flex_direction: FlexDirection::Column,
                     row_gap: Val::Px(4.0),
-                    margin: UiRect::top(Val::Px(4.0)),
                     ..default()
                 },
             ));
+        }); // カルマエリア end
+
+    }); // 左上ラッパー end
+
+    // カルマダイアログ（全画面オーバーレイ）
+    commands
+        .spawn((
+            BattleScreen,
+            UiKarmaDialog,
+            Node {
+                position_type: PositionType::Absolute,
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            BackgroundColor(Color::from(LinearRgba { red: 0.0, green: 0.0, blue: 0.0, alpha: 0.75 })),
+            ZIndex(200),
+            Visibility::Hidden,
+        ))
+        .with_children(|overlay| {
+            overlay
+                .spawn((
+                    Node {
+                        width: Val::Px(420.0),
+                        flex_direction: FlexDirection::Column,
+                        row_gap: Val::Px(8.0),
+                        border: UiRect::all(Val::Px(2.0)),
+                        padding: UiRect::all(Val::Px(16.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::from(LinearRgba { red: 0.06, green: 0.05, blue: 0.10, alpha: 0.98 })),
+                    BorderColor::all(Color::from(LinearRgba { red: 0.70, green: 0.55, blue: 0.30, alpha: 1.0 })),
+                ))
+                .with_children(|dialog| {
+                    // タイトル行（タイトル + 閉じるボタン）
+                    dialog
+                        .spawn((Node {
+                            flex_direction: FlexDirection::Row,
+                            justify_content: JustifyContent::SpaceBetween,
+                            align_items: AlignItems::Center,
+                            width: Val::Percent(100.0),
+                            ..default()
+                        },))
+                        .with_children(|row| {
+                            row.spawn((
+                                UiKarmaDialogTitle,
+                                Text::new(""),
+                                TextFont { font: font.clone(), font_size: 16.0, ..default() },
+                                TextColor(Color::from(LinearRgba { red: 0.95, green: 0.80, blue: 0.40, alpha: 1.0 })),
+                            ));
+                            row.spawn((
+                                UiKarmaDialogCloseButton,
+                                Button,
+                                Node {
+                                    padding: UiRect::axes(Val::Px(10.0), Val::Px(4.0)),
+                                    border: UiRect::all(Val::Px(1.0)),
+                                    ..default()
+                                },
+                                BackgroundColor(Color::from(LinearRgba { red: 0.25, green: 0.15, blue: 0.15, alpha: 1.0 })),
+                                BorderColor::all(Color::from(LinearRgba { red: 0.60, green: 0.30, blue: 0.30, alpha: 1.0 })),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("閉じる"),
+                                    TextFont { font: font.clone(), font_size: 13.0, ..default() },
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                        });
+
+                    // カードリストコンテンツ
+                    dialog.spawn((
+                        UiKarmaDialogContent,
+                        Node {
+                            width: Val::Percent(100.0),
+                            flex_direction: FlexDirection::Column,
+                            row_gap: Val::Px(4.0),
+                            ..default()
+                        },
+                    ));
+                });
         });
 
     // 行動選択メニュー
