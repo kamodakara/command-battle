@@ -98,6 +98,23 @@ pub fn handle_conduct_resolved(
                                     stamina_cost = d.damage;
                                 }
                             }
+                            BattleCharacterIncidentConcrete::StatusAilmentAccumulation(s) => {
+                                let ailment_name = status_ailment_name(&s.status_ailment);
+                                log_ev.write(BattleLogEvent(format!(
+                                    "{}に{}が蓄積した ({} → {})",
+                                    actor,
+                                    ailment_name,
+                                    s.before_accumulation,
+                                    s.after_accumulation
+                                )));
+                            }
+                            BattleCharacterIncidentConcrete::StatusAilmentApplied(s) => {
+                                let ailment_name = status_ailment_name(&s.status_ailment);
+                                log_ev.write(BattleLogEvent(format!(
+                                    "{}に{}が発症した！",
+                                    actor, ailment_name
+                                )));
+                            }
                             _ => {}
                         }
                     }
@@ -174,6 +191,33 @@ pub fn handle_conduct_resolved(
                                     log_ev.write(BattleLogEvent(format!(
                                         "{} のスタミナを{}回復 ({} → {})",
                                         who, r.recover, r.before, r.after
+                                    )));
+                                }
+                                BattleCharacterIncidentConcrete::StatusAilmentAccumulation(s) => {
+                                    let who = if def.character.character_id == enemy_id {
+                                        "敵"
+                                    } else {
+                                        "プレイヤー"
+                                    };
+                                    let ailment_name = status_ailment_name(&s.status_ailment);
+                                    log_ev.write(BattleLogEvent(format!(
+                                        "{}に{}が蓄積した ({} → {})",
+                                        who,
+                                        ailment_name,
+                                        s.before_accumulation,
+                                        s.after_accumulation
+                                    )));
+                                }
+                                BattleCharacterIncidentConcrete::StatusAilmentApplied(s) => {
+                                    let who = if def.character.character_id == enemy_id {
+                                        "敵"
+                                    } else {
+                                        "プレイヤー"
+                                    };
+                                    let ailment_name = status_ailment_name(&s.status_ailment);
+                                    log_ev.write(BattleLogEvent(format!(
+                                        "{}に{}が発症した！",
+                                        who, ailment_name
                                     )));
                                 }
                                 _ => {}
