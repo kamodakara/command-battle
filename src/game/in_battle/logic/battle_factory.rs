@@ -628,7 +628,13 @@ pub fn create_battle_from_preparation(
                 },
                 break_power: 150,
                 weapon_break_power_scaling: 3.0,
-                additional_effects: vec![],
+                additional_effects: vec![AdditionalEffect {
+                    target: AdditionalEffectTarget::AttackTarget,
+                    content: ArtPotencySupport::StatusAilment(ArtPotencySupportStatusAilment {
+                        kind: StatusAilment::Poison,
+                        accumulation: 450,
+                    }),
+                }],
             }),
         },
         Some(BattleWeaponId(0)),
