@@ -16,6 +16,12 @@ pub fn execute_support_potency(
         ),
         // 支援回復
         ArtPotencySupport::Recover(recover) => support_recover(recover, target_data.target),
+        // 状態異常蓄積
+        ArtPotencySupport::StatusAilment(status_ailment) => super::accumulate_status_ailment(
+            target_data.target,
+            &status_ailment.kind,
+            status_ailment.accumulation,
+        ),
     }
 }
 

@@ -178,11 +178,71 @@ pub fn execute_attack_potency(
     // ブレイクダメージ処理
     if target.character_type == BattleCharacterType::Enemy {
         // 敵の場合のみブレイクダメージを与える
-        incidents.extend(accumulate_status_ailment(
+        incidents.extend(super::accumulate_status_ailment(
             target,
             &StatusAilment::Breaking,
             break_power,
         ));
+    }
+
+    // AttackTarget 追加効果
+    for additional_effect in &art_attack.additional_effects {
+        if additional_effect.target == AdditionalEffectTarget::AttackTarget {
+            match &additional_effect.content {
+                ArtPotencySupport::None => {}
+                ArtPotencySupport::StatusCondition(status_condition) => {
+                    for sc in &status_condition.status_conditions {
+                        let battle_sc = super::create_battle_status_condition(sc);
+                        target.status_conditions.push(battle_sc.clone());
+                        incidents.push(BattleCharacterIncidentConcrete::StatusConditionApplied(
+                            BattleIncidentStatusConditionApplied {
+                                status_condition: battle_sc,
+                            },
+                        ));
+                    }
+                }
+                ArtPotencySupport::Recover(recover) => {
+                    for potency in &recover.potencies {
+                        match potency {
+                            SupportRecoverPotency::Hp(hp) => {
+                                let (before, after) = target.hp.recover(hp.hp_recover);
+                                incidents.push(BattleCharacterIncidentConcrete::RecoverHp(
+                                    BattleIncidentRecoverHp::new(hp.hp_recover, before, after),
+                                ));
+                            }
+                            SupportRecoverPotency::Sp(sp) => {
+                                let (before, after) = target.sp.recover(sp.sp_recover);
+                                incidents.push(BattleCharacterIncidentConcrete::RecoverSp(
+                                    BattleIncidentRecoverSp::new(sp.sp_recover, before, after),
+                                ));
+                            }
+                            SupportRecoverPotency::Stamina(sta) => {
+                                if target.character_type == BattleCharacterType::Player {
+                                    let (before, after) =
+                                        target.stamina.recover(sta.stamina_recover);
+                                    incidents.push(
+                                        BattleCharacterIncidentConcrete::RecoverStamina(
+                                            BattleIncidentRecoverStamina::new(
+                                                sta.stamina_recover,
+                                                before,
+                                                after,
+                                            ),
+                                        ),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                ArtPotencySupport::StatusAilment(status_ailment) => {
+                    incidents.extend(super::accumulate_status_ailment(
+                        target,
+                        &status_ailment.kind,
+                        status_ailment.accumulation,
+                    ));
+                }
+            }
+        }
     }
 
     incidents
@@ -199,93 +259,4 @@ fn calc_damage(attack_power: &AttackPower, defender: &DefensePower) -> u32 {
         + (attack_power.lightning as f32 / defender.lightning as f32)
         + (attack_power.chaos as f32 / defender.chaos as f32);
     damage as u32
-}
-
-// 状態異常蓄積
-fn accumulate_status_ailment(
-    target: &mut BattleCharacter,
-    ailment: &StatusAilment,
-    ailment_accumulation: u32, // 蓄積量
-) -> Vec<BattleCharacterIncidentConcrete> {
-    let mut incidents = vec![];
-
-    if ailment == &StatusAilment::Breaking && target.status_ailment.breaking.is_ailment {
-        // ブレイク状態の場合は蓄積しない
-        return incidents;
-    }
-
-    let status = match ailment {
-        StatusAilment::Poison => &mut target.status_ailment.poison,
-        StatusAilment::Sleep => &mut target.status_ailment.sleep,
-        StatusAilment::Chill => &mut target.status_ailment.chill,
-        StatusAilment::Bleed => &mut target.status_ailment.bleed,
-        StatusAilment::Burn => &mut target.status_ailment.burn,
-        StatusAilment::Paralysis => &mut target.status_ailment.paralysis,
-        StatusAilment::Fear => &mut target.status_ailment.fear,
-        StatusAilment::Rage => &mut target.status_ailment.rage,
-        StatusAilment::Breaking => &mut target.status_ailment.breaking,
-    };
-
-    let (before, after) = status.add_accumulation(ailment_accumulation);
-    // 蓄積インシデント
-    incidents.push(BattleCharacterIncidentConcrete::StatusAilmentAccumulation(
-        BattleIncidentStatusAilmentAccumulation {
-            status_ailment: ailment.clone(),
-            accumulation: ailment_accumulation,
-            before_accumulation: before,
-            after_accumulation: after,
-        },
-    ));
-    // 蓄積ターンリセット
-    status.no_accumulation_turns = 0;
-
-    if !status.is_ailment && after == status.max_accumulation {
-        // 状態異常でない場合、蓄積
-        status.is_ailment = true;
-
-        // 効果発動
-        let effects = ailment.on_ailment_effects();
-        for effect in effects.iter() {
-            match effect {
-                BattleStatusAilmentOnAilmentEffect::HpPercentageDamage(effect) => {
-                    // HP割合ダメージ
-                    let damage = (target.hp.max_hp as f32 * effect.percentage) as u32;
-                    let (before_hp, after_hp, is_dead) = target.hp.damage(damage);
-
-                    // HPダメージインシデント
-                    incidents.push(BattleCharacterIncidentConcrete::DamageHp(
-                        BattleIncidentDamageHp::new(damage, before_hp, after_hp),
-                    ));
-                    if is_dead {
-                        // 死亡インシデント
-                        incidents.push(BattleCharacterIncidentConcrete::Death(
-                            BattleIncidentDeath {},
-                        ));
-                    }
-                }
-                BattleStatusAilmentOnAilmentEffect::SpPercentageDamage(effect) => {
-                    // SP割合ダメージ
-                    let damage = (target.sp.max_sp as f32 * effect.percentage) as u32;
-                    let (before_sp, after_sp) = target.sp.damage(damage);
-
-                    // SPダメージインシデント
-                    incidents.push(BattleCharacterIncidentConcrete::DamageSp(
-                        BattleIncidentDamageSp::new(damage, before_sp, after_sp),
-                    ));
-                }
-                _ => {
-                    // その他
-                }
-            }
-        }
-
-        // 状態異常付与インシデント
-        incidents.push(BattleCharacterIncidentConcrete::StatusAilmentApplied(
-            BattleIncidentStatusAilmentApplied {
-                status_ailment: ailment.clone(),
-            },
-        ));
-    }
-
-    incidents
 }

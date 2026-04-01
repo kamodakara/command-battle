@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::*;
 
 // 状態異常
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum StatusAilment {
     Poison, // 毒
     Sleep,  // 眠気

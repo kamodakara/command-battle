@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::common::*;
 use super::equipment::WeaponKind;
-use super::status_ailment::StatusCondition;
+use super::status_ailment::{StatusAilment, StatusCondition};
 
 // 技能
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -85,6 +85,22 @@ pub struct ArtPotencyAttack {
     pub weapon_attack_power_scaling: AttackPowerScaling, // 武器攻撃力補正、技のみ想定
     pub break_power: u32,                                // ブレイク攻撃力
     pub weapon_break_power_scaling: f32,                 // ブレイク攻撃力補正、技のみ想定
+    #[serde(default)]
+    pub additional_effects: Vec<AdditionalEffect>, // 追加効果
+}
+
+// 追加効果の対象
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub enum AdditionalEffectTarget {
+    User,         // アーツ使用者
+    AttackTarget, // 攻撃対象者
+}
+
+// 追加効果
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AdditionalEffect {
+    pub target: AdditionalEffectTarget, // 対象
+    pub content: ArtPotencySupport,     // 効果内容
 }
 
 // 技能支援効果
@@ -93,6 +109,13 @@ pub enum ArtPotencySupport {
     None,                                              // 行動しない
     StatusCondition(ArtPotencySupportStatusCondition), // 状態変化付与
     Recover(ArtPotencySupportRecover),                 // HP回復量
+    StatusAilment(ArtPotencySupportStatusAilment),     // 状態異常蓄積
+}
+// 技能支援効果 状態異常蓄積
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ArtPotencySupportStatusAilment {
+    pub kind: StatusAilment, // 状態異常種別
+    pub accumulation: u32,   // 蓄積量
 }
 // 技能支援効果 状態変化付与
 #[derive(Clone, Debug, Serialize, Deserialize)]
