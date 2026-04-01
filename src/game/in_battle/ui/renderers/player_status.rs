@@ -32,6 +32,14 @@ pub struct UiTranceLevelText;
 #[derive(Component)]
 pub struct UiTranceEffectText;
 
+/// 状態異常ゲージ塗り部分 (index: 0=毒 1=眠気 2=寒気 3=出血 4=火傷 5=麻痺 6=恐怖 7=激昂)
+#[derive(Component)]
+pub struct UiStatusAilmentGaugeFill(pub usize);
+
+/// 状態異常アイテムのコンテナ（表示/非表示切替用）
+#[derive(Component)]
+pub struct UiStatusAilmentContainer(pub usize);
+
 // ─── 描画システム ────────────────────────────────────────────────────────────
 
 pub fn render(
@@ -107,6 +115,8 @@ pub fn render(
         Query<&mut Node, With<UiStaGaugeFill>>,
         Query<&mut Node, With<UiSpGaugeFill>>,
         Query<&mut Node, With<UiTranceGaugeFill>>,
+        Query<(&UiStatusAilmentGaugeFill, &mut Node, &mut BackgroundColor)>,
+        Query<(&UiStatusAilmentContainer, &mut Node)>,
     )>,
 ) {
     let battle = &battle_resource.0;
@@ -180,6 +190,70 @@ pub fn render(
             0.0
         };
         sp_node.width = Val::Percent((ratio * 100.0).round());
+    }
+
+    // 状態異常ゲージ
+    let ailments = [
+        &player.status_ailment.poison,
+        &player.status_ailment.sleep,
+        &player.status_ailment.chill,
+        &player.status_ailment.bleed,
+        &player.status_ailment.burn,
+        &player.status_ailment.paralysis,
+        &player.status_ailment.fear,
+        &player.status_ailment.rage,
+    ];
+
+    // コンテナ表示/非表示（蓄積値0は Display::None でスペースを詰める）
+    for (container, mut node) in gauge_params.p5().iter_mut() {
+        let idx = container.0;
+        if idx >= ailments.len() {
+            continue;
+        }
+        node.display = if ailments[idx].accumulation > 0 {
+            Display::Flex
+        } else {
+            Display::None
+        };
+    }
+
+    // ゲージ幅・色更新
+    for (fill, mut node, mut color) in gauge_params.p4().iter_mut() {
+        let idx = fill.0;
+        if idx >= ailments.len() {
+            continue;
+        }
+        let ailment = ailments[idx];
+        let ratio = if ailment.max_accumulation > 0 {
+            (ailment.accumulation as f32 / ailment.max_accumulation as f32).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        node.width = Val::Percent((ratio * 100.0).round());
+        *color = BackgroundColor(ailment_gauge_color(idx, ailment.is_ailment));
+    }
+}
+
+fn ailment_gauge_color(index: usize, is_ailment: bool) -> Color {
+    let base = match index {
+        0 => LinearRgba { red: 0.65, green: 0.10, blue: 0.75, alpha: 1.0 }, // 毒
+        1 => LinearRgba { red: 0.20, green: 0.40, blue: 0.85, alpha: 1.0 }, // 眠気
+        2 => LinearRgba { red: 0.15, green: 0.75, blue: 0.90, alpha: 1.0 }, // 寒気
+        3 => LinearRgba { red: 0.90, green: 0.10, blue: 0.15, alpha: 1.0 }, // 出血
+        4 => LinearRgba { red: 0.95, green: 0.50, blue: 0.10, alpha: 1.0 }, // 火傷
+        5 => LinearRgba { red: 0.90, green: 0.85, blue: 0.15, alpha: 1.0 }, // 麻痺
+        6 => LinearRgba { red: 0.80, green: 0.15, blue: 0.60, alpha: 1.0 }, // 恐怖
+        _ => LinearRgba { red: 0.90, green: 0.25, blue: 0.10, alpha: 1.0 }, // 激昂
+    };
+    if is_ailment {
+        Color::from(base)
+    } else {
+        Color::from(LinearRgba {
+            red: base.red * 0.45,
+            green: base.green * 0.45,
+            blue: base.blue * 0.45,
+            alpha: 1.0,
+        })
     }
 }
 

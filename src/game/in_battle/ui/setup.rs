@@ -490,6 +490,86 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 TextColor(Color::from(LinearRgba { red: 0.70, green: 0.70, blue: 0.90, alpha: 1.0 })),
             ));
 
+            // 状態異常ゲージ（折り返しレイアウト・蓄積値0は非表示）
+            const AILMENT_NAMES: [&str; 8] =
+                ["毒", "眠気", "寒気", "出血", "火傷", "麻痺", "恐怖", "激昂"];
+            const AILMENT_INIT_COLORS: [LinearRgba; 8] = [
+                LinearRgba { red: 0.29, green: 0.05, blue: 0.34, alpha: 1.0 },
+                LinearRgba { red: 0.09, green: 0.18, blue: 0.38, alpha: 1.0 },
+                LinearRgba { red: 0.07, green: 0.34, blue: 0.41, alpha: 1.0 },
+                LinearRgba { red: 0.41, green: 0.05, blue: 0.07, alpha: 1.0 },
+                LinearRgba { red: 0.43, green: 0.23, blue: 0.05, alpha: 1.0 },
+                LinearRgba { red: 0.41, green: 0.38, blue: 0.07, alpha: 1.0 },
+                LinearRgba { red: 0.36, green: 0.07, blue: 0.27, alpha: 1.0 },
+                LinearRgba { red: 0.41, green: 0.11, blue: 0.05, alpha: 1.0 },
+            ];
+            col.spawn((Node {
+                flex_direction: FlexDirection::Row,
+                flex_wrap: FlexWrap::Wrap,
+                column_gap: Val::Px(8.0),
+                row_gap: Val::Px(4.0),
+                width: Val::Percent(100.0),
+                ..default()
+            },))
+            .with_children(|wrap| {
+                for idx in 0..8usize {
+                    wrap.spawn((
+                        UiStatusAilmentContainer(idx),
+                        Node {
+                            flex_direction: FlexDirection::Row,
+                            align_items: AlignItems::Center,
+                            column_gap: Val::Px(4.0),
+                            display: Display::None, // 初期非表示（蓄積値0）
+                            ..default()
+                        },
+                    ))
+                    .with_children(|item| {
+                        item.spawn((
+                            Node { width: Val::Px(36.0), ..default() },
+                            Text::new(AILMENT_NAMES[idx]),
+                            TextFont { font: font.clone(), font_size: 13.0, ..default() },
+                            TextColor(Color::from(LinearRgba {
+                                red: 0.60,
+                                green: 0.60,
+                                blue: 0.60,
+                                alpha: 1.0,
+                            })),
+                        ));
+                        item.spawn((
+                            Node {
+                                width: Val::Px(80.0),
+                                height: Val::Px(8.0),
+                                border: UiRect::all(Val::Px(1.0)),
+                                ..default()
+                            },
+                            BackgroundColor(Color::from(LinearRgba {
+                                red: 0.12,
+                                green: 0.12,
+                                blue: 0.12,
+                                alpha: 1.0,
+                            })),
+                            BorderColor::all(Color::from(LinearRgba {
+                                red: 0.38,
+                                green: 0.38,
+                                blue: 0.38,
+                                alpha: 1.0,
+                            })),
+                        ))
+                        .with_children(|g| {
+                            g.spawn((
+                                UiStatusAilmentGaugeFill(idx),
+                                Node {
+                                    width: Val::Percent(0.0),
+                                    height: Val::Percent(100.0),
+                                    ..default()
+                                },
+                                BackgroundColor(Color::from(AILMENT_INIT_COLORS[idx])),
+                            ));
+                        });
+                    });
+                }
+            });
+
         }); // ステータスパネル end
 
     // ── カルマエリアパネル
