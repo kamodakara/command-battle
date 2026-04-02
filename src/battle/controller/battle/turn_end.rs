@@ -32,6 +32,9 @@ pub fn turn_end(battle: &mut Battle) -> Vec<BattleIncidentCharacter> {
     karma(player);
     // TODO: カルマのインシデント追加
 
+    // 状態異常の継続ダメージ
+    incident_characters.push(apply_ongoing_ailment_damage(player));
+
     // 状態異常終了
     incident_characters.push(recover_character_status_ailments(player));
 
@@ -47,6 +50,9 @@ pub fn turn_end(battle: &mut Battle) -> Vec<BattleIncidentCharacter> {
 
         // 敵の状態変化更新
         incident_characters.push(update_status_condition(enemy));
+
+        // 敵の状態異常の継続ダメージ
+        incident_characters.push(apply_ongoing_ailment_damage(enemy));
 
         // 敵キャラクターの状態異常自然回復処理
         incident_characters.push(recover_character_status_ailments(enemy));
@@ -169,6 +175,44 @@ fn karma(player: &mut BattleCharacter) {
     }
 }
 
+// 状態異常の継続ダメージ（HP・SP割合ダメージ）
+fn apply_ongoing_ailment_damage(character: &mut BattleCharacter) -> BattleIncidentCharacter {
+    let mut incident = BattleCharacterIncident::new(BattleCharacterIncidentReason::TurnEndRecovery);
+
+    let ongoing_effects = character.status_ailment.current_ongoing_effects();
+    for effect in ongoing_effects {
+        match effect {
+            BattleStatusAilmentOngoingEffect::HpPercentageDamage(e) => {
+                let damage = (character.hp.max_hp as f32 * e.percentage / 100.0) as u32;
+                let (before_hp, after_hp, is_dead) = character.hp.damage(damage);
+                incident.add_concrete(BattleCharacterIncidentConcrete::DamageHp(
+                    BattleIncidentDamageHp::new(damage, before_hp, after_hp),
+                ));
+                if is_dead {
+                    incident.add_concrete(BattleCharacterIncidentConcrete::Death(
+                        BattleIncidentDeath {},
+                    ));
+                }
+            }
+            BattleStatusAilmentOngoingEffect::SpPercentageDamage(e) => {
+                let damage = (character.sp.max_sp as f32 * e.percentage / 100.0) as u32;
+                let (before_sp, after_sp) = character.sp.damage(damage);
+                incident.add_concrete(BattleCharacterIncidentConcrete::DamageSp(
+                    BattleIncidentDamageSp::new(damage, before_sp, after_sp),
+                ));
+            }
+            _ => {
+                // AbilityModifier・ReceiveDamageModifier 等は current_effects() 経由で適用
+            }
+        }
+    }
+
+    BattleIncidentCharacter {
+        character_id: character.character_id,
+        incidents: vec![incident],
+    }
+}
+
 // キャラクターの状態異常回復
 fn recover_character_status_ailments(character: &mut BattleCharacter) -> BattleIncidentCharacter {
     let mut incident = BattleCharacterIncident {
@@ -266,7 +310,6 @@ fn recover_ailment_status(
             ));
         }
     } else {
-
         // 2ターン状態異常値の蓄積がない場合に回復
         if status.no_accumulation_turns >= 1 {
             let recover_amount = status.recovery_amount;

@@ -245,6 +245,22 @@ pub fn handle_turn_end_incidents(
             for incident in &character_incident.incidents {
                 for concrete in &incident.concretes {
                     match concrete {
+                        BattleCharacterIncidentConcrete::DamageHp(d) => {
+                            if d.damage > 0 {
+                                log_ev.write(BattleLogEvent(format!(
+                                    "{}に{}ダメージ (HP {} → {})",
+                                    who, d.damage, d.before, d.after
+                                )));
+                            }
+                        }
+                        BattleCharacterIncidentConcrete::DamageSp(d) => {
+                            if d.damage > 0 {
+                                log_ev.write(BattleLogEvent(format!(
+                                    "{}のSPが{}減少 (SP {} → {})",
+                                    who, d.damage, d.before, d.after
+                                )));
+                            }
+                        }
                         BattleCharacterIncidentConcrete::RecoverStamina(r) => {
                             if r.recover > 0 {
                                 log_ev.write(BattleLogEvent(format!(
