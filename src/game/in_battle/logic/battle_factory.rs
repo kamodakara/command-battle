@@ -632,7 +632,7 @@ pub fn create_battle_from_preparation(
                     target: AdditionalEffectTarget::AttackTarget,
                     content: ArtPotencySupport::StatusAilment(ArtPotencySupportStatusAilment {
                         kind: StatusAilment::Poison,
-                        accumulation: 450,
+                        accumulation: 600,
                     }),
                 }],
             }),
