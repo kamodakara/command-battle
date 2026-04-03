@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use super::super::resources::CombatLog;
+use super::super::resources::{CombatLog, CombatLogExpanded};
 use super::super::super::logic::resources::BattlePhase;
 
 // ─── コンポーネント定義 ──────────────────────────────────────────────────────
@@ -10,16 +10,23 @@ pub struct UiMessage;
 #[derive(Component)]
 pub struct UiPhase;
 
+#[derive(Component)]
+pub struct UiCombatLogToggleButton;
+
+#[derive(Component)]
+pub struct UiCombatLogToggleButtonText;
+
 // ─── 描画システム ────────────────────────────────────────────────────────────
 
 pub fn render_message(
     log: Res<CombatLog>,
+    expanded: Res<CombatLogExpanded>,
     mut msg_q: Query<&mut Text, With<UiMessage>>,
 ) {
     let Ok(mut msg) = msg_q.single_mut() else {
         return;
     };
-    let max_lines = 5usize;
+    let max_lines = if expanded.0 { 15usize } else { 5usize };
     let start = if log.0.len() > max_lines {
         log.0.len() - max_lines
     } else {
@@ -46,4 +53,28 @@ pub fn render_phase(
         BattlePhase::TurnEnd => "フェーズ: ターン終了".to_string(),
         BattlePhase::Finished => "フェーズ: 終了".to_string(),
     };
+}
+
+pub fn handle_combat_log_toggle(
+    mut expanded: ResMut<CombatLogExpanded>,
+    btn_q: Query<&Interaction, (Changed<Interaction>, With<UiCombatLogToggleButton>)>,
+) {
+    for interaction in btn_q.iter() {
+        if *interaction == Interaction::Pressed {
+            expanded.0 = !expanded.0;
+        }
+    }
+}
+
+pub fn render_combat_log_toggle_button(
+    expanded: Res<CombatLogExpanded>,
+    mut text_q: Query<&mut Text, With<UiCombatLogToggleButtonText>>,
+) {
+    if !expanded.is_changed() {
+        return;
+    }
+    let Ok(mut text) = text_q.single_mut() else {
+        return;
+    };
+    text.0 = if expanded.0 { "▲ 閉じる".to_string() } else { "▼ 開く".to_string() };
 }

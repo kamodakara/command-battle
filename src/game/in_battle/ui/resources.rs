@@ -27,6 +27,10 @@ pub struct EnemyDamagePopup {
 #[derive(Resource, Default)]
 pub struct KarmaCardsNeedsRedraw(pub bool);
 
+/// ログ展開状態（UI専有）
+#[derive(Resource, Default)]
+pub struct CombatLogExpanded(pub bool);
+
 /// カルマダイアログの表示状態（UI専有）
 #[derive(Resource, Default, PartialEq, Clone)]
 pub enum KarmaDialogState {

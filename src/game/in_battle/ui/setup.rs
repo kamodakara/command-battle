@@ -5,7 +5,7 @@ use super::renderers::{
     player_status::*,
     enemy_status::{UiEnemy, UiEnemyHpGaugeFill, UiEnemyBreakGaugeFill, UiEnemyBreakLabel, UiEnemyHintText},
     action_menu::{UiActionMenu, UiActionMenuContainer},
-    combat_log::UiMessage,
+    combat_log::{UiMessage, UiCombatLogToggleButton, UiCombatLogToggleButtonText},
     karma_cards::{
         UiKarmaCardsContainer, UiKarmaDeckButton, UiKarmaDeckCount,
         UiKarmaDiscardButton, UiKarmaDiscardCount,
@@ -28,6 +28,7 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(ActionMenuSelection::default());
     commands.insert_resource(ConsecutiveCommands::default());
     commands.insert_resource(TurnActionBoard::default());
+    commands.insert_resource(CombatLogExpanded::default());
 
     let font = asset_server.load("fonts/x12y16pxMaruMonica.ttf");
 
@@ -131,34 +132,55 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 }
             });
 
-            // ログメッセージ（下段、最大5行）
-            col.spawn((
-                Node {
-                    width: Val::Px(750.0),
-                    height: Val::Auto,
-                    border: UiRect::all(Val::Px(1.0)),
-                    padding: UiRect::all(Val::Px(8.0)),
-                    ..default()
-                },
-                BackgroundColor(Color::from(LinearRgba {
-                    red: 0.0,
-                    green: 0.0,
-                    blue: 0.0,
-                    alpha: 0.6,
-                })),
-                BorderColor::all(Color::WHITE),
-            ))
-            .with_children(|log_box| {
-                log_box.spawn((
-                    UiMessage,
-                    Text::new(""),
-                    TextFont {
-                        font: font.clone(),
-                        font_size: 16.0,
+            // ログメッセージ（下段）
+            col.spawn((Node {
+                width: Val::Px(750.0),
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },))
+            .with_children(|log_col| {
+                // トグルボタン
+                log_col.spawn((
+                    UiCombatLogToggleButton,
+                    Button,
+                    Node {
+                        width: Val::Px(90.0),
+                        padding: UiRect::axes(Val::Px(6.0), Val::Px(2.0)),
+                        justify_content: JustifyContent::Center,
+                        align_self: AlignSelf::FlexEnd,
                         ..default()
                     },
-                    TextColor(Color::WHITE),
-                ));
+                    BackgroundColor(Color::from(LinearRgba { red: 0.2, green: 0.2, blue: 0.2, alpha: 0.9 })),
+                    BorderColor::all(Color::WHITE),
+                ))
+                .with_children(|btn| {
+                    btn.spawn((
+                        UiCombatLogToggleButtonText,
+                        Text::new("▼ 開く"),
+                        TextFont { font: font.clone(), font_size: 13.0, ..default() },
+                        TextColor(Color::WHITE),
+                    ));
+                });
+                // ログ本文
+                log_col.spawn((
+                    Node {
+                        width: Val::Percent(100.0),
+                        height: Val::Auto,
+                        border: UiRect::all(Val::Px(1.0)),
+                        padding: UiRect::all(Val::Px(8.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::from(LinearRgba { red: 0.0, green: 0.0, blue: 0.0, alpha: 0.6 })),
+                    BorderColor::all(Color::WHITE),
+                ))
+                .with_children(|log_box| {
+                    log_box.spawn((
+                        UiMessage,
+                        Text::new(""),
+                        TextFont { font: font.clone(), font_size: 16.0, ..default() },
+                        TextColor(Color::WHITE),
+                    ));
+                });
             });
         });
 
