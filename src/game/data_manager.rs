@@ -18,20 +18,20 @@ fn setup_data_manager(mut commands: Commands) {
     let mut dm = DataManager::default();
 
     dm.weapon
-        .import_from_file("assets/data/weapons.json")
-        .expect("assets/data/weapons.json の読み込みに失敗しました");
+        .import_from_str(include_str!("../../assets/data/weapons.json"))
+        .expect("weapons.json のパースに失敗しました");
 
     dm.armor
-        .import_from_file("assets/data/armors.json")
-        .expect("assets/data/armors.json の読み込みに失敗しました");
+        .import_from_str(include_str!("../../assets/data/armors.json"))
+        .expect("armors.json のパースに失敗しました");
 
     dm.art
-        .import_from_file("assets/data/arts.json")
-        .expect("assets/data/arts.json の読み込みに失敗しました");
+        .import_from_str(include_str!("../../assets/data/arts.json"))
+        .expect("arts.json のパースに失敗しました");
 
     dm.karma_card
-        .import_from_file("assets/data/karma_cards.json")
-        .expect("assets/data/karma_cards.json の読み込みに失敗しました");
+        .import_from_str(include_str!("../../assets/data/karma_cards.json"))
+        .expect("karma_cards.json のパースに失敗しました");
 
     // in_battle.rs との互換性のため、DataManager からレガシーリソースを構築して挿入する
     let equipment_db = EquipmentDatabase {

@@ -101,14 +101,13 @@ impl<T: Clone> Repository<T> {
         Ok(())
     }
 
-    /// JSONファイルからインポートする
+    /// JSON文字列からインポートする
     /// 現在のデータを全削除してからインポートする
-    pub fn import_from_file(&mut self, path: &str) -> Result<(), Box<dyn std::error::Error>>
+    pub fn import_from_str(&mut self, json: &str) -> Result<(), Box<dyn std::error::Error>>
     where
         T: for<'de> Deserialize<'de>,
     {
-        let json = std::fs::read_to_string(path)?;
-        let export: Vec<ExportRecord<T>> = serde_json::from_str(&json)?;
+        let export: Vec<ExportRecord<T>> = serde_json::from_str(json)?;
         self.records.clear();
         let max_id = export.iter().map(|r| r.id).max().unwrap_or(0);
         for record in export {
@@ -116,5 +115,15 @@ impl<T: Clone> Repository<T> {
         }
         self.next_id = max_id + 1;
         Ok(())
+    }
+
+    /// JSONファイルからインポートする
+    /// 現在のデータを全削除してからインポートする
+    pub fn import_from_file(&mut self, path: &str) -> Result<(), Box<dyn std::error::Error>>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
+        let json = std::fs::read_to_string(path)?;
+        self.import_from_str(&json)
     }
 }
