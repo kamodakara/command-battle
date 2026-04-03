@@ -593,7 +593,15 @@ pub fn create_battle_from_preparation(
                 },
                 break_power: 100,
                 weapon_break_power_scaling: 3.0,
-                additional_effects: vec![],
+                additional_effects: vec![AdditionalEffect {
+                    target: AdditionalEffectTarget::AttackTarget,
+                    content: ArtPotencySupport::AddKarmaToDeck(
+                        ArtPotencySupportAddKarmaToDeck {
+                            karma_card_id: KarmaCardId(5), // 悪い足場
+                            count: 2,
+                        },
+                    ),
+                }],
             }),
         },
         Some(BattleWeaponId(0)),
@@ -669,7 +677,15 @@ pub fn create_battle_from_preparation(
                 },
                 break_power: 150,
                 weapon_break_power_scaling: 3.0,
-                additional_effects: vec![],
+                additional_effects: vec![AdditionalEffect {
+                    target: AdditionalEffectTarget::AttackTarget,
+                    content: ArtPotencySupport::AddKarmaToDeck(
+                        ArtPotencySupportAddKarmaToDeck {
+                            karma_card_id: KarmaCardId(5), // 悪い足場
+                            count: 1,
+                        },
+                    ),
+                }],
             }),
         },
         Some(BattleWeaponId(1)),

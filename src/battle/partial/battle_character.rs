@@ -18,6 +18,17 @@ impl BattleCharacter {
                     AbilityType::Agility => ability.agility += e.amount,
                     AbilityType::Arcane => ability.arcane += e.amount,
                 },
+                Effect::AbilityDecrease(e) => match e.ability_type {
+                    AbilityType::Strength => ability.strength = ability.strength.saturating_sub(e.amount),
+                    AbilityType::Dexterity => ability.dexterity = ability.dexterity.saturating_sub(e.amount),
+                    AbilityType::Intelligence => ability.intelligence = ability.intelligence.saturating_sub(e.amount),
+                    AbilityType::Faith => ability.faith = ability.faith.saturating_sub(e.amount),
+                    AbilityType::Vitality => ability.vitality = ability.vitality.saturating_sub(e.amount),
+                    AbilityType::Spirit => ability.spirit = ability.spirit.saturating_sub(e.amount),
+                    AbilityType::Endurance => ability.endurance = ability.endurance.saturating_sub(e.amount),
+                    AbilityType::Agility => ability.agility = ability.agility.saturating_sub(e.amount),
+                    AbilityType::Arcane => ability.arcane = ability.arcane.saturating_sub(e.amount),
+                },
                 _ => { /* 無視 */ }
             }
         }
@@ -161,6 +172,7 @@ impl BattleCharacter {
                         effects.push(Effect::ReceiveDamageModifier(e))
                     }
                     KarmaEffect::AbilityIncrease(e) => effects.push(Effect::AbilityIncrease(e)),
+                    KarmaEffect::AbilityDecrease(e) => effects.push(Effect::AbilityDecrease(e)),
                 }
             }
         }

@@ -349,5 +349,19 @@ pub fn format_karma_effect(effect: &KarmaEffect) -> String {
             };
             format!("{}+{}", ability_name, e.amount)
         }
+        KarmaEffect::AbilityDecrease(e) => {
+            let ability_name = match e.ability_type {
+                AbilityType::Strength => "筋力",
+                AbilityType::Dexterity => "技量",
+                AbilityType::Intelligence => "知力",
+                AbilityType::Faith => "信仰",
+                AbilityType::Arcane => "神秘",
+                AbilityType::Agility => "敏捷性",
+                AbilityType::Vitality => "生命力",
+                AbilityType::Spirit => "精神力",
+                AbilityType::Endurance => "持久力",
+            };
+            format!("{}-{}", ability_name, e.amount)
+        }
     }
 }

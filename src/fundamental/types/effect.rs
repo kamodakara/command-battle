@@ -10,6 +10,7 @@ pub enum Effect {
     AttackBreakDamageModifier(EffectAttackBreakDamageModifier), // 与ブレイクダメージ補正
     RemoveStatusAilment(EffectRemoveStatusAilment), // 状態異常解除
     AbilityIncrease(EffectAbilityIncrease),       // 能力上昇
+    AbilityDecrease(EffectAbilityDecrease),       // 能力低下
     AbilityModifier(EffectAbilityModifier),       // 能力補正
     PhysicalDefenseModifier(EffectPhysicalDefenseModifier), // 物理防御力補正
     MagicalDefenseModifier(EffectMagicalDefenseModifier), // 魔法防御力補正
@@ -46,6 +47,11 @@ pub struct EffectRemoveStatusAilment {
 }
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct EffectAbilityIncrease {
+    pub ability_type: AbilityType,
+    pub amount: u32,
+}
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct EffectAbilityDecrease {
     pub ability_type: AbilityType,
     pub amount: u32,
 }

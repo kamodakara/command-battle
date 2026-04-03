@@ -2,7 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use super::character::AbilityType;
 use super::effect::{
-    EffectAbilityIncrease, EffectAttackDamageModifier, EffectReceiveDamageModifier,
+    EffectAbilityDecrease, EffectAbilityIncrease, EffectAttackDamageModifier,
+    EffectReceiveDamageModifier,
 };
 
 pub struct KarmaDeck {
@@ -42,4 +43,6 @@ pub enum KarmaEffect {
     ReceiveDamageModifier(EffectReceiveDamageModifier),
     // 能力上昇
     AbilityIncrease(EffectAbilityIncrease),
+    // 能力低下
+    AbilityDecrease(EffectAbilityDecrease),
 }
