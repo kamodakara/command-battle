@@ -29,6 +29,10 @@ fn setup_data_manager(mut commands: Commands) {
         .import_from_file("assets/data/arts.json")
         .expect("assets/data/arts.json の読み込みに失敗しました");
 
+    dm.karma_card
+        .import_from_file("assets/data/karma_cards.json")
+        .expect("assets/data/karma_cards.json の読み込みに失敗しました");
+
     // in_battle.rs との互換性のため、DataManager からレガシーリソースを構築して挿入する
     let equipment_db = EquipmentDatabase {
         weapons: dm

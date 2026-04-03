@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::common::*;
 use super::equipment::WeaponKind;
+use super::karma::KarmaCardId;
 use super::status_ailment::{StatusAilment, StatusCondition};
 
 // 技能
@@ -110,6 +111,7 @@ pub enum ArtPotencySupport {
     StatusCondition(ArtPotencySupportStatusCondition), // 状態変化付与
     Recover(ArtPotencySupportRecover),                 // HP回復量
     StatusAilment(ArtPotencySupportStatusAilment),     // 状態異常蓄積
+    AddKarmaToDeck(ArtPotencySupportAddKarmaToDeck),   // 山札にカルマカードを追加
 }
 // 技能支援効果 状態異常蓄積
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -128,6 +130,12 @@ pub struct ArtPotencySupportRecover {
     pub potencies: Vec<SupportRecoverPotency>, // 回復効果
 }
 
+// 技能支援効果 山札へのカルマカード追加
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ArtPotencySupportAddKarmaToDeck {
+    pub karma_card_id: KarmaCardId, // カードプールのID
+    pub count: u32,                 // 追加枚数
+}
 // 支援回復効果
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum SupportRecoverPotency {

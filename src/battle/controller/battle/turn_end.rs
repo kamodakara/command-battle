@@ -147,8 +147,8 @@ fn karma(player: &mut BattleCharacter) {
         .drain(..)
         .partition(|card| card.remaining_turns == 0);
 
-    // 捨て札に移動
-    let discard_cards = to_discard.into_iter().map(|card| card.card);
+    // 捨て札に移動（カードIDのみ保持）
+    let discard_cards = to_discard.into_iter().map(|card| KarmaDeckCard { card_id: card.card_id }); // card_id は KarmaCardId 型
     karma.discard_pile.extend(discard_cards);
     // TODO: カルマカードが捨て札に移動したインシデントの追加
 

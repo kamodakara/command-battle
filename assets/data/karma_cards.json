@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "data": {
+      "name": "ラッキーパンチ",
+      "cost": 0,
+      "max_turn": 1,
+      "effects": [{ "AttackDamageModifier": { "modifier": 1.5 } }]
+    }
+  },
+  {
+    "id": 2,
+    "data": {
+      "name": "好調",
+      "cost": 0,
+      "max_turn": 1,
+      "effects": [{ "AttackDamageModifier": { "modifier": 1.05 } }]
+    }
+  },
+  {
+    "id": 3,
+    "data": {
+      "name": "堅実",
+      "cost": 0,
+      "max_turn": 1,
+      "effects": [{ "ReceiveDamageModifier": { "modifier": 0.95 } }]
+    }
+  },
+  {
+    "id": 4,
+    "data": {
+      "name": "追い風",
+      "cost": 0,
+      "max_turn": 1,
+      "effects": [{ "AbilityIncrease": { "ability_type": "Agility", "amount": 1 } }]
+    }
+  }
+]

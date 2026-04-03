@@ -38,7 +38,7 @@ pub struct Ability {
     pub arcane: u32,       // 神秘
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub enum AbilityType {
     Vitality,     // 生命力
     Spirit,       // 精神力

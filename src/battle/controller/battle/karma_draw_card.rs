@@ -1,11 +1,10 @@
-use std::ops::RemAssign;
-
 use super::*;
+use crate::data::KarmaCardRepository;
 
 // カルマカードを引く処理
 // 山札からカルマカードを1枚引き、場に出す。
 // TODO: インシデントの追加
-pub fn karma_draw_card(battle: &mut Battle) {
+pub fn karma_draw_card(battle: &mut Battle, card_repo: &KarmaCardRepository) {
     let player = &mut battle.player;
     let karma = if let Some(karma) = player.karma.as_mut() {
         karma
@@ -35,13 +34,17 @@ pub fn karma_draw_card(battle: &mut Battle) {
     };
 
     // 場にカードを追加
-    if let Some(draw_card) = draw_card {
-        // 引いたカードを場に出す
-        let remaining_turns = draw_card.max_turn;
-        karma.field_cards.push(BattleKarmaCard {
-            card: draw_card,
-            remaining_turns,
-        });
+    if let Some(deck_card) = draw_card {
+        // カードプールからカードデータを解決する
+        if let Some(record) = card_repo.find_by_id(deck_card.card_id.0) {
+            let card = record.data.clone();
+            let remaining_turns = card.max_turn;
+            karma.field_cards.push(BattleKarmaCard {
+                card_id: deck_card.card_id,
+                card,
+                remaining_turns,
+            });
+        }
     }
 
     // TODO: カードドローのインシデント

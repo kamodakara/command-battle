@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use crate::battle::{BattleController, DecideEnemyConductRequest};
+use crate::data::DataManager;
 use super::super::resources::*;
 use super::super::super::events::*;
 
@@ -9,12 +10,13 @@ pub fn phase_transition_system(
     mut planned: ResMut<EnemyPlannedActions>,
     mut enemy_planned_ev: MessageWriter<EnemyActionPlannedEvent>,
     mut turn_end_ev: MessageWriter<BattleTurnEndEvent>,
+    data_manager: Res<DataManager>,
 ) {
     match *phase {
         BattlePhase::DecideEnemyConduct => {
             // カルマドロー（3枚）
             for _ in 0..3 {
-                battle_resource.0.karma_draw_card();
+                battle_resource.0.karma_draw_card(&data_manager.karma_card);
             }
 
             // 敵の行動を3回分決定

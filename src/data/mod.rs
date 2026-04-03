@@ -1,10 +1,12 @@
 mod armor;
 mod art;
+mod karma_card;
 mod repository;
 mod weapon;
 
 pub use armor::{ArmorRecord, ArmorRepository};
 pub use art::{ArtRecord, ArtRepository};
+pub use karma_card::{KarmaCardRecord, KarmaCardRepository};
 pub use repository::{Record, Repository};
 pub use weapon::{WeaponRecord, WeaponRepository};
 
@@ -42,4 +44,5 @@ pub struct DataManager {
     pub weapon: WeaponRepository,
     pub armor: ArmorRepository,
     pub art: ArtRepository,
+    pub karma_card: KarmaCardRepository,
 }

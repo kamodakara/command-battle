@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use super::character::AbilityType;
 use super::effect::{
     EffectAbilityIncrease, EffectAttackDamageModifier, EffectReceiveDamageModifier,
@@ -5,10 +7,20 @@ use super::effect::{
 
 pub struct KarmaDeck {
     pub name: String,
-    pub cards: Vec<KarmaCard>,
+    pub cards: Vec<KarmaDeckCard>,
 }
 
-#[derive(Debug)]
+// カルマカードプールのID
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct KarmaCardId(pub u32);
+
+// デッキ内のカードスロット（カードプールへの参照）
+#[derive(Clone, Debug)]
+pub struct KarmaDeckCard {
+    pub card_id: KarmaCardId,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct KarmaCard {
     pub name: String,
     pub cost: u32,
@@ -22,7 +34,7 @@ pub enum KarmaEffectType {
     ReceiveDamageModifier,
     AbilityIncrease,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum KarmaEffect {
     // 攻撃ダメージ補正
     AttackDamageModifier(EffectAttackDamageModifier),

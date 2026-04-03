@@ -241,6 +241,19 @@ pub fn execute_attack_potency(
                         status_ailment.accumulation,
                     ));
                 }
+                ArtPotencySupport::AddKarmaToDeck(add_karma) => {
+                    if let Some(karma) = target.karma.as_mut() {
+                        for _ in 0..add_karma.count {
+                            karma.draw_pile.push(KarmaDeckCard { card_id: add_karma.karma_card_id });
+                        }
+                        incidents.push(BattleCharacterIncidentConcrete::KarmaAddedToDeck(
+                            BattleIncidentKarmaAddedToDeck {
+                                karma_card_id: add_karma.karma_card_id, // KarmaCardId 型
+                                count: add_karma.count,
+                            },
+                        ));
+                    }
+                }
             }
         }
     }

@@ -22,7 +22,27 @@ pub fn execute_support_potency(
             &status_ailment.kind,
             status_ailment.accumulation,
         ),
+        // 山札にカルマカードを追加
+        ArtPotencySupport::AddKarmaToDeck(add_karma) => {
+            add_karma_to_deck(target_data.target, add_karma.karma_card_id, add_karma.count)
+        }
     }
+}
+
+fn add_karma_to_deck(
+    target: &mut BattleCharacter,
+    karma_card_id: KarmaCardId,
+    count: u32,
+) -> Vec<BattleCharacterIncidentConcrete> {
+    let Some(karma) = target.karma.as_mut() else {
+        return vec![];
+    };
+    for _ in 0..count {
+        karma.draw_pile.push(KarmaDeckCard { card_id: karma_card_id });
+    }
+    vec![BattleCharacterIncidentConcrete::KarmaAddedToDeck(
+        BattleIncidentKarmaAddedToDeck { karma_card_id, count },
+    )]
 }
 
 fn support_status_effect(

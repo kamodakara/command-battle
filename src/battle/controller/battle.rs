@@ -5,6 +5,7 @@ mod karma_draw_card;
 mod turn_end;
 
 use super::uses::*;
+use crate::data::KarmaCardRepository;
 
 pub use decide_enemy_conduct::DecideEnemyConductRequest;
 pub use decide_order::BattleDecideOrderRequest;
@@ -22,7 +23,7 @@ pub trait BattleController {
     fn execute_conduct(&mut self, request: BattleExecuteConductRequest) -> BattleIncidentConduct;
     fn decide_enemy_conduct(&mut self, request: DecideEnemyConductRequest) -> BattleConduct;
     fn turn_end(&mut self) -> Vec<BattleIncidentCharacter>;
-    fn karma_draw_card(&mut self);
+    fn karma_draw_card(&mut self, card_repo: &KarmaCardRepository);
 }
 
 impl BattleController for Battle {
@@ -43,7 +44,7 @@ impl BattleController for Battle {
         turn_end(self)
     }
 
-    fn karma_draw_card(&mut self) {
-        karma_draw_card(self);
+    fn karma_draw_card(&mut self, card_repo: &KarmaCardRepository) {
+        karma_draw_card(self, card_repo);
     }
 }

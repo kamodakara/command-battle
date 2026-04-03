@@ -28,11 +28,11 @@ pub struct EffectHpPercentageDamage {
 pub struct EffectSpPercentageDamage {
     pub percentage: f32, // SP最大値の割合ダメージ
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct EffectAttackDamageModifier {
     pub modifier: f32, // 与ダメージ補正
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct EffectReceiveDamageModifier {
     pub modifier: f32, // 被ダメージ補正
 }
@@ -44,7 +44,7 @@ pub struct EffectAttackBreakDamageModifier {
 pub struct EffectRemoveStatusAilment {
     pub status_ailments: Vec<StatusAilment>,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct EffectAbilityIncrease {
     pub ability_type: AbilityType,
     pub amount: u32,

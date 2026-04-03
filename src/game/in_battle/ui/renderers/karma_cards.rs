@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use crate::fundamental::*;
+use crate::data::DataManager;
 use super::super::resources::{KarmaCardsNeedsRedraw, KarmaDialogState};
 use super::super::super::logic::resources::BattleResource;
 
@@ -204,6 +205,7 @@ pub fn render_karma_dialog(
     asset_server: Res<AssetServer>,
     battle_resource: Res<BattleResource>,
     dialog_state: Res<KarmaDialogState>,
+    data_manager: Res<DataManager>,
     mut dialog_q: Query<&mut Visibility, With<UiKarmaDialog>>,
     mut title_q: Query<&mut Text, With<UiKarmaDialogTitle>>,
     content_q: Query<Entity, With<UiKarmaDialogContent>>,
@@ -248,13 +250,13 @@ pub fn render_karma_dialog(
         return;
     };
 
-    let cards: &Vec<_> = match *dialog_state {
+    let deck_cards: &Vec<_> = match *dialog_state {
         KarmaDialogState::DrawPile => &karma.draw_pile,
         KarmaDialogState::DiscardPile => &karma.discard_pile,
         KarmaDialogState::Closed => unreachable!(),
     };
 
-    if cards.is_empty() {
+    if deck_cards.is_empty() {
         commands.entity(content_entity).with_children(|p| {
             p.spawn((
                 Text::new("カードなし"),
@@ -267,7 +269,11 @@ pub fn render_karma_dialog(
         return;
     }
 
-    for card in cards {
+    for deck_card in deck_cards {
+        let Some(record) = data_manager.karma_card.find_by_id(deck_card.card_id.0) else {
+            continue;
+        };
+        let card = &record.data;
         let effect_strs: Vec<String> =
             card.effects.iter().map(|e| format_karma_effect(e)).collect();
         let effect_text = if effect_strs.is_empty() {

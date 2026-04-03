@@ -761,106 +761,18 @@ pub fn create_battle_from_preparation(
             karma: Some(BattleKarma {
                 draw_pile: vec![],
                 discard_pile: vec![
-                    KarmaCard {
-                        name: "ラッキーパンチ".to_string(),
-                        cost: 0,
-                        max_turn: 1,
-                        effects: vec![KarmaEffect::AttackDamageModifier(
-                            EffectAttackDamageModifier { modifier: 1.5 },
-                        )],
-                    },
-                    KarmaCard {
-                        name: "好調".to_string(),
-                        cost: 0,
-                        max_turn: 1,
-                        effects: vec![KarmaEffect::AttackDamageModifier(
-                            EffectAttackDamageModifier { modifier: 1.05 },
-                        )],
-                    },
-                    KarmaCard {
-                        name: "好調".to_string(),
-                        cost: 0,
-                        max_turn: 1,
-                        effects: vec![KarmaEffect::AttackDamageModifier(
-                            EffectAttackDamageModifier { modifier: 1.05 },
-                        )],
-                    },
-                    KarmaCard {
-                        name: "好調".to_string(),
-                        cost: 0,
-                        max_turn: 1,
-                        effects: vec![KarmaEffect::AttackDamageModifier(
-                            EffectAttackDamageModifier { modifier: 1.05 },
-                        )],
-                    },
-                    KarmaCard {
-                        name: "堅実".to_string(),
-                        cost: 0,
-                        max_turn: 1,
-                        effects: vec![KarmaEffect::ReceiveDamageModifier(
-                            EffectReceiveDamageModifier { modifier: 0.95 },
-                        )],
-                    },
-                    KarmaCard {
-                        name: "堅実".to_string(),
-                        cost: 0,
-                        max_turn: 1,
-                        effects: vec![KarmaEffect::ReceiveDamageModifier(
-                            EffectReceiveDamageModifier { modifier: 0.95 },
-                        )],
-                    },
-                    KarmaCard {
-                        name: "堅実".to_string(),
-                        cost: 0,
-                        max_turn: 1,
-                        effects: vec![KarmaEffect::ReceiveDamageModifier(
-                            EffectReceiveDamageModifier { modifier: 0.95 },
-                        )],
-                    },
-                    KarmaCard {
-                        name: "堅実".to_string(),
-                        cost: 0,
-                        max_turn: 1,
-                        effects: vec![KarmaEffect::ReceiveDamageModifier(
-                            EffectReceiveDamageModifier { modifier: 0.95 },
-                        )],
-                    },
-                    KarmaCard {
-                        name: "追い風".to_string(),
-                        cost: 0,
-                        max_turn: 1,
-                        effects: vec![KarmaEffect::AbilityIncrease(EffectAbilityIncrease {
-                            ability_type: AbilityType::Agility,
-                            amount: 1,
-                        })],
-                    },
-                    KarmaCard {
-                        name: "追い風".to_string(),
-                        cost: 0,
-                        max_turn: 1,
-                        effects: vec![KarmaEffect::AbilityIncrease(EffectAbilityIncrease {
-                            ability_type: AbilityType::Agility,
-                            amount: 1,
-                        })],
-                    },
-                    KarmaCard {
-                        name: "追い風".to_string(),
-                        cost: 0,
-                        max_turn: 1,
-                        effects: vec![KarmaEffect::AbilityIncrease(EffectAbilityIncrease {
-                            ability_type: AbilityType::Agility,
-                            amount: 1,
-                        })],
-                    },
-                    KarmaCard {
-                        name: "追い風".to_string(),
-                        cost: 0,
-                        max_turn: 1,
-                        effects: vec![KarmaEffect::AbilityIncrease(EffectAbilityIncrease {
-                            ability_type: AbilityType::Agility,
-                            amount: 1,
-                        })],
-                    },
+                    KarmaDeckCard { card_id: KarmaCardId(1) }, // ラッキーパンチ
+                    KarmaDeckCard { card_id: KarmaCardId(2) }, // 好調
+                    KarmaDeckCard { card_id: KarmaCardId(2) },
+                    KarmaDeckCard { card_id: KarmaCardId(2) },
+                    KarmaDeckCard { card_id: KarmaCardId(3) }, // 堅実
+                    KarmaDeckCard { card_id: KarmaCardId(3) },
+                    KarmaDeckCard { card_id: KarmaCardId(3) },
+                    KarmaDeckCard { card_id: KarmaCardId(3) },
+                    KarmaDeckCard { card_id: KarmaCardId(4) }, // 追い風
+                    KarmaDeckCard { card_id: KarmaCardId(4) },
+                    KarmaDeckCard { card_id: KarmaCardId(4) },
+                    KarmaDeckCard { card_id: KarmaCardId(4) },
                 ],
                 field_cards: vec![],
             }),

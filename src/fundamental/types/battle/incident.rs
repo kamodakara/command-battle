@@ -75,7 +75,7 @@ pub enum BattleCharacterIncidentConcrete {
     TranceIncrease(BattleIncidentTranceIncrease), // トランス値上昇
     TranceDecrease(BattleIncidentTranceDecrease), // トランス値減少
     CombinationSkillActivated(BattleIncidentCombinationSkillActivated), // コンビネーション技発動
-                                                  //
+    KarmaAddedToDeck(BattleIncidentKarmaAddedToDeck),                  // カルマカードを山札に追加
 }
 
 // HPダメージ
@@ -177,6 +177,11 @@ pub struct BattleIncidentTranceDecrease {
 }
 pub struct BattleIncidentCombinationSkillActivated {
     pub combination_skill_name: String,
+}
+// カルマカードを山札に追加
+pub struct BattleIncidentKarmaAddedToDeck {
+    pub karma_card_id: KarmaCardId,
+    pub count: u32,
 }
 
 // 行動失敗
