@@ -126,15 +126,16 @@ fn prepare_attacker(
     let sorcery_power = weapon_performance.final_sorcery_power();
     let rank = conduct.art.effective_rank(sorcery_power).clone();
 
-    // コンビネーション技処理（attacker への可変借用が必要なうちに行う）
-    process_combination_skills(
-        attacker,
-        &rank,
-        &conduct,
-        &weapon_performance,
-        &mut effects,
-        &mut attacker_incident,
-    );
+    // TODO: コンビネーション処理はいったんコメントアウト
+    // // コンビネーション技処理
+    // process_combination_skills(
+    //     attacker,
+    //     &rank,
+    //     &conduct,
+    //     &weapon_performance,
+    //     &mut effects,
+    //     &mut attacker_incident,
+    // );
 
     let attacker_data = AttackerData {
         character_id: attacker_id,

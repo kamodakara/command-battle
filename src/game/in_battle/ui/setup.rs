@@ -446,49 +446,49 @@ pub fn setup_battle_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 ));
             });
 
-            // トランス
-            col.spawn((Node {
-                flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::SpaceBetween,
-                ..default()
-            },))
-                .with_children(|row| {
-                    row.spawn((
-                        UiTranceText,
-                        Text::new("トランス: --- / ---"),
-                        TextFont { font: font.clone(), font_size: 16.0, ..default() },
-                        TextColor(Color::from(LinearRgba { red: 0.90, green: 0.60, blue: 0.90, alpha: 1.0 })),
-                    ));
-                    row.spawn((
-                        UiTranceLevelText,
-                        Text::new("Lv.0"),
-                        TextFont { font: font.clone(), font_size: 16.0, ..default() },
-                        TextColor(Color::from(LinearRgba { red: 1.0, green: 0.85, blue: 0.30, alpha: 1.0 })),
-                    ));
-                });
-            col.spawn((
-                Node {
-                    width: Val::Percent(100.0),
-                    height: Val::Px(12.0),
-                    border: UiRect::all(Val::Px(1.0)),
-                    ..default()
-                },
-                BackgroundColor(Color::from(LinearRgba { red: 0.15, green: 0.15, blue: 0.15, alpha: 1.0 })),
-                BorderColor::all(Color::from(LinearRgba { red: 0.80, green: 0.50, blue: 0.80, alpha: 1.0 })),
-            ))
-            .with_children(|g| {
-                g.spawn((
-                    UiTranceGaugeFill,
-                    Node { width: Val::Percent(0.0), height: Val::Percent(100.0), ..default() },
-                    BackgroundColor(Color::from(LinearRgba { red: 0.75, green: 0.30, blue: 0.85, alpha: 1.0 })),
-                ));
-            });
-            col.spawn((
-                UiTranceEffectText,
-                Text::new("効果: なし"),
-                TextFont { font: font.clone(), font_size: 14.0, ..default() },
-                TextColor(Color::from(LinearRgba { red: 0.70, green: 0.70, blue: 0.90, alpha: 1.0 })),
-            ));
+            // // トランス
+            // col.spawn((Node {
+            //     flex_direction: FlexDirection::Row,
+            //     justify_content: JustifyContent::SpaceBetween,
+            //     ..default()
+            // },))
+            //     .with_children(|row| {
+            //         row.spawn((
+            //             UiTranceText,
+            //             Text::new("トランス: --- / ---"),
+            //             TextFont { font: font.clone(), font_size: 16.0, ..default() },
+            //             TextColor(Color::from(LinearRgba { red: 0.90, green: 0.60, blue: 0.90, alpha: 1.0 })),
+            //         ));
+            //         row.spawn((
+            //             UiTranceLevelText,
+            //             Text::new("Lv.0"),
+            //             TextFont { font: font.clone(), font_size: 16.0, ..default() },
+            //             TextColor(Color::from(LinearRgba { red: 1.0, green: 0.85, blue: 0.30, alpha: 1.0 })),
+            //         ));
+            //     });
+            // col.spawn((
+            //     Node {
+            //         width: Val::Percent(100.0),
+            //         height: Val::Px(12.0),
+            //         border: UiRect::all(Val::Px(1.0)),
+            //         ..default()
+            //     },
+            //     BackgroundColor(Color::from(LinearRgba { red: 0.15, green: 0.15, blue: 0.15, alpha: 1.0 })),
+            //     BorderColor::all(Color::from(LinearRgba { red: 0.80, green: 0.50, blue: 0.80, alpha: 1.0 })),
+            // ))
+            // .with_children(|g| {
+            //     g.spawn((
+            //         UiTranceGaugeFill,
+            //         Node { width: Val::Percent(0.0), height: Val::Percent(100.0), ..default() },
+            //         BackgroundColor(Color::from(LinearRgba { red: 0.75, green: 0.30, blue: 0.85, alpha: 1.0 })),
+            //     ));
+            // });
+            // col.spawn((
+            //     UiTranceEffectText,
+            //     Text::new("効果: なし"),
+            //     TextFont { font: font.clone(), font_size: 14.0, ..default() },
+            //     TextColor(Color::from(LinearRgba { red: 0.70, green: 0.70, blue: 0.90, alpha: 1.0 })),
+            // ));
 
             // 状態異常ゲージ（折り返しレイアウト・蓄積値0は非表示）
             const AILMENT_NAMES: [&str; 8] =

@@ -77,7 +77,7 @@ pub fn render(
             Without<UiTranceEffectText>,
         ),
     >,
-    mut trance_text_q: Query<
+    mut _trance_text_q: Query<
         &mut Text,
         (
             With<UiTranceText>,
@@ -88,7 +88,7 @@ pub fn render(
             Without<UiTranceEffectText>,
         ),
     >,
-    mut trance_level_text_q: Query<
+    mut _trance_level_text_q: Query<
         &mut Text,
         (
             With<UiTranceLevelText>,
@@ -99,7 +99,7 @@ pub fn render(
             Without<UiTranceEffectText>,
         ),
     >,
-    mut trance_effect_text_q: Query<
+    mut _trance_effect_text_q: Query<
         &mut Text,
         (
             With<UiTranceEffectText>,
@@ -135,37 +135,37 @@ pub fn render(
         sp_text.0 = format!("SP: {} / {}", p_sp, player.sp.max_sp);
     }
 
-    if let Some(trance) = &player.trance {
-        let current_trance = trance.current_trance;
-        let max_trance = trance.max_trance;
-        let trance_level = trance.trance_level();
-        let heart_effects = trance.current_heart_effects();
-
-        if let Ok(mut trance_text) = trance_text_q.single_mut() {
-            trance_text.0 = format!("トランス: {} / {}", current_trance, max_trance);
-        }
-        if let Ok(mut level_text) = trance_level_text_q.single_mut() {
-            level_text.0 = format!("Lv.{}", trance_level);
-        }
-        if let Ok(mut effect_text) = trance_effect_text_q.single_mut() {
-            if heart_effects.is_empty() {
-                effect_text.0 = "効果: なし".to_string();
-            } else {
-                let effect_strs: Vec<String> =
-                    heart_effects.iter().map(|e| format_heart_effect(e)).collect();
-                effect_text.0 = format!("効果: {}", effect_strs.join(", "));
-            }
-        }
-
-        if let Ok(mut trance_node) = gauge_params.p3().single_mut() {
-            let ratio = if max_trance > 0 {
-                (current_trance as f32 / max_trance as f32).clamp(0.0, 1.0)
-            } else {
-                0.0
-            };
-            trance_node.width = Val::Percent((ratio * 100.0).round());
-        }
-    }
+    // if let Some(trance) = &player.trance {
+    //     let current_trance = trance.current_trance;
+    //     let max_trance = trance.max_trance;
+    //     let trance_level = trance.trance_level();
+    //     let heart_effects = trance.current_heart_effects();
+    //
+    //     if let Ok(mut trance_text) = trance_text_q.single_mut() {
+    //         trance_text.0 = format!("トランス: {} / {}", current_trance, max_trance);
+    //     }
+    //     if let Ok(mut level_text) = trance_level_text_q.single_mut() {
+    //         level_text.0 = format!("Lv.{}", trance_level);
+    //     }
+    //     if let Ok(mut effect_text) = trance_effect_text_q.single_mut() {
+    //         if heart_effects.is_empty() {
+    //             effect_text.0 = "効果: なし".to_string();
+    //         } else {
+    //             let effect_strs: Vec<String> =
+    //                 heart_effects.iter().map(|e| format_heart_effect(e)).collect();
+    //             effect_text.0 = format!("効果: {}", effect_strs.join(", "));
+    //         }
+    //     }
+    //
+    //     if let Ok(mut trance_node) = gauge_params.p3().single_mut() {
+    //         let ratio = if max_trance > 0 {
+    //             (current_trance as f32 / max_trance as f32).clamp(0.0, 1.0)
+    //         } else {
+    //             0.0
+    //         };
+    //         trance_node.width = Val::Percent((ratio * 100.0).round());
+    //     }
+    // }
 
     if let Ok(mut hp_node) = gauge_params.p0().single_mut() {
         let ratio = if player.hp.max_hp > 0 {

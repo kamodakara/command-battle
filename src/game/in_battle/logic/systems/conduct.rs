@@ -30,16 +30,17 @@ pub fn handle_execute_commands(
         let player_id = battle.player.character_id;
         let enemy_id = battle.enemies.first().map(|e| e.character_id).unwrap_or(2);
 
-        // コンビネーション処理（1回目のみ）
-        battle.player.initialize_current_conduct_log();
-        if executed.0 == 0 {
-            let stamina_cost = cmd.art.stamina_cost;
-            let incident = battle.player.combination(stamina_cost);
-            combination_ev.write(BattleCombinationEvent {
-                actor_character_id: player_id,
-                incident: Arc::new(incident),
-            });
-        }
+        // TODO: コンビネーション処理はいったんコメントアウト
+        // // コンビネーション処理（1回目のみ）
+        // battle.player.initialize_current_conduct_log();
+        // if executed.0 == 0 {
+        //     let stamina_cost = cmd.art.stamina_cost;
+        //     let incident = battle.player.combination(stamina_cost);
+        //     combination_ev.write(BattleCombinationEvent {
+        //         actor_character_id: player_id,
+        //         incident: Arc::new(incident),
+        //     });
+        // }
 
         // ターゲット決定
         let target = match &cmd.art.rank1.potency {

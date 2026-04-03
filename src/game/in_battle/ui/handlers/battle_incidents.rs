@@ -23,12 +23,12 @@ pub fn handle_combination_resolved(
         for character_incident in event.incident.incidents.iter() {
             for concrete in character_incident.concretes.iter() {
                 match concrete {
-                    BattleCharacterIncidentConcrete::TranceIncrease(t) => {
-                        log_ev.write(BattleLogEvent(format!(
-                            "トランス値 +{} ({} → {})",
-                            t.increase, t.before, t.after
-                        )));
-                    }
+                    // BattleCharacterIncidentConcrete::TranceIncrease(t) => {
+                    //     log_ev.write(BattleLogEvent(format!(
+                    //         "トランス値 +{} ({} → {})",
+                    //         t.increase, t.before, t.after
+                    //     )));
+                    // }
                     _ => {}
                 }
             }
