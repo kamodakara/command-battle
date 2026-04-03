@@ -1,5 +1,6 @@
 use super::super::super::events::*;
 use super::super::resources::*;
+use crate::data::DataManager;
 use crate::fundamental::*;
 use bevy::prelude::*;
 
@@ -40,6 +41,7 @@ pub fn handle_conduct_resolved(
     mut log_ev: MessageWriter<BattleLogEvent>,
     mut popup: ResMut<EnemyDamagePopup>,
     mut board: ResMut<super::super::resources::TurnActionBoard>,
+    data_manager: Res<DataManager>,
 ) {
     for event in events.read() {
         let player_id = event.player_character_id;
@@ -113,6 +115,17 @@ pub fn handle_conduct_resolved(
                                 log_ev.write(BattleLogEvent(format!(
                                     "{}に{}が発症した！",
                                     actor, ailment_name
+                                )));
+                            }
+                            BattleCharacterIncidentConcrete::KarmaAddedToDeck(k) => {
+                                let card_name = data_manager
+                                    .karma_card
+                                    .find_by_id(k.karma_card_id.0)
+                                    .map(|r| r.data.name.as_str())
+                                    .unwrap_or("不明なカード");
+                                log_ev.write(BattleLogEvent(format!(
+                                    "{}の山札に「{}」が{}枚追加された",
+                                    actor, card_name, k.count
                                 )));
                             }
                             _ => {}
@@ -218,6 +231,22 @@ pub fn handle_conduct_resolved(
                                     log_ev.write(BattleLogEvent(format!(
                                         "{}に{}が発症した！",
                                         who, ailment_name
+                                    )));
+                                }
+                                BattleCharacterIncidentConcrete::KarmaAddedToDeck(k) => {
+                                    let who = if def.character.character_id == enemy_id {
+                                        "敵"
+                                    } else {
+                                        "プレイヤー"
+                                    };
+                                    let card_name = data_manager
+                                        .karma_card
+                                        .find_by_id(k.karma_card_id.0)
+                                        .map(|r| r.data.name.as_str())
+                                        .unwrap_or("不明なカード");
+                                    log_ev.write(BattleLogEvent(format!(
+                                        "{}の山札に「{}」が{}枚追加された",
+                                        who, card_name, k.count
                                     )));
                                 }
                                 _ => {}
