@@ -298,20 +298,20 @@ pub fn handle_turn_end_incidents(
                                 )));
                             }
                         }
-                        BattleCharacterIncidentConcrete::StatusConditionRemoved(s) => {
-                            let condition_name = match &s.status_condition.potency {
-                                StatusConditionPotency::Resistance(_) => "防御",
-                                StatusConditionPotency::Evasion => "回避",
-                                StatusConditionPotency::Airborne => "空中",
-                                StatusConditionPotency::Floating => "浮遊",
-                                StatusConditionPotency::Melee => "近距離",
-                                StatusConditionPotency::Ranged => "遠距離",
-                            };
-                            log_ev.write(BattleLogEvent(format!(
-                                "{}の{}状態が解除された",
-                                who, condition_name
-                            )));
-                        }
+                        // BattleCharacterIncidentConcrete::StatusConditionRemoved(s) => {
+                        //     let condition_name = match &s.status_condition.potency {
+                        //         StatusConditionPotency::Resistance(_) => "防御",
+                        //         StatusConditionPotency::Evasion => "回避",
+                        //         StatusConditionPotency::Airborne => "空中",
+                        //         StatusConditionPotency::Floating => "浮遊",
+                        //         StatusConditionPotency::Melee => "近距離",
+                        //         StatusConditionPotency::Ranged => "遠距離",
+                        //     };
+                        //     log_ev.write(BattleLogEvent(format!(
+                        //         "{}の{}状態が解除された",
+                        //         who, condition_name
+                        //     )));
+                        // }
                         BattleCharacterIncidentConcrete::StatusAilmentRecovery(s) => {
                             let ailment_name = status_ailment_name(&s.status_ailment);
                             log_ev.write(BattleLogEvent(format!(
